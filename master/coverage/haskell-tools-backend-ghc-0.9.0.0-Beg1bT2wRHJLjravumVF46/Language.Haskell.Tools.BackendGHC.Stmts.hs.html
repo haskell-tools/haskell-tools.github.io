@@ -1,0 +1,104 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE LambdaCase
+<span class="lineno">    2 </span>           , ViewPatterns
+<span class="lineno">    3 </span>           , TypeFamilies
+<span class="lineno">    4 </span>           #-}
+<span class="lineno">    5 </span>-- | Functions that convert the statement-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
+<span class="lineno">    6 </span>module Language.Haskell.Tools.BackendGHC.Stmts where
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>import Control.Monad.Reader (MonadReader(..))
+<span class="lineno">    9 </span>
+<span class="lineno">   10 </span>import ApiAnnotation as GHC (AnnKeywordId(..))
+<span class="lineno">   11 </span>import HsExpr as GHC
+<span class="lineno">   12 </span>import Outputable (Outputable)
+<span class="lineno">   13 </span>import SrcLoc as GHC
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>import Language.Haskell.Tools.AST (Ann, AnnListG, Dom, RangeStage)
+<span class="lineno">   16 </span>import qualified Language.Haskell.Tools.AST as AST
+<span class="lineno">   17 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.Binds (trfLocalBinds)
+<span class="lineno">   18 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.Exprs (trfExpr)
+<span class="lineno">   19 </span>import Language.Haskell.Tools.BackendGHC.Monad (TrfInput(..), Trf, addToScope)
+<span class="lineno">   20 </span>import Language.Haskell.Tools.BackendGHC.Names (TransformName(..))
+<span class="lineno">   21 </span>import Language.Haskell.Tools.BackendGHC.Patterns (trfPattern)
+<span class="lineno">   22 </span>import Language.Haskell.Tools.BackendGHC.Utils
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>import Data.Data (Data)
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>trfDoStmt :: TransformName n r =&gt; Located (Stmt n (LHsExpr n)) -&gt; Trf (Ann AST.UStmt (Dom r) RangeStage)
+<span class="lineno">   27 </span><span class="decl"><span class="istickedoff">trfDoStmt = trfLocNoSema trfDoStmt'</span></span>
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>trfDoStmt' :: TransformName n r =&gt; Stmt n (Located (HsExpr n)) -&gt; Trf (AST.UStmt' AST.UExpr (Dom r) RangeStage)
+<span class="lineno">   30 </span><span class="decl"><span class="istickedoff">trfDoStmt' = gTrfDoStmt' trfExpr</span></span>
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>gTrfDoStmt' :: (TransformName n r, Data (ge n), Outputable (ge n))
+<span class="lineno">   33 </span>            =&gt; (Located (ge n) -&gt; Trf (Ann ae (Dom r) RangeStage)) -&gt; Stmt n (Located (ge n)) -&gt; Trf (AST.UStmt' ae (Dom r) RangeStage)
+<span class="lineno">   34 </span><span class="decl"><span class="istickedoff">gTrfDoStmt' et (BindStmt pat expr _ _ _) = AST.UBindStmt &lt;$&gt; trfPattern pat &lt;*&gt; et expr</span>
+<span class="lineno">   35 </span><span class="spaces"></span><span class="istickedoff">gTrfDoStmt' et (BodyStmt expr _ _ _) = AST.UExprStmt &lt;$&gt; et expr</span>
+<span class="lineno">   36 </span><span class="spaces"></span><span class="istickedoff">gTrfDoStmt' _ (LetStmt (unLoc -&gt; binds)) = AST.ULetStmt . orderAnnList &lt;$&gt; addToScope binds (trfLocalBinds AnnLet binds)</span>
+<span class="lineno">   37 </span><span class="spaces"></span><span class="istickedoff">gTrfDoStmt' et (LastStmt body _ _) = AST.UExprStmt &lt;$&gt; et body</span>
+<span class="lineno">   38 </span><span class="spaces"></span><span class="istickedoff">gTrfDoStmt' et (RecStmt { recS_stmts = stmts }) = AST.URecStmt &lt;$&gt; trfAnnList &quot;,&quot; (gTrfDoStmt' et) stmts</span>
+<span class="lineno">   39 </span><span class="spaces"></span><span class="istickedoff">gTrfDoStmt' _ stmt = <span class="nottickedoff">unhandledElement &quot;simple statement&quot; stmt</span></span></span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>trfListCompStmts :: TransformName n r =&gt; [Located (Stmt n (LHsExpr n))] -&gt; Trf (AnnListG AST.UListCompBody (Dom r) RangeStage)
+<span class="lineno">   42 </span><span class="decl"><span class="istickedoff">trfListCompStmts [unLoc -&gt; ParStmt blocks _ _ _, unLoc -&gt; (LastStmt {})]</span>
+<span class="lineno">   43 </span><span class="spaces">  </span><span class="istickedoff">= nonemptyAnnList</span>
+<span class="lineno">   44 </span><span class="spaces">      </span><span class="istickedoff">&lt;$&gt; trfScopedSequence (\(ParStmtBlock stmts _ _) -&gt;</span>
+<span class="lineno">   45 </span><span class="spaces">                                </span><span class="istickedoff">let ann = collectLocs $ getNormalStmts stmts</span>
+<span class="lineno">   46 </span><span class="spaces">                                 </span><span class="istickedoff">in annLocNoSema (pure ann) (AST.UListCompBody &lt;$&gt; makeList &quot;,&quot; (pure $ srcSpanStart ann) (concat &lt;$&gt; trfScopedSequence trfListCompStmt stmts))</span>
+<span class="lineno">   47 </span><span class="spaces">                            </span><span class="istickedoff">) blocks</span>
+<span class="lineno">   48 </span><span class="spaces"></span><span class="istickedoff">trfListCompStmts others</span>
+<span class="lineno">   49 </span><span class="spaces">  </span><span class="istickedoff">= let ann = (collectLocs $ getNormalStmts others)</span>
+<span class="lineno">   50 </span><span class="spaces">     </span><span class="istickedoff">in makeList &quot;|&quot; (pure $ srcSpanStart ann)</span>
+<span class="lineno">   51 </span><span class="spaces">          </span><span class="istickedoff">((:[]) &lt;$&gt; annLocNoSema (pure ann)</span>
+<span class="lineno">   52 </span><span class="spaces">                                  </span><span class="istickedoff">(AST.UListCompBody &lt;$&gt; makeList &quot;,&quot; (pure $ srcSpanStart ann) (concat &lt;$&gt; trfScopedSequence trfListCompStmt others)))</span></span>
+<span class="lineno">   53 </span>
+<span class="lineno">   54 </span>trfListCompStmt :: TransformName n r =&gt; Located (Stmt n (LHsExpr n)) -&gt; Trf [Ann AST.UCompStmt (Dom r) RangeStage]
+<span class="lineno">   55 </span><span class="decl"><span class="istickedoff">trfListCompStmt (L _ trst@(TransStmt { trS_stmts = stmts }))</span>
+<span class="lineno">   56 </span><span class="spaces">  </span><span class="istickedoff">= (++) &lt;$&gt; (concat &lt;$&gt; local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanEnd (getLoc (last stmts))) }) (trfScopedSequence trfListCompStmt stmts))</span>
+<span class="lineno">   57 </span><span class="spaces">         </span><span class="istickedoff">&lt;*&gt; ((:[]) &lt;$&gt; extractActualStmt trst)</span>
+<span class="lineno">   58 </span><span class="spaces"></span><span class="istickedoff">-- last statement is extracted</span>
+<span class="lineno">   59 </span><span class="spaces"></span><span class="istickedoff">trfListCompStmt (unLoc -&gt; LastStmt _ _ _) = pure []</span>
+<span class="lineno">   60 </span><span class="spaces"></span><span class="istickedoff">trfListCompStmt other = (:[]) &lt;$&gt; copyAnnot AST.UCompStmt (trfDoStmt other)</span></span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>extractActualStmt :: TransformName n r =&gt; Stmt n (LHsExpr n) -&gt; Trf (Ann AST.UCompStmt (Dom r) RangeStage)
+<span class="lineno">   63 </span><span class="decl"><span class="istickedoff">extractActualStmt = \case</span>
+<span class="lineno">   64 </span><span class="spaces">  </span><span class="istickedoff">TransStmt { trS_form = ThenForm, trS_using = using, trS_by = by }</span>
+<span class="lineno">   65 </span><span class="spaces">    </span><span class="istickedoff">-&gt; addAnnotation by using (AST.UThenStmt &lt;$&gt; trfExpr using &lt;*&gt; trfMaybe &quot;,&quot; &quot;&quot; trfExpr by)</span>
+<span class="lineno">   66 </span><span class="spaces">  </span><span class="istickedoff">TransStmt { trS_form = GroupForm, trS_using = using, trS_by = by }</span>
+<span class="lineno">   67 </span><span class="spaces">    </span><span class="istickedoff">-&gt; <span class="nottickedoff">addAnnotation by using (AST.UGroupStmt &lt;$&gt; trfMaybe &quot;,&quot; &quot;&quot; trfExpr by &lt;*&gt; (makeJust &lt;$&gt; trfExpr using))</span></span>
+<span class="lineno">   68 </span><span class="spaces">  </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">convertionProblem &quot;extractActualStmt: called on a statement that is not then or group&quot;</span></span>
+<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">where addAnnotation by using</span>
+<span class="lineno">   70 </span><span class="spaces">          </span><span class="istickedoff">= annLocNoSema (combineSrcSpans (getLoc using) . combineSrcSpans (maybe noSrcSpan getLoc by)</span>
+<span class="lineno">   71 </span><span class="spaces">                            </span><span class="istickedoff">&lt;$&gt; tokenLocBack AnnThen)</span></span>
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>getNormalStmts :: [Located (Stmt n (LHsExpr n))] -&gt; [Located (Stmt n (LHsExpr n))]
+<span class="lineno">   74 </span><span class="decl"><span class="istickedoff">getNormalStmts (L _ (LastStmt _ _ _) : rest) = getNormalStmts rest</span>
+<span class="lineno">   75 </span><span class="spaces"></span><span class="istickedoff">getNormalStmts (stmt : rest) = stmt : getNormalStmts rest</span>
+<span class="lineno">   76 </span><span class="spaces"></span><span class="istickedoff">getNormalStmts [] = []</span></span>
+<span class="lineno">   77 </span>
+<span class="lineno">   78 </span>getLastStmt :: [Located (Stmt n (LHsExpr n))] -&gt; Located (HsExpr n)
+<span class="lineno">   79 </span><span class="decl"><span class="istickedoff">getLastStmt (L _ (LastStmt body _ _) : _) = body</span>
+<span class="lineno">   80 </span><span class="spaces"></span><span class="istickedoff">getLastStmt (_ : rest) = getLastStmt rest</span>
+<span class="lineno">   81 </span><span class="spaces"></span><span class="istickedoff">getLastStmt [] = <span class="nottickedoff">convProblem &quot;getLastStmt: empty&quot;</span></span></span>
+
+</pre>
+</body>
+</html>
