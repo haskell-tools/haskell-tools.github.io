@@ -1,0 +1,124 @@
+
+
+Still running (1 of 20): stack --no-terminal bench haskell-tools-cliStill running (2 of 20): stack --no-terminal bench haskell-tools-cliStill running (3 of 20): stack --no-terminal bench haskell-tools-cliStill running (4 of 20): stack --no-terminal bench haskell-tools-cliStill running (5 of 20): stack --no-terminal bench haskell-tools-cliStill running (6 of 20): stack --no-terminal bench haskell-tools-cliStill running (7 of 20): stack --no-terminal bench haskell-tools-cli
+[31;1mThe command stack --no-terminal bench haskell-tools-cli exited with 1.[0m
+
+[32;1mLog:[0m
+
+Only-0.1: download
+Only-0.1: configure
+abstract-par-0.3.3: download
+erf-2.0.0.0: download
+code-page-0.1.3: download
+vector-binary-instances-0.2.3.5: download
+cereal-0.5.4.0: download
+text-short-0.1.1: download
+parallel-3.2.1.1: download
+vector-th-unbox-0.2.1.6: downloadjs-flot-0.8.3: download
+
+microstache-1.0.1.1: download
+js-jquery-3.2.1: download
+abstract-deque-0.3: download
+Only-0.1: build
+abstract-par-0.3.3: configure
+abstract-par-0.3.3: build
+erf-2.0.0.0: configure
+Only-0.1: copy/register
+abstract-par-0.3.3: copy/register
+erf-2.0.0.0: build
+code-page-0.1.3: configure
+erf-2.0.0.0: copy/register
+code-page-0.1.3: build
+vector-binary-instances-0.2.3.5: configure
+code-page-0.1.3: copy/register
+vector-binary-instances-0.2.3.5: build
+text-short-0.1.1: configure
+text-short-0.1.1: build
+cereal-0.5.4.0: configure
+vector-binary-instances-0.2.3.5: copy/register
+cereal-0.5.4.0: build
+parallel-3.2.1.1: configure
+text-short-0.1.1: copy/register
+parallel-3.2.1.1: build
+vector-th-unbox-0.2.1.6: configure
+cassava-0.5.0.0: download
+vector-th-unbox-0.2.1.6: build
+microstache-1.0.1.1: configure
+parallel-3.2.1.1: copy/register
+microstache-1.0.1.1: build
+js-jquery-3.2.1: configure
+vector-th-unbox-0.2.1.6: copy/register
+js-jquery-3.2.1: build
+js-flot-0.8.3: configure
+math-functions-0.2.1.0: download
+js-jquery-3.2.1: copy/register
+js-flot-0.8.3: build
+abstract-deque-0.3: configure
+abstract-deque-0.3: build
+cassava-0.5.0.0: configure
+js-flot-0.8.3: copy/register
+cassava-0.5.0.0: build
+math-functions-0.2.1.0: configure
+abstract-deque-0.3: copy/register
+math-functions-0.2.1.0: build
+cereal-0.5.4.0: copy/register
+monad-par-extras-0.3.3: download
+monad-par-extras-0.3.3: configure
+microstache-1.0.1.1: copy/register
+monad-par-extras-0.3.3: build
+monad-par-extras-0.3.3: copy/register
+math-functions-0.2.1.0: copy/register
+mwc-random-0.13.6.0: download
+mwc-random-0.13.6.0: configure
+mwc-random-0.13.6.0: build
+cassava-0.5.0.0: copy/register
+mwc-random-0.13.6.0: copy/register
+monad-par-0.3.4.8: download
+monad-par-0.3.4.8: configure
+vector-algorithms-0.7.0.1: download
+monad-par-0.3.4.8: build
+vector-algorithms-0.7.0.1: configure
+vector-algorithms-0.7.0.1: build
+monad-par-0.3.4.8: copy/register
+vector-algorithms-0.7.0.1: copy/register
+statistics-0.14.0.2: download
+statistics-0.14.0.2: configure
+statistics-0.14.0.2: build
+statistics-0.14.0.2: copy/register
+criterion-1.2.2.0: download
+criterion-1.2.2.0: configure
+criterion-1.2.2.0: build
+criterion-1.2.2.0: copy/register
+haskell-tools-cli-0.9.0.0: configure (lib + exe + bench)
+Configuring haskell-tools-cli-0.9.0.0...
+haskell-tools-cli-0.9.0.0: build (lib + exe + bench)
+Preprocessing executable 'ht-test-stackage' for haskell-tools-cli-0.9.0.0..
+Building executable 'ht-test-stackage' for haskell-tools-cli-0.9.0.0..
+Preprocessing library for haskell-tools-cli-0.9.0.0..
+Building library for haskell-tools-cli-0.9.0.0..
+[1 of 2] Compiling Paths_haskell_tools_cli ( .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/autogen/Paths_haskell_tools_cli.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/Paths_haskell_tools_cli.o )
+[2 of 2] Compiling Language.Haskell.Tools.Refactor.CLI ( Language/Haskell/Tools/Refactor/CLI.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/Language/Haskell/Tools/Refactor/CLI.o )
+Preprocessing benchmark 'cli-benchmark' for haskell-tools-cli-0.9.0.0..
+Building benchmark 'cli-benchmark' for haskell-tools-cli-0.9.0.0..
+[1 of 1] Compiling Main             ( benchmark/Main.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/cli-benchmark/cli-benchmark-tmp/Main.o )
+Linking .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/cli-benchmark/cli-benchmark ...
+Preprocessing executable 'ht-refact' for haskell-tools-cli-0.9.0.0..
+Building executable 'ht-refact' for haskell-tools-cli-0.9.0.0..
+[1 of 1] Compiling Main             ( exe/Main.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/ht-refact/ht-refact-tmp/Main.o ) [Language.Haskell.Tools.Refactor.CLI changed]
+Linking .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/ht-refact/ht-refact ...
+haskell-tools-cli-0.9.0.0: copy/register
+Installing executable ht-test-stackage in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/nightly-2017-09-14/8.2.1/bin
+Installing library in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/nightly-2017-09-14/8.2.1/lib/x86_64-linux-ghc-8.2.1/haskell-tools-cli-0.9.0.0-6mPj4PUZYbqHwSNs7nuFnH
+Installing executable ht-refact in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/nightly-2017-09-14/8.2.1/bin
+Registering library for haskell-tools-cli-0.9.0.0..
+haskell-tools-cli-0.9.0.0: benchmarks
+Running 1 benchmarks...
+Benchmark cli-benchmark: RUNNING...
+cli-benchmark: examples/CppHs: removeDirectoryRecursive:getDirectoryType:getSymbolicLinkStatus: does not exist (No such file or directory)
+Benchmark cli-benchmark: ERROR
+Completed 23 action(s).
+
+--  While building package haskell-tools-cli-0.9.0.0 using:
+      /home/travis/.stack/setup-exe-cache/x86_64-linux/Cabal-simple_mPHDZzAJ_2.0.0.2_ghc-8.2.1 --builddir=.stack-work/dist/x86_64-linux/Cabal-2.0.0.2 bench cli-benchmark
+    Process exited with code: ExitFailure 1
+/home/travis/.travis/job_stages: line 169: 15099 Terminated              travis_jigger $! $timeout $cmd
