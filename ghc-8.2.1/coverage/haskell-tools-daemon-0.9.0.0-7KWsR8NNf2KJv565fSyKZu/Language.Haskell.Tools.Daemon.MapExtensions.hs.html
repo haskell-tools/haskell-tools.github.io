@@ -1,0 +1,198 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | Mapping between Cabal's and GHC's representation of language extensions.
+<span class="lineno">    2 </span>module Language.Haskell.Tools.Daemon.MapExtensions where
+<span class="lineno">    3 </span>
+<span class="lineno">    4 </span>import DynFlags (DynFlags, xopt_unset, xopt_set)
+<span class="lineno">    5 </span>import Language.Haskell.Extension (KnownExtension(..))
+<span class="lineno">    6 </span>import qualified Language.Haskell.TH.LanguageExtensions as GHC (Extension(..))
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>-- * Not imported from DynFlags.hs, so I copied it here
+<span class="lineno">    9 </span>setExtensionFlag', unSetExtensionFlag' :: GHC.Extension -&gt; DynFlags -&gt; DynFlags
+<span class="lineno">   10 </span><span class="decl"><span class="istickedoff">setExtensionFlag' f dflags = foldr <span class="nottickedoff">($)</span> (xopt_set dflags f) deps</span>
+<span class="lineno">   11 </span><span class="spaces">  </span><span class="istickedoff">where</span>
+<span class="lineno">   12 </span><span class="spaces">    </span><span class="istickedoff">deps = [ <span class="nottickedoff">if turn_on then setExtensionFlag'   d</span></span>
+<span class="lineno">   13 </span><span class="spaces">                        </span><span class="istickedoff"><span class="nottickedoff">else unSetExtensionFlag' d</span></span>
+<span class="lineno">   14 </span><span class="spaces">           </span><span class="istickedoff">| (f', turn_on, d) &lt;- impliedXFlags, <span class="tickonlyfalse">f' == f</span> ]</span></span>
+<span class="lineno">   15 </span><span class="decl"><span class="nottickedoff">unSetExtensionFlag' f dflags = xopt_unset dflags f</span></span>
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span><span class="decl"><span class="nottickedoff">turnOn = True</span></span>
+<span class="lineno">   18 </span><span class="decl"><span class="nottickedoff">turnOff = False</span></span>
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>impliedXFlags :: [(GHC.Extension, Bool, GHC.Extension)]
+<span class="lineno">   21 </span><span class="decl"><span class="istickedoff">impliedXFlags</span>
+<span class="lineno">   22 </span><span class="spaces">  </span><span class="istickedoff">= [ (GHC.RankNTypes,                <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.ExplicitForAll</span>)</span>
+<span class="lineno">   23 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.ScopedTypeVariables,       <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.ExplicitForAll</span>)</span>
+<span class="lineno">   24 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.LiberalTypeSynonyms,       <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.ExplicitForAll</span>)</span>
+<span class="lineno">   25 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.ExistentialQuantification, <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.ExplicitForAll</span>)</span>
+<span class="lineno">   26 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.FlexibleInstances,         <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.TypeSynonymInstances</span>)</span>
+<span class="lineno">   27 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.FunctionalDependencies,    <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.MultiParamTypeClasses</span>)</span>
+<span class="lineno">   28 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.MultiParamTypeClasses,     <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.ConstrainedClassMethods</span>)</span>
+<span class="lineno">   29 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.TypeFamilyDependencies,    <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.TypeFamilies</span>)</span>
+<span class="lineno">   30 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.RebindableSyntax, <span class="nottickedoff">turnOff</span>, <span class="nottickedoff">GHC.ImplicitPrelude</span>)</span>
+<span class="lineno">   31 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.GADTs,            <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.GADTSyntax</span>)</span>
+<span class="lineno">   32 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.GADTs,            <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.MonoLocalBinds</span>)</span>
+<span class="lineno">   33 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.TypeFamilies,     <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.MonoLocalBinds</span>)</span>
+<span class="lineno">   34 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.TypeFamilies,     <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.KindSignatures</span>)</span>
+<span class="lineno">   35 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.PolyKinds,        <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.KindSignatures</span>)</span>
+<span class="lineno">   36 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.TypeInType,       <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.DataKinds</span>)</span>
+<span class="lineno">   37 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.TypeInType,       <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.PolyKinds</span>)</span>
+<span class="lineno">   38 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.TypeInType,       <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.KindSignatures</span>)</span>
+<span class="lineno">   39 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.AutoDeriveTypeable, <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.DeriveDataTypeable</span>)</span>
+<span class="lineno">   40 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.TypeFamilies,     <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.ExplicitNamespaces</span>)</span>
+<span class="lineno">   41 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.TypeOperators, <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.ExplicitNamespaces</span>)</span>
+<span class="lineno">   42 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.ImpredicativeTypes,  <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.RankNTypes</span>)</span>
+<span class="lineno">   43 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.RecordWildCards,     <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.DisambiguateRecordFields</span>)</span>
+<span class="lineno">   44 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.ParallelArrays, <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.ParallelListComp</span>)</span>
+<span class="lineno">   45 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.JavaScriptFFI, <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.InterruptibleFFI</span>)</span>
+<span class="lineno">   46 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.DeriveTraversable, <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.DeriveFunctor</span>)</span>
+<span class="lineno">   47 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.DeriveTraversable, <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.DeriveFoldable</span>)</span>
+<span class="lineno">   48 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.DuplicateRecordFields, <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.DisambiguateRecordFields</span>)</span>
+<span class="lineno">   49 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.TemplateHaskell, <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.TemplateHaskellQuotes</span>)</span>
+<span class="lineno">   50 </span><span class="spaces">    </span><span class="istickedoff">, (GHC.Strict, <span class="nottickedoff">turnOn</span>, <span class="nottickedoff">GHC.StrictData</span>)</span>
+<span class="lineno">   51 </span><span class="spaces">  </span><span class="istickedoff">]</span></span>
+<span class="lineno">   52 </span>
+<span class="lineno">   53 </span>-- * Mapping of Cabal haskell extensions to their GHC counterpart
+<span class="lineno">   54 </span>
+<span class="lineno">   55 </span>-- | Map the cabal extensions to the ones that GHC recognizes
+<span class="lineno">   56 </span><span class="decl"><span class="istickedoff">translateExtension AllowAmbiguousTypes = <span class="nottickedoff">Just GHC.AllowAmbiguousTypes</span></span>
+<span class="lineno">   57 </span><span class="spaces"></span><span class="istickedoff">translateExtension ApplicativeDo = <span class="nottickedoff">Just GHC.ApplicativeDo</span></span>
+<span class="lineno">   58 </span><span class="spaces"></span><span class="istickedoff">translateExtension Arrows = <span class="nottickedoff">Just GHC.Arrows</span></span>
+<span class="lineno">   59 </span><span class="spaces"></span><span class="istickedoff">translateExtension AutoDeriveTypeable = <span class="nottickedoff">Just GHC.AutoDeriveTypeable</span></span>
+<span class="lineno">   60 </span><span class="spaces"></span><span class="istickedoff">translateExtension BangPatterns = <span class="nottickedoff">Just GHC.BangPatterns</span></span>
+<span class="lineno">   61 </span><span class="spaces"></span><span class="istickedoff">translateExtension BinaryLiterals = <span class="nottickedoff">Just GHC.BinaryLiterals</span></span>
+<span class="lineno">   62 </span><span class="spaces"></span><span class="istickedoff">translateExtension CApiFFI = <span class="nottickedoff">Just GHC.CApiFFI</span></span>
+<span class="lineno">   63 </span><span class="spaces"></span><span class="istickedoff">translateExtension ConstrainedClassMethods = <span class="nottickedoff">Just GHC.ConstrainedClassMethods</span></span>
+<span class="lineno">   64 </span><span class="spaces"></span><span class="istickedoff">translateExtension ConstraintKinds = <span class="nottickedoff">Just GHC.ConstraintKinds</span></span>
+<span class="lineno">   65 </span><span class="spaces"></span><span class="istickedoff">translateExtension CPP = <span class="nottickedoff">Just GHC.Cpp</span></span>
+<span class="lineno">   66 </span><span class="spaces"></span><span class="istickedoff">translateExtension DataKinds = <span class="nottickedoff">Just GHC.DataKinds</span></span>
+<span class="lineno">   67 </span><span class="spaces"></span><span class="istickedoff">translateExtension DatatypeContexts = Just GHC.DatatypeContexts</span>
+<span class="lineno">   68 </span><span class="spaces"></span><span class="istickedoff">translateExtension DefaultSignatures = <span class="nottickedoff">Just GHC.DefaultSignatures</span></span>
+<span class="lineno">   69 </span><span class="spaces"></span><span class="istickedoff">translateExtension DeriveAnyClass = <span class="nottickedoff">Just GHC.DeriveAnyClass</span></span>
+<span class="lineno">   70 </span><span class="spaces"></span><span class="istickedoff">translateExtension DeriveDataTypeable = <span class="nottickedoff">Just GHC.DeriveDataTypeable</span></span>
+<span class="lineno">   71 </span><span class="spaces"></span><span class="istickedoff">translateExtension DeriveFoldable = <span class="nottickedoff">Just GHC.DeriveFoldable</span></span>
+<span class="lineno">   72 </span><span class="spaces"></span><span class="istickedoff">translateExtension DeriveFunctor = <span class="nottickedoff">Just GHC.DeriveFunctor</span></span>
+<span class="lineno">   73 </span><span class="spaces"></span><span class="istickedoff">translateExtension DeriveGeneric = <span class="nottickedoff">Just GHC.DeriveGeneric</span></span>
+<span class="lineno">   74 </span><span class="spaces"></span><span class="istickedoff">translateExtension DeriveLift = <span class="nottickedoff">Just GHC.DeriveLift</span></span>
+<span class="lineno">   75 </span><span class="spaces"></span><span class="istickedoff">translateExtension DeriveTraversable = <span class="nottickedoff">Just GHC.DeriveTraversable</span></span>
+<span class="lineno">   76 </span><span class="spaces"></span><span class="istickedoff">translateExtension DisambiguateRecordFields = <span class="nottickedoff">Just GHC.DisambiguateRecordFields</span></span>
+<span class="lineno">   77 </span><span class="spaces"></span><span class="istickedoff">translateExtension DoAndIfThenElse = Just GHC.DoAndIfThenElse</span>
+<span class="lineno">   78 </span><span class="spaces"></span><span class="istickedoff">translateExtension DoRec = <span class="nottickedoff">Just GHC.RecursiveDo</span></span>
+<span class="lineno">   79 </span><span class="spaces"></span><span class="istickedoff">translateExtension DuplicateRecordFields = <span class="nottickedoff">Just GHC.DuplicateRecordFields</span></span>
+<span class="lineno">   80 </span><span class="spaces"></span><span class="istickedoff">translateExtension EmptyCase = <span class="nottickedoff">Just GHC.EmptyCase</span></span>
+<span class="lineno">   81 </span><span class="spaces"></span><span class="istickedoff">translateExtension EmptyDataDecls = Just GHC.EmptyDataDecls</span>
+<span class="lineno">   82 </span><span class="spaces"></span><span class="istickedoff">translateExtension ExistentialQuantification = <span class="nottickedoff">Just GHC.ExistentialQuantification</span></span>
+<span class="lineno">   83 </span><span class="spaces"></span><span class="istickedoff">translateExtension ExplicitForAll = <span class="nottickedoff">Just GHC.ExplicitForAll</span></span>
+<span class="lineno">   84 </span><span class="spaces"></span><span class="istickedoff">translateExtension ExplicitNamespaces = <span class="nottickedoff">Just GHC.ExplicitNamespaces</span></span>
+<span class="lineno">   85 </span><span class="spaces"></span><span class="istickedoff">translateExtension ExtendedDefaultRules = <span class="nottickedoff">Just GHC.ExtendedDefaultRules</span></span>
+<span class="lineno">   86 </span><span class="spaces"></span><span class="istickedoff">translateExtension FlexibleContexts = <span class="nottickedoff">Just GHC.FlexibleContexts</span></span>
+<span class="lineno">   87 </span><span class="spaces"></span><span class="istickedoff">translateExtension FlexibleInstances = <span class="nottickedoff">Just GHC.FlexibleInstances</span></span>
+<span class="lineno">   88 </span><span class="spaces"></span><span class="istickedoff">translateExtension ForeignFunctionInterface = Just GHC.ForeignFunctionInterface</span>
+<span class="lineno">   89 </span><span class="spaces"></span><span class="istickedoff">translateExtension FunctionalDependencies = <span class="nottickedoff">Just GHC.FunctionalDependencies</span></span>
+<span class="lineno">   90 </span><span class="spaces"></span><span class="istickedoff">translateExtension GADTs = <span class="nottickedoff">Just GHC.GADTs</span></span>
+<span class="lineno">   91 </span><span class="spaces"></span><span class="istickedoff">translateExtension GADTSyntax = <span class="nottickedoff">Just GHC.GADTSyntax</span></span>
+<span class="lineno">   92 </span><span class="spaces"></span><span class="istickedoff">translateExtension GeneralizedNewtypeDeriving = <span class="nottickedoff">Just GHC.GeneralizedNewtypeDeriving</span></span>
+<span class="lineno">   93 </span><span class="spaces"></span><span class="istickedoff">translateExtension GHCForeignImportPrim = <span class="nottickedoff">Just GHC.GHCForeignImportPrim</span></span>
+<span class="lineno">   94 </span><span class="spaces"></span><span class="istickedoff">translateExtension ImplicitParams = <span class="nottickedoff">Just GHC.ImplicitParams</span></span>
+<span class="lineno">   95 </span><span class="spaces"></span><span class="istickedoff">translateExtension ImplicitPrelude = <span class="nottickedoff">Just GHC.ImplicitPrelude</span></span>
+<span class="lineno">   96 </span><span class="spaces"></span><span class="istickedoff">translateExtension ImpredicativeTypes = <span class="nottickedoff">Just GHC.ImpredicativeTypes</span></span>
+<span class="lineno">   97 </span><span class="spaces"></span><span class="istickedoff">translateExtension IncoherentInstances = <span class="nottickedoff">Just GHC.IncoherentInstances</span></span>
+<span class="lineno">   98 </span><span class="spaces"></span><span class="istickedoff">translateExtension InstanceSigs = <span class="nottickedoff">Just GHC.InstanceSigs</span></span>
+<span class="lineno">   99 </span><span class="spaces"></span><span class="istickedoff">translateExtension InterruptibleFFI = <span class="nottickedoff">Just GHC.InterruptibleFFI</span></span>
+<span class="lineno">  100 </span><span class="spaces"></span><span class="istickedoff">translateExtension JavaScriptFFI = <span class="nottickedoff">Just GHC.JavaScriptFFI</span></span>
+<span class="lineno">  101 </span><span class="spaces"></span><span class="istickedoff">translateExtension KindSignatures = <span class="nottickedoff">Just GHC.KindSignatures</span></span>
+<span class="lineno">  102 </span><span class="spaces"></span><span class="istickedoff">translateExtension LambdaCase = Just GHC.LambdaCase</span>
+<span class="lineno">  103 </span><span class="spaces"></span><span class="istickedoff">translateExtension LiberalTypeSynonyms = <span class="nottickedoff">Just GHC.LiberalTypeSynonyms</span></span>
+<span class="lineno">  104 </span><span class="spaces"></span><span class="istickedoff">translateExtension MagicHash = <span class="nottickedoff">Just GHC.MagicHash</span></span>
+<span class="lineno">  105 </span><span class="spaces"></span><span class="istickedoff">translateExtension MonadComprehensions = <span class="nottickedoff">Just GHC.MonadComprehensions</span></span>
+<span class="lineno">  106 </span><span class="spaces"></span><span class="istickedoff">translateExtension MonadFailDesugaring = <span class="nottickedoff">Just GHC.MonadFailDesugaring</span></span>
+<span class="lineno">  107 </span><span class="spaces"></span><span class="istickedoff">translateExtension MonoLocalBinds = <span class="nottickedoff">Just GHC.MonoLocalBinds</span></span>
+<span class="lineno">  108 </span><span class="spaces"></span><span class="istickedoff">translateExtension MonomorphismRestriction = <span class="nottickedoff">Just GHC.MonomorphismRestriction</span></span>
+<span class="lineno">  109 </span><span class="spaces"></span><span class="istickedoff">translateExtension MonoPatBinds = <span class="nottickedoff">Just GHC.MonoPatBinds</span></span>
+<span class="lineno">  110 </span><span class="spaces"></span><span class="istickedoff">translateExtension MultiParamTypeClasses = <span class="nottickedoff">Just GHC.MultiParamTypeClasses</span></span>
+<span class="lineno">  111 </span><span class="spaces"></span><span class="istickedoff">translateExtension MultiWayIf = <span class="nottickedoff">Just GHC.MultiWayIf</span></span>
+<span class="lineno">  112 </span><span class="spaces"></span><span class="istickedoff">translateExtension NamedFieldPuns = <span class="nottickedoff">Just GHC.RecordPuns</span></span>
+<span class="lineno">  113 </span><span class="spaces"></span><span class="istickedoff">translateExtension NamedWildCards = <span class="nottickedoff">Just GHC.NamedWildCards</span></span>
+<span class="lineno">  114 </span><span class="spaces"></span><span class="istickedoff">translateExtension NegativeLiterals = <span class="nottickedoff">Just GHC.NegativeLiterals</span></span>
+<span class="lineno">  115 </span><span class="spaces"></span><span class="istickedoff">translateExtension NondecreasingIndentation = <span class="nottickedoff">Just GHC.NondecreasingIndentation</span></span>
+<span class="lineno">  116 </span><span class="spaces"></span><span class="istickedoff">translateExtension NPlusKPatterns = <span class="nottickedoff">Just GHC.NPlusKPatterns</span></span>
+<span class="lineno">  117 </span><span class="spaces"></span><span class="istickedoff">translateExtension NullaryTypeClasses = <span class="nottickedoff">Just GHC.NullaryTypeClasses</span></span>
+<span class="lineno">  118 </span><span class="spaces"></span><span class="istickedoff">translateExtension NumDecimals = <span class="nottickedoff">Just GHC.NumDecimals</span></span>
+<span class="lineno">  119 </span><span class="spaces"></span><span class="istickedoff">translateExtension OverlappingInstances = <span class="nottickedoff">Just GHC.OverlappingInstances</span></span>
+<span class="lineno">  120 </span><span class="spaces"></span><span class="istickedoff">translateExtension OverloadedLabels = <span class="nottickedoff">Just GHC.OverloadedLabels</span></span>
+<span class="lineno">  121 </span><span class="spaces"></span><span class="istickedoff">translateExtension OverloadedLists = <span class="nottickedoff">Just GHC.OverloadedLists</span></span>
+<span class="lineno">  122 </span><span class="spaces"></span><span class="istickedoff">translateExtension OverloadedStrings = <span class="nottickedoff">Just GHC.OverloadedStrings</span></span>
+<span class="lineno">  123 </span><span class="spaces"></span><span class="istickedoff">translateExtension PackageImports = <span class="nottickedoff">Just GHC.PackageImports</span></span>
+<span class="lineno">  124 </span><span class="spaces"></span><span class="istickedoff">translateExtension ParallelArrays = <span class="nottickedoff">Just GHC.ParallelArrays</span></span>
+<span class="lineno">  125 </span><span class="spaces"></span><span class="istickedoff">translateExtension ParallelListComp = <span class="nottickedoff">Just GHC.ParallelListComp</span></span>
+<span class="lineno">  126 </span><span class="spaces"></span><span class="istickedoff">translateExtension PartialTypeSignatures = <span class="nottickedoff">Just GHC.PartialTypeSignatures</span></span>
+<span class="lineno">  127 </span><span class="spaces"></span><span class="istickedoff">translateExtension PatternGuards = Just GHC.PatternGuards</span>
+<span class="lineno">  128 </span><span class="spaces"></span><span class="istickedoff">translateExtension PatternSignatures = <span class="nottickedoff">Just GHC.PatternSynonyms</span></span>
+<span class="lineno">  129 </span><span class="spaces"></span><span class="istickedoff">translateExtension PatternSynonyms = <span class="nottickedoff">Just GHC.PatternSynonyms</span></span>
+<span class="lineno">  130 </span><span class="spaces"></span><span class="istickedoff">translateExtension PolyKinds = <span class="nottickedoff">Just GHC.PolyKinds</span></span>
+<span class="lineno">  131 </span><span class="spaces"></span><span class="istickedoff">translateExtension PostfixOperators = <span class="nottickedoff">Just GHC.PostfixOperators</span></span>
+<span class="lineno">  132 </span><span class="spaces"></span><span class="istickedoff">translateExtension QuasiQuotes = <span class="nottickedoff">Just GHC.QuasiQuotes</span></span>
+<span class="lineno">  133 </span><span class="spaces"></span><span class="istickedoff">translateExtension RankNTypes = <span class="nottickedoff">Just GHC.RankNTypes</span></span>
+<span class="lineno">  134 </span><span class="spaces"></span><span class="istickedoff">translateExtension RebindableSyntax = <span class="nottickedoff">Just GHC.RebindableSyntax</span></span>
+<span class="lineno">  135 </span><span class="spaces"></span><span class="istickedoff">translateExtension RecordPuns = <span class="nottickedoff">Just GHC.RecordPuns</span></span>
+<span class="lineno">  136 </span><span class="spaces"></span><span class="istickedoff">translateExtension RecordWildCards = <span class="nottickedoff">Just GHC.RecordWildCards</span></span>
+<span class="lineno">  137 </span><span class="spaces"></span><span class="istickedoff">translateExtension RecursiveDo = <span class="nottickedoff">Just GHC.RecursiveDo</span></span>
+<span class="lineno">  138 </span><span class="spaces"></span><span class="istickedoff">translateExtension RelaxedPolyRec = Just GHC.RelaxedPolyRec</span>
+<span class="lineno">  139 </span><span class="spaces"></span><span class="istickedoff">translateExtension RestrictedTypeSynonyms = <span class="nottickedoff">Nothing</span> -- flip xopt_unset GHC.LiberalTypeSynonyms</span>
+<span class="lineno">  140 </span><span class="spaces"></span><span class="istickedoff">translateExtension RoleAnnotations = <span class="nottickedoff">Just GHC.RoleAnnotations</span></span>
+<span class="lineno">  141 </span><span class="spaces"></span><span class="istickedoff">translateExtension ScopedTypeVariables = <span class="nottickedoff">Just GHC.ScopedTypeVariables</span></span>
+<span class="lineno">  142 </span><span class="spaces"></span><span class="istickedoff">translateExtension StandaloneDeriving = <span class="nottickedoff">Just GHC.StandaloneDeriving</span></span>
+<span class="lineno">  143 </span><span class="spaces"></span><span class="istickedoff">translateExtension StaticPointers = <span class="nottickedoff">Just GHC.StaticPointers</span></span>
+<span class="lineno">  144 </span><span class="spaces"></span><span class="istickedoff">translateExtension Strict = <span class="nottickedoff">Just GHC.Strict</span></span>
+<span class="lineno">  145 </span><span class="spaces"></span><span class="istickedoff">translateExtension StrictData = <span class="nottickedoff">Just GHC.StrictData</span></span>
+<span class="lineno">  146 </span><span class="spaces"></span><span class="istickedoff">translateExtension TemplateHaskell = <span class="nottickedoff">Just GHC.TemplateHaskell</span></span>
+<span class="lineno">  147 </span><span class="spaces"></span><span class="istickedoff">translateExtension TemplateHaskellQuotes = <span class="nottickedoff">Just GHC.TemplateHaskellQuotes</span></span>
+<span class="lineno">  148 </span><span class="spaces"></span><span class="istickedoff">translateExtension TraditionalRecordSyntax = Just GHC.TraditionalRecordSyntax</span>
+<span class="lineno">  149 </span><span class="spaces"></span><span class="istickedoff">translateExtension TransformListComp = <span class="nottickedoff">Just GHC.TransformListComp</span></span>
+<span class="lineno">  150 </span><span class="spaces"></span><span class="istickedoff">translateExtension TupleSections = Just GHC.TupleSections</span>
+<span class="lineno">  151 </span><span class="spaces"></span><span class="istickedoff">translateExtension TypeApplications = <span class="nottickedoff">Just GHC.TypeApplications</span></span>
+<span class="lineno">  152 </span><span class="spaces"></span><span class="istickedoff">translateExtension TypeFamilies = <span class="nottickedoff">Just GHC.TypeFamilies</span></span>
+<span class="lineno">  153 </span><span class="spaces"></span><span class="istickedoff">translateExtension TypeInType = <span class="nottickedoff">Just GHC.TypeInType</span></span>
+<span class="lineno">  154 </span><span class="spaces"></span><span class="istickedoff">translateExtension TypeOperators = <span class="nottickedoff">Just GHC.TypeOperators</span></span>
+<span class="lineno">  155 </span><span class="spaces"></span><span class="istickedoff">translateExtension TypeSynonymInstances = <span class="nottickedoff">Just GHC.TypeSynonymInstances</span></span>
+<span class="lineno">  156 </span><span class="spaces"></span><span class="istickedoff">translateExtension UnboxedTuples = <span class="nottickedoff">Just GHC.UnboxedTuples</span></span>
+<span class="lineno">  157 </span><span class="spaces"></span><span class="istickedoff">translateExtension UndecidableInstances = <span class="nottickedoff">Just GHC.UndecidableInstances</span></span>
+<span class="lineno">  158 </span><span class="spaces"></span><span class="istickedoff">translateExtension UndecidableSuperClasses = <span class="nottickedoff">Just GHC.UndecidableSuperClasses</span></span>
+<span class="lineno">  159 </span><span class="spaces"></span><span class="istickedoff">translateExtension UnicodeSyntax = <span class="nottickedoff">Just GHC.UnicodeSyntax</span></span>
+<span class="lineno">  160 </span><span class="spaces"></span><span class="istickedoff">translateExtension UnliftedFFITypes = <span class="nottickedoff">Just GHC.UnliftedFFITypes</span></span>
+<span class="lineno">  161 </span><span class="spaces"></span><span class="istickedoff">translateExtension ViewPatterns = <span class="nottickedoff">Just GHC.ViewPatterns</span></span>
+<span class="lineno">  162 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  163 </span><span class="spaces"></span><span class="istickedoff">translateExtension Safe = <span class="nottickedoff">Nothing</span> -- \df -&gt; df { GHC.safeHaskell = GHC.Sf_Safe }</span>
+<span class="lineno">  164 </span><span class="spaces"></span><span class="istickedoff">translateExtension SafeImports = <span class="nottickedoff">Nothing</span> -- \df -&gt; df { GHC.safeHaskell = GHC.Sf_Safe }</span>
+<span class="lineno">  165 </span><span class="spaces"></span><span class="istickedoff">translateExtension Trustworthy = <span class="nottickedoff">Nothing</span> -- \df -&gt; df { GHC.safeHaskell = GHC.Sf_Trustworthy }</span>
+<span class="lineno">  166 </span><span class="spaces"></span><span class="istickedoff">translateExtension Unsafe = <span class="nottickedoff">Nothing</span> -- \df -&gt; df { GHC.safeHaskell = GHC.Sf_Unsafe }</span>
+<span class="lineno">  167 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  168 </span><span class="spaces"></span><span class="istickedoff">translateExtension Rank2Types = <span class="nottickedoff">Just GHC.RankNTypes</span></span>
+<span class="lineno">  169 </span><span class="spaces"></span><span class="istickedoff">translateExtension PolymorphicComponents = <span class="nottickedoff">Just GHC.RankNTypes</span></span>
+<span class="lineno">  170 </span><span class="spaces"></span><span class="istickedoff">translateExtension Generics = <span class="nottickedoff">Nothing</span> -- it does nothing, deprecated extension</span>
+<span class="lineno">  171 </span><span class="spaces"></span><span class="istickedoff">translateExtension NewQualifiedOperators = <span class="nottickedoff">Nothing</span> -- it does nothing, deprecated extension</span>
+<span class="lineno">  172 </span><span class="spaces"></span><span class="istickedoff">translateExtension ExtensibleRecords = <span class="nottickedoff">Nothing</span> -- not in GHC</span>
+<span class="lineno">  173 </span><span class="spaces"></span><span class="istickedoff">translateExtension XmlSyntax = <span class="nottickedoff">Nothing</span> -- not in GHC</span>
+<span class="lineno">  174 </span><span class="spaces"></span><span class="istickedoff">translateExtension HereDocuments = <span class="nottickedoff">Nothing</span> -- not in GHC</span>
+<span class="lineno">  175 </span><span class="spaces"></span><span class="istickedoff">translateExtension RegularPatterns = <span class="nottickedoff">Nothing</span></span></span> -- not in GHC
+
+</pre>
+</body>
+</html>

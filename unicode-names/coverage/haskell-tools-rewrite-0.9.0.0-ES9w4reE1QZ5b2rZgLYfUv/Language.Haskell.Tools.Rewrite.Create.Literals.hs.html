@@ -1,0 +1,74 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | Generation of literals for refactorings.
+<span class="lineno">    2 </span>-- The bindings defined here are the AST constructor names with an &quot;mk&quot; prefix.
+<span class="lineno">    3 </span>{-# LANGUAGE OverloadedStrings 
+<span class="lineno">    4 </span>           , TypeFamilies 
+<span class="lineno">    5 </span>           #-}
+<span class="lineno">    6 </span>module Language.Haskell.Tools.Rewrite.Create.Literals where
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>import Data.String (IsString(..), String)
+<span class="lineno">    9 </span>import Language.Haskell.Tools.AST (ULiteral(..))
+<span class="lineno">   10 </span>import Language.Haskell.Tools.Rewrite.Create.Utils (mkAnn)
+<span class="lineno">   11 </span>import Language.Haskell.Tools.Rewrite.ElementTypes (Literal)
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>-- | Character literal: @'c'@
+<span class="lineno">   14 </span>mkCharLit :: Char -&gt; Literal dom
+<span class="lineno">   15 </span><span class="decl"><span class="nottickedoff">mkCharLit c = mkAnn (fromString $ show c) $ UCharLit c</span></span>
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>-- | String literal: @&quot;abc&quot;@
+<span class="lineno">   18 </span>mkStringLit :: String -&gt; Literal dom
+<span class="lineno">   19 </span><span class="decl"><span class="istickedoff">mkStringLit s = mkAnn (fromString $ show s) $ UStringLit <span class="nottickedoff">s</span></span></span>
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>-- | Integer literal: @12@
+<span class="lineno">   22 </span>mkIntLit :: Integer -&gt; Literal dom
+<span class="lineno">   23 </span><span class="decl"><span class="istickedoff">mkIntLit i = mkAnn (fromString $ show i) $ UIntLit <span class="nottickedoff">i</span></span></span>
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>-- | Fractional literal: @3.14@
+<span class="lineno">   26 </span>mkFracLit :: Rational -&gt; Literal dom
+<span class="lineno">   27 </span><span class="decl"><span class="nottickedoff">mkFracLit f = mkAnn (fromString $ show f) $ UFracLit f</span></span>
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>-- | Primitive integer literal (of type @Int#@): @32#@
+<span class="lineno">   30 </span>mkPrimIntLit :: Integer -&gt; Literal dom
+<span class="lineno">   31 </span><span class="decl"><span class="nottickedoff">mkPrimIntLit i = mkAnn (fromString $ show i ++ &quot;#&quot;) $ UPrimIntLit i</span></span>
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>-- | Primitive word literal (of type @Word#@): @32##@
+<span class="lineno">   34 </span>mkPrimWordLit :: Integer -&gt; Literal dom
+<span class="lineno">   35 </span><span class="decl"><span class="nottickedoff">mkPrimWordLit i = mkAnn (fromString $ show i ++ &quot;##&quot;) $ UPrimWordLit i</span></span>
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>-- | Primitive float literal (of type @Float#@): @3.14#@
+<span class="lineno">   38 </span>mkPrimFloatLit :: Rational -&gt; Literal dom
+<span class="lineno">   39 </span><span class="decl"><span class="nottickedoff">mkPrimFloatLit f = mkAnn (fromString $ show f ++ &quot;#&quot;) $ UPrimFloatLit f</span></span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>-- | Primitive double literal (of type @Double#@): @3.14##@
+<span class="lineno">   42 </span>mkPrimDoubleLit :: Rational -&gt; Literal dom
+<span class="lineno">   43 </span><span class="decl"><span class="nottickedoff">mkPrimDoubleLit f = mkAnn (fromString $ show f ++ &quot;##&quot;) $ UPrimDoubleLit f</span></span>
+<span class="lineno">   44 </span>
+<span class="lineno">   45 </span>-- | Primitive character literal (of type @Char#@): @'c'#@
+<span class="lineno">   46 </span>mkPrimCharLit :: Char -&gt; Literal dom
+<span class="lineno">   47 </span><span class="decl"><span class="nottickedoff">mkPrimCharLit c = mkAnn (fromString $ show c ++ &quot;#&quot;) $ UPrimCharLit c</span></span>
+<span class="lineno">   48 </span>
+<span class="lineno">   49 </span>-- | Primitive string literal (of type @Addr#@): @&quot;xxx&quot;#@
+<span class="lineno">   50 </span>mkPrimStringLit :: String -&gt; Literal dom
+<span class="lineno">   51 </span><span class="decl"><span class="nottickedoff">mkPrimStringLit s = mkAnn (fromString $ show s ++ &quot;#&quot;) $ UPrimStringLit s</span></span>
+
+</pre>
+</body>
+</html>
