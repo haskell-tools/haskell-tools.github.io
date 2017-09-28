@@ -1,0 +1,171 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleInstances
+<span class="lineno">    2 </span>           , FlexibleContexts
+<span class="lineno">    3 </span>           , DeriveDataTypeable
+<span class="lineno">    4 </span>           , TemplateHaskell
+<span class="lineno">    5 </span>           , RecordWildCards
+<span class="lineno">    6 </span>           , TypeFamilies
+<span class="lineno">    7 </span>           #-}
+<span class="lineno">    8 </span>-- | The final version of the source annotation. Each node contains its original textual format, with the places of
+<span class="lineno">    9 </span>-- the children specified by placeholders.
+<span class="lineno">   10 </span>module Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate where
+<span class="lineno">   11 </span>
+<span class="lineno">   12 </span>import Control.Reference
+<span class="lineno">   13 </span>import Data.Data
+<span class="lineno">   14 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   15 </span>import SrcLoc
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>instance SourceInfo SrcTemplateStage where
+<span class="lineno">   18 </span>  data SpanInfo SrcTemplateStage
+<span class="lineno">   19 </span>         = SourceTemplateNode { <span class="istickedoff"><span class="decl"><span class="istickedoff">_sourceTemplateNodeRange</span></span></span> :: SrcSpan -- ^ The (original) range of the given element
+<span class="lineno">   20 </span>                              , <span class="istickedoff"><span class="decl"><span class="istickedoff">_sourceTemplateNodeElems</span></span></span> :: [SourceTemplateElem] -- ^ The children of the given node, could be text or child nodes
+<span class="lineno">   21 </span>                              , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_srcTmpMinInd</span></span></span> :: Int -- ^ Minimum indentation for the element
+<span class="lineno">   22 </span>                              , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_srcTmpRelPos</span></span></span> :: Maybe Int -- ^ Relative indentation for newly created elements
+<span class="lineno">   23 </span>                              }
+<span class="lineno">   24 </span>    deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Ord</span></span></span></span></span></span></span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">   25 </span>  data ListInfo SrcTemplateStage
+<span class="lineno">   26 </span>         = SourceTemplateList { <span class="istickedoff"><span class="decl"><span class="istickedoff">_sourceTemplateListRange</span></span></span> :: SrcSpan -- ^ The (original) range of the given element
+<span class="lineno">   27 </span>                              , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_srcTmpListBefore</span></span></span> :: String -- ^ Text that should be put before the first element if the list becomes populated
+<span class="lineno">   28 </span>                              , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_srcTmpListAfter</span></span></span> :: String -- ^ Text that should be put after the last element if the list becomes populated
+<span class="lineno">   29 </span>                              , <span class="istickedoff"><span class="decl"><span class="istickedoff">_srcTmpDefaultSeparator</span></span></span> :: String -- ^ The default separator if the list were empty
+<span class="lineno">   30 </span>                              , <span class="istickedoff"><span class="decl"><span class="istickedoff">_srcTmpIndented</span></span></span> :: Maybe [Bool] -- ^ False for elements that should be not aligned
+<span class="lineno">   31 </span>                              , <span class="istickedoff"><span class="decl"><span class="istickedoff">_srcTmpSeparators</span></span></span> :: [([SourceTemplateTextElem], SrcSpan)] -- ^ The actual separators that were found in the source code
+<span class="lineno">   32 </span>                              , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_srcTmpListMinInd</span></span></span> :: Int -- ^ Minimum indentation for the element
+<span class="lineno">   33 </span>                              , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_srcTmpListRelPos</span></span></span> :: Maybe Int -- ^ Relative indentation for newly created elements
+<span class="lineno">   34 </span>                              }
+<span class="lineno">   35 </span>    deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Ord</span></span></span></span></span></span></span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">   36 </span>  data OptionalInfo SrcTemplateStage
+<span class="lineno">   37 </span>         = SourceTemplateOpt { <span class="istickedoff"><span class="decl"><span class="istickedoff">_sourceTemplateOptRange</span></span></span> :: SrcSpan -- ^ The (original) range of the given element
+<span class="lineno">   38 </span>                             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_srcTmpOptBefore</span></span></span> :: String -- ^ Text that should be put before the element if it appears
+<span class="lineno">   39 </span>                             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_srcTmpOptAfter</span></span></span> :: String -- ^ Text that should be put after the element if it appears
+<span class="lineno">   40 </span>                             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_srcTmpOptMinInd</span></span></span> :: Int -- ^ Minimum indentation for the element
+<span class="lineno">   41 </span>                             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_srcTmpOptRelPos</span></span></span> :: Maybe Int -- ^ Relative indentation for newly created elements
+<span class="lineno">   42 </span>                             }
+<span class="lineno">   43 </span>    deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Ord</span></span></span></span></span></span></span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">   44 </span>
+<span class="lineno">   45 </span>-- * References for span infos
+<span class="lineno">   46 </span>
+<span class="lineno">   47 </span>sourceTemplateNodeRange :: Simple Lens (SpanInfo SrcTemplateStage) SrcSpan
+<span class="lineno">   48 </span><span class="decl"><span class="istickedoff">sourceTemplateNodeRange = lens _sourceTemplateNodeRange <span class="nottickedoff">(\v s -&gt; s { _sourceTemplateNodeRange = v })</span></span></span>
+<span class="lineno">   49 </span>
+<span class="lineno">   50 </span>sourceTemplateNodeElems :: Simple Lens (SpanInfo SrcTemplateStage) [SourceTemplateElem]
+<span class="lineno">   51 </span><span class="decl"><span class="istickedoff">sourceTemplateNodeElems = lens _sourceTemplateNodeElems (\v s -&gt; s { _sourceTemplateNodeElems = v })</span></span>
+<span class="lineno">   52 </span>
+<span class="lineno">   53 </span>sourceTemplateMinimalIndent :: Simple Lens (SpanInfo SrcTemplateStage) Int
+<span class="lineno">   54 </span><span class="decl"><span class="istickedoff">sourceTemplateMinimalIndent = lens <span class="nottickedoff">_srcTmpMinInd</span> (\v s -&gt; s { _srcTmpMinInd = v })</span></span>
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>srcTmpRelPos :: Simple Lens (SpanInfo SrcTemplateStage) (Maybe Int)
+<span class="lineno">   57 </span><span class="decl"><span class="nottickedoff">srcTmpRelPos = lens _srcTmpRelPos (\v s -&gt; s { _srcTmpRelPos = v })</span></span>
+<span class="lineno">   58 </span>
+<span class="lineno">   59 </span>-- * References for list infos
+<span class="lineno">   60 </span>
+<span class="lineno">   61 </span>sourceTemplateListRange :: Simple Lens (ListInfo SrcTemplateStage) SrcSpan
+<span class="lineno">   62 </span><span class="decl"><span class="istickedoff">sourceTemplateListRange = lens _sourceTemplateListRange <span class="nottickedoff">(\v s -&gt; s { _sourceTemplateListRange = v })</span></span></span>
+<span class="lineno">   63 </span>
+<span class="lineno">   64 </span>srcTmpListBefore :: Simple Lens (ListInfo SrcTemplateStage) String
+<span class="lineno">   65 </span><span class="decl"><span class="istickedoff">srcTmpListBefore = lens <span class="nottickedoff">_srcTmpListBefore</span> (\v s -&gt; s { _srcTmpListBefore = v })</span></span>
+<span class="lineno">   66 </span>
+<span class="lineno">   67 </span>srcTmpListAfter :: Simple Lens (ListInfo SrcTemplateStage) String
+<span class="lineno">   68 </span><span class="decl"><span class="istickedoff">srcTmpListAfter = lens <span class="nottickedoff">_srcTmpListAfter</span> (\v s -&gt; s { _srcTmpListAfter = <span class="nottickedoff">v</span> })</span></span>
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>srcTmpDefaultSeparator :: Simple Lens (ListInfo SrcTemplateStage) String
+<span class="lineno">   71 </span><span class="decl"><span class="istickedoff">srcTmpDefaultSeparator = lens _srcTmpDefaultSeparator (\v s -&gt; s { _srcTmpDefaultSeparator = v })</span></span>
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>srcTmpIndented :: Simple Lens (ListInfo SrcTemplateStage) (Maybe [Bool])
+<span class="lineno">   74 </span><span class="decl"><span class="istickedoff">srcTmpIndented = lens _srcTmpIndented (\v s -&gt; s { _srcTmpIndented = v })</span></span>
+<span class="lineno">   75 </span>
+<span class="lineno">   76 </span>srcTmpSeparators :: Simple Lens (ListInfo SrcTemplateStage) [([SourceTemplateTextElem], SrcSpan)]
+<span class="lineno">   77 </span><span class="decl"><span class="istickedoff">srcTmpSeparators = lens _srcTmpSeparators (\v s -&gt; s { _srcTmpSeparators = v })</span></span>
+<span class="lineno">   78 </span>
+<span class="lineno">   79 </span>srcTmpListMinimalIndent :: Simple Lens (ListInfo SrcTemplateStage) Int
+<span class="lineno">   80 </span><span class="decl"><span class="istickedoff">srcTmpListMinimalIndent = lens <span class="nottickedoff">_srcTmpListMinInd</span> (\v s -&gt; s { _srcTmpListMinInd = v })</span></span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>srcTmpListRelPos :: Simple Lens (ListInfo SrcTemplateStage) (Maybe Int)
+<span class="lineno">   83 </span><span class="decl"><span class="nottickedoff">srcTmpListRelPos = lens _srcTmpListRelPos (\v s -&gt; s { _srcTmpListRelPos = v })</span></span>
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>-- * References for optional infos
+<span class="lineno">   86 </span>
+<span class="lineno">   87 </span>sourceTemplateOptRange :: Simple Lens (OptionalInfo SrcTemplateStage) SrcSpan
+<span class="lineno">   88 </span><span class="decl"><span class="istickedoff">sourceTemplateOptRange = lens _sourceTemplateOptRange <span class="nottickedoff">(\v s -&gt; s { _sourceTemplateOptRange = v })</span></span></span>
+<span class="lineno">   89 </span>
+<span class="lineno">   90 </span>srcTmpOptBefore :: Simple Lens (OptionalInfo SrcTemplateStage) String
+<span class="lineno">   91 </span><span class="decl"><span class="istickedoff">srcTmpOptBefore = lens <span class="nottickedoff">_srcTmpOptBefore</span> (\v s -&gt; s { _srcTmpOptBefore = v })</span></span>
+<span class="lineno">   92 </span>
+<span class="lineno">   93 </span>srcTmpOptAfter :: Simple Lens (OptionalInfo SrcTemplateStage) String
+<span class="lineno">   94 </span><span class="decl"><span class="istickedoff">srcTmpOptAfter = lens <span class="nottickedoff">_srcTmpOptAfter</span> (\v s -&gt; s { _srcTmpOptAfter = v })</span></span>
+<span class="lineno">   95 </span>
+<span class="lineno">   96 </span>srcTmpOptMinimalIndent :: Simple Lens (OptionalInfo SrcTemplateStage) Int
+<span class="lineno">   97 </span><span class="decl"><span class="istickedoff">srcTmpOptMinimalIndent = lens <span class="nottickedoff">_srcTmpOptMinInd</span> (\v s -&gt; s { _srcTmpOptMinInd = <span class="nottickedoff">v</span> })</span></span>
+<span class="lineno">   98 </span>
+<span class="lineno">   99 </span>srcTmpOptRelPos :: Simple Lens (OptionalInfo SrcTemplateStage) (Maybe Int)
+<span class="lineno">  100 </span><span class="decl"><span class="istickedoff">srcTmpOptRelPos = lens <span class="nottickedoff">_srcTmpOptRelPos</span> (\v s -&gt; s { _srcTmpOptRelPos = v })</span></span>
+<span class="lineno">  101 </span>
+<span class="lineno">  102 </span>
+<span class="lineno">  103 </span>-- | An element of a source template for a singleton AST node.
+<span class="lineno">  104 </span>data SourceTemplateElem
+<span class="lineno">  105 </span>  = TextElem { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_sourceTemplateTextElem</span></span></span> :: [SourceTemplateTextElem]
+<span class="lineno">  106 </span>             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_sourceTemplateTextRange</span></span></span> :: SrcSpan
+<span class="lineno">  107 </span>             } -- ^ Source text belonging to the current node
+<span class="lineno">  108 </span>  | ChildElem -- ^ Placeholder for the next children of the node
+<span class="lineno">  109 </span>     deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Ord</span></span></span></span></span></span></span></span></span></span>, <span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">  110 </span>
+<span class="lineno">  111 </span>isStayingText :: SourceTemplateTextElem -&gt; Bool
+<span class="lineno">  112 </span><span class="decl"><span class="nottickedoff">isStayingText StayingText{} = True</span>
+<span class="lineno">  113 </span><span class="spaces"></span><span class="nottickedoff">isStayingText _ = False</span></span>
+<span class="lineno">  114 </span>
+<span class="lineno">  115 </span>data SourceTemplateTextElem
+<span class="lineno">  116 </span>  = NormalText { <span class="istickedoff"><span class="decl"><span class="istickedoff">_sourceTemplateText</span></span></span> :: String }
+<span class="lineno">  117 </span>  | StayingText { _sourceTemplateText :: String, <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_lineEndings</span></span></span> :: String }
+<span class="lineno">  118 </span>     deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Ord</span></span></span></span></span></span></span></span></span></span>, <span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">  119 </span>
+<span class="lineno">  120 </span><span class="istickedoff"><span class="nottickedoff"><span class="istickedoff"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff">makeReferences ''SourceTemplateElem</span></span></span></span></span></span></span></span></span>
+<span class="lineno">  121 </span><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff">makeReferences ''SourceTemplateTextElem</span></span></span></span></span></span>
+<span class="lineno">  122 </span>
+<span class="lineno">  123 </span>instance HasRange (SpanInfo SrcTemplateStage) where
+<span class="lineno">  124 </span>  <span class="decl"><span class="istickedoff">getRange = (^. sourceTemplateNodeRange)</span></span>
+<span class="lineno">  125 </span>  <span class="decl"><span class="nottickedoff">setRange = (sourceTemplateNodeRange .=)</span></span>
+<span class="lineno">  126 </span>
+<span class="lineno">  127 </span>instance HasRange (ListInfo SrcTemplateStage) where
+<span class="lineno">  128 </span>  <span class="decl"><span class="istickedoff">getRange = (^. sourceTemplateListRange)</span></span>
+<span class="lineno">  129 </span>  <span class="decl"><span class="nottickedoff">setRange = (sourceTemplateListRange .=)</span></span>
+<span class="lineno">  130 </span>
+<span class="lineno">  131 </span>instance HasRange (OptionalInfo SrcTemplateStage) where
+<span class="lineno">  132 </span>  <span class="decl"><span class="istickedoff">getRange = (^. sourceTemplateOptRange)</span></span>
+<span class="lineno">  133 </span>  <span class="decl"><span class="nottickedoff">setRange = (sourceTemplateOptRange .=)</span></span>
+<span class="lineno">  134 </span>
+<span class="lineno">  135 </span>instance Show (SpanInfo SrcTemplateStage) where
+<span class="lineno">  136 </span>  <span class="decl"><span class="nottickedoff">show (SourceTemplateNode _ sp _ _) = concatMap show sp</span></span>
+<span class="lineno">  137 </span>instance Show (ListInfo SrcTemplateStage) where
+<span class="lineno">  138 </span>  <span class="decl"><span class="nottickedoff">show SourceTemplateList{..} = &quot;&lt;*&quot; ++ show _srcTmpListBefore ++ &quot; &quot; ++ show _srcTmpDefaultSeparator ++ &quot; &quot; ++ show _srcTmpListAfter ++ &quot; &quot; ++ show _srcTmpSeparators ++ &quot;*&gt;&quot;</span></span>
+<span class="lineno">  139 </span>instance Show (OptionalInfo SrcTemplateStage) where
+<span class="lineno">  140 </span>  <span class="decl"><span class="nottickedoff">show SourceTemplateOpt{..} = &quot;&lt;?&quot; ++ show _srcTmpOptBefore ++ &quot; &quot; ++ show _srcTmpOptAfter ++ &quot;?&gt;&quot;</span></span>
+<span class="lineno">  141 </span>
+<span class="lineno">  142 </span>instance Show SourceTemplateElem where
+<span class="lineno">  143 </span>  <span class="decl"><span class="nottickedoff">show (TextElem s _) = show s</span>
+<span class="lineno">  144 </span><span class="spaces">  </span><span class="nottickedoff">show ChildElem = &quot;&lt;.&gt;&quot;</span></span>
+<span class="lineno">  145 </span>
+<span class="lineno">  146 </span>instance Show SourceTemplateTextElem where
+<span class="lineno">  147 </span>  <span class="decl"><span class="nottickedoff">show (NormalText s) = show s</span>
+<span class="lineno">  148 </span><span class="spaces">  </span><span class="nottickedoff">show (StayingText s _) = &quot;|&quot; ++ show s ++ &quot;|&quot;</span></span>
+
+</pre>
+</body>
+</html>
