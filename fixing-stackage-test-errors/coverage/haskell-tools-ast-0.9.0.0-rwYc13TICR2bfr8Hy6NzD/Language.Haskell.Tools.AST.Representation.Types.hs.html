@@ -81,27 +81,29 @@ span.spaces    { background: white }
 <span class="lineno">   62 </span>  | UTyWildcard   -- ^ A wildcard type (@ _ @) with @-XPartialTypeSignatures@
 <span class="lineno">   63 </span>  | UTyNamedWildc { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeWildcardName</span></span></span> :: Ann UName dom stage
 <span class="lineno">   64 </span>                  } -- ^ A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
-<span class="lineno">   65 </span>
-<span class="lineno">   66 </span>-- One or more assertions
-<span class="lineno">   67 </span>data UContext dom stage
-<span class="lineno">   68 </span>  = UContext { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_contextAssertion</span></span></span> :: Ann UAssertion dom stage
-<span class="lineno">   69 </span>             } -- ^ Assertions with the fat arrow (@ C a =&gt; ... @)
-<span class="lineno">   70 </span>
-<span class="lineno">   71 </span>-- | A single assertion in the context
-<span class="lineno">   72 </span>data UAssertion dom stage
-<span class="lineno">   73 </span>  = UClassAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertClsName</span></span></span> :: Ann UName dom stage
-<span class="lineno">   74 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertTypes</span></span></span> :: AnnListG UType dom stage
-<span class="lineno">   75 </span>                 } -- ^ Class assertion (@Cls x@)
-<span class="lineno">   76 </span>  | UInfixAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertLhs</span></span></span> :: Ann UType dom stage
-<span class="lineno">   77 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertOp</span></span></span> :: Ann UOperator dom stage
-<span class="lineno">   78 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertRhs</span></span></span> :: Ann UType dom stage
-<span class="lineno">   79 </span>                 } -- ^ Infix class assertion, also contains type equations (@ a ~ X y @)
-<span class="lineno">   80 </span>  | UImplicitAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertImplVar</span></span></span> :: Ann UName dom stage
-<span class="lineno">   81 </span>                    , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertImplType</span></span></span> :: Ann UType dom stage
-<span class="lineno">   82 </span>                    } -- ^ Assertion for implicit parameter binding (@ ?cmp :: a -&gt; a -&gt; Bool @)
-<span class="lineno">   83 </span>  | UTupleAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_innerAsserts</span></span></span> :: AnnListG UAssertion dom stage
-<span class="lineno">   84 </span>                 } -- ^ Multiple assertions in one (@ (Ord a, Show a) @)
-<span class="lineno">   85 </span>  | UWildcardAssert -- ^ Wildcard assertion (@ _ @), enabled by @PartialTypeSignatures@
+<span class="lineno">   65 </span>  | UUnbSumType   { _typeElements :: AnnListG UType dom stage
+<span class="lineno">   66 </span>                  } -- ^ An unboxed sum type (@ (# Bool | Int | String #) @)
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>-- One or more assertions
+<span class="lineno">   69 </span>data UContext dom stage
+<span class="lineno">   70 </span>  = UContext { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_contextAssertion</span></span></span> :: Ann UAssertion dom stage
+<span class="lineno">   71 </span>             } -- ^ Assertions with the fat arrow (@ C a =&gt; ... @)
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>-- | A single assertion in the context
+<span class="lineno">   74 </span>data UAssertion dom stage
+<span class="lineno">   75 </span>  = UClassAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertClsName</span></span></span> :: Ann UName dom stage
+<span class="lineno">   76 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertTypes</span></span></span> :: AnnListG UType dom stage
+<span class="lineno">   77 </span>                 } -- ^ Class assertion (@Cls x@)
+<span class="lineno">   78 </span>  | UInfixAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertLhs</span></span></span> :: Ann UType dom stage
+<span class="lineno">   79 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertOp</span></span></span> :: Ann UOperator dom stage
+<span class="lineno">   80 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertRhs</span></span></span> :: Ann UType dom stage
+<span class="lineno">   81 </span>                 } -- ^ Infix class assertion, also contains type equations (@ a ~ X y @)
+<span class="lineno">   82 </span>  | UImplicitAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertImplVar</span></span></span> :: Ann UName dom stage
+<span class="lineno">   83 </span>                    , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertImplType</span></span></span> :: Ann UType dom stage
+<span class="lineno">   84 </span>                    } -- ^ Assertion for implicit parameter binding (@ ?cmp :: a -&gt; a -&gt; Bool @)
+<span class="lineno">   85 </span>  | UTupleAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_innerAsserts</span></span></span> :: AnnListG UAssertion dom stage
+<span class="lineno">   86 </span>                 } -- ^ Multiple assertions in one (@ (Ord a, Show a) @)
+<span class="lineno">   87 </span>  | UWildcardAssert -- ^ Wildcard assertion (@ _ @), enabled by @PartialTypeSignatures@
 
 </pre>
 </body>

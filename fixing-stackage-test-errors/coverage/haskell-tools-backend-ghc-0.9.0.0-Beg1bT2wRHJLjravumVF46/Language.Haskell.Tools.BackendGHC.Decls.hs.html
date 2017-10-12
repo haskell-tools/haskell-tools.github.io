@@ -527,16 +527,16 @@ span.spaces    { background: white }
 <span class="lineno">  508 </span><span class="spaces">        </span><span class="istickedoff">rewrites = case lhs of RecordPatSyn flds -&gt; map (\r -&gt; (unLoc (recordPatSynPatVar r), unLoc (recordPatSynSelectorId r))) flds</span>
 <span class="lineno">  509 </span><span class="spaces">                               </span><span class="istickedoff">_                 -&gt; []</span>
 <span class="lineno">  510 </span><span class="spaces">        </span><span class="istickedoff">changedRhs = biplateRef .- (\n -&gt; case lookup n rewrites of Just x -&gt; x; Nothing -&gt; n) $ def</span>
-<span class="lineno">  511 </span><span class="spaces">     </span><span class="istickedoff">in AST.UPatternSynonym &lt;$&gt; trfPatSynLhs id lhs</span>
+<span class="lineno">  511 </span><span class="spaces">     </span><span class="istickedoff">in AST.UPatternSynonym &lt;$&gt; trfPatSynLhs id lhs sep</span>
 <span class="lineno">  512 </span><span class="spaces">                            </span><span class="istickedoff">&lt;*&gt; annLocNoSema rhsLoc (trfPatSynRhs dir changedRhs)</span>
 <span class="lineno">  513 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">  514 </span><span class="spaces">  </span><span class="istickedoff">where trfPatSynLhs :: Located n -&gt; HsPatSynDetails (Located n) -&gt; Trf (Ann AST.UPatSynLhs (Dom r) RangeStage)</span>
-<span class="lineno">  515 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynLhs id (PrefixPatSyn args)</span>
+<span class="lineno">  514 </span><span class="spaces">  </span><span class="istickedoff">where trfPatSynLhs :: Located n -&gt; HsPatSynDetails (Located n) -&gt; AnnKeywordId -&gt; Trf (Ann AST.UPatSynLhs (Dom r) RangeStage)</span>
+<span class="lineno">  515 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynLhs id (PrefixPatSyn args) _</span>
 <span class="lineno">  516 </span><span class="spaces">          </span><span class="istickedoff">= annLocNoSema (pure $ foldLocs (getLoc id : map getLoc args)) $ AST.UNormalPatSyn &lt;$&gt; define (trfName id) &lt;*&gt; trfAnnList &quot; &quot; trfName' args</span>
-<span class="lineno">  517 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynLhs op (InfixPatSyn lhs rhs)</span>
+<span class="lineno">  517 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynLhs op (InfixPatSyn lhs rhs) _</span>
 <span class="lineno">  518 </span><span class="spaces">          </span><span class="istickedoff">= annLocNoSema (pure $ getLoc lhs `combineSrcSpans` getLoc rhs) $ AST.UInfixPatSyn &lt;$&gt; define (trfName lhs) &lt;*&gt; trfOperator op &lt;*&gt; trfName rhs</span>
-<span class="lineno">  519 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynLhs id (RecordPatSyn flds)</span>
-<span class="lineno">  520 </span><span class="spaces">          </span><span class="istickedoff">= annLocNoSema (mkSrcSpan (srcSpanStart (getLoc id)) &lt;$&gt; before AnnEqual)</span>
+<span class="lineno">  519 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynLhs id (RecordPatSyn flds) kw</span>
+<span class="lineno">  520 </span><span class="spaces">          </span><span class="istickedoff">= annLocNoSema (mkSrcSpan (srcSpanStart (getLoc id)) &lt;$&gt; before kw)</span>
 <span class="lineno">  521 </span><span class="spaces">              </span><span class="istickedoff">$ AST.URecordPatSyn &lt;$&gt; define (trfName id) &lt;*&gt; trfAnnList &quot;, &quot; trfName' (map recordPatSynSelectorId flds)</span>
 <span class="lineno">  522 </span><span class="spaces"></span><span class="istickedoff"></span>
 <span class="lineno">  523 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynRhs :: HsPatSynDir n -&gt; Located (Pat n) -&gt; Trf (AST.UPatSynRhs (Dom r) RangeStage)</span>

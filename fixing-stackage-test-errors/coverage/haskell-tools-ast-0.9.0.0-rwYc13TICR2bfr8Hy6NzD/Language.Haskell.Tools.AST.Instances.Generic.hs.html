@@ -130,33 +130,34 @@ span.spaces    { background: white }
 <span class="lineno">  111 </span>deriving instance Domain dom =&gt; Generic (UMatchLhs dom stage)
 <span class="lineno">  112 </span>deriving instance Domain dom =&gt; Generic (UInlinePragma dom stage)
 <span class="lineno">  113 </span>deriving instance Domain dom =&gt; Generic (USpecializePragma dom stage)
-<span class="lineno">  114 </span>
+<span class="lineno">  114 </span>deriving instance Domain dom =&gt; Generic (UUnboxedSumPlaceHolder dom stage)
 <span class="lineno">  115 </span>
-<span class="lineno">  116 </span>-- Literal
-<span class="lineno">  117 </span>deriving instance Domain dom =&gt; Generic (ULiteral dom stage)
-<span class="lineno">  118 </span>deriving instance Domain dom =&gt; Generic (UPromoted k dom stage)
-<span class="lineno">  119 </span>
-<span class="lineno">  120 </span>-- Base
-<span class="lineno">  121 </span>deriving instance Domain dom =&gt; Generic (UOperator dom stage)
-<span class="lineno">  122 </span>deriving instance Domain dom =&gt; Generic (UName dom stage)
-<span class="lineno">  123 </span>deriving instance Domain dom =&gt; Generic (UQualifiedName dom stage)
-<span class="lineno">  124 </span>deriving instance Domain dom =&gt; Generic (UModuleName dom stage)
-<span class="lineno">  125 </span>deriving instance Domain dom =&gt; Generic (UNamePart dom stage)
-<span class="lineno">  126 </span>deriving instance Domain dom =&gt; Generic (UStringNode dom stage)
-<span class="lineno">  127 </span>deriving instance Domain dom =&gt; Generic (UDataOrNewtypeKeyword dom stage)
-<span class="lineno">  128 </span>deriving instance Domain dom =&gt; Generic (UDoKind dom stage)
-<span class="lineno">  129 </span>deriving instance Domain dom =&gt; Generic (TypeKeyword dom stage)
-<span class="lineno">  130 </span>deriving instance Domain dom =&gt; Generic (UOverlapPragma dom stage)
-<span class="lineno">  131 </span>deriving instance Domain dom =&gt; Generic (UCallConv dom stage)
-<span class="lineno">  132 </span>deriving instance Domain dom =&gt; Generic (UArrowAppl dom stage)
-<span class="lineno">  133 </span>deriving instance Domain dom =&gt; Generic (USafety dom stage)
-<span class="lineno">  134 </span>deriving instance Domain dom =&gt; Generic (UConlikeAnnot dom stage)
-<span class="lineno">  135 </span>deriving instance Domain dom =&gt; Generic (Assoc dom stage)
-<span class="lineno">  136 </span>deriving instance Domain dom =&gt; Generic (Precedence dom stage)
-<span class="lineno">  137 </span>deriving instance Domain dom =&gt; Generic (LineNumber dom stage)
-<span class="lineno">  138 </span>deriving instance Domain dom =&gt; Generic (UPhaseControl dom stage)
-<span class="lineno">  139 </span>deriving instance Domain dom =&gt; Generic (PhaseNumber dom stage)
-<span class="lineno">  140 </span>deriving instance Domain dom =&gt; Generic (PhaseInvert dom stage)
+<span class="lineno">  116 </span>
+<span class="lineno">  117 </span>-- Literal
+<span class="lineno">  118 </span>deriving instance Domain dom =&gt; Generic (ULiteral dom stage)
+<span class="lineno">  119 </span>deriving instance Domain dom =&gt; Generic (UPromoted k dom stage)
+<span class="lineno">  120 </span>
+<span class="lineno">  121 </span>-- Base
+<span class="lineno">  122 </span>deriving instance Domain dom =&gt; Generic (UOperator dom stage)
+<span class="lineno">  123 </span>deriving instance Domain dom =&gt; Generic (UName dom stage)
+<span class="lineno">  124 </span>deriving instance Domain dom =&gt; Generic (UQualifiedName dom stage)
+<span class="lineno">  125 </span>deriving instance Domain dom =&gt; Generic (UModuleName dom stage)
+<span class="lineno">  126 </span>deriving instance Domain dom =&gt; Generic (UNamePart dom stage)
+<span class="lineno">  127 </span>deriving instance Domain dom =&gt; Generic (UStringNode dom stage)
+<span class="lineno">  128 </span>deriving instance Domain dom =&gt; Generic (UDataOrNewtypeKeyword dom stage)
+<span class="lineno">  129 </span>deriving instance Domain dom =&gt; Generic (UDoKind dom stage)
+<span class="lineno">  130 </span>deriving instance Domain dom =&gt; Generic (TypeKeyword dom stage)
+<span class="lineno">  131 </span>deriving instance Domain dom =&gt; Generic (UOverlapPragma dom stage)
+<span class="lineno">  132 </span>deriving instance Domain dom =&gt; Generic (UCallConv dom stage)
+<span class="lineno">  133 </span>deriving instance Domain dom =&gt; Generic (UArrowAppl dom stage)
+<span class="lineno">  134 </span>deriving instance Domain dom =&gt; Generic (USafety dom stage)
+<span class="lineno">  135 </span>deriving instance Domain dom =&gt; Generic (UConlikeAnnot dom stage)
+<span class="lineno">  136 </span>deriving instance Domain dom =&gt; Generic (Assoc dom stage)
+<span class="lineno">  137 </span>deriving instance Domain dom =&gt; Generic (Precedence dom stage)
+<span class="lineno">  138 </span>deriving instance Domain dom =&gt; Generic (LineNumber dom stage)
+<span class="lineno">  139 </span>deriving instance Domain dom =&gt; Generic (UPhaseControl dom stage)
+<span class="lineno">  140 </span>deriving instance Domain dom =&gt; Generic (PhaseNumber dom stage)
+<span class="lineno">  141 </span>deriving instance Domain dom =&gt; Generic (PhaseInvert dom stage)
 
 </pre>
 </body>

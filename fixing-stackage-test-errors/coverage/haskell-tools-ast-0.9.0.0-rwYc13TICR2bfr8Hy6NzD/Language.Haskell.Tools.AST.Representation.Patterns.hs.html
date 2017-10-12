@@ -19,15 +19,15 @@ span.spaces    { background: white }
 <pre>
 <span class="lineno">    1 </span>-- | Representation of Haskell patterns
 <span class="lineno">    2 </span>module Language.Haskell.Tools.AST.Representation.Patterns where
-<span class="lineno">    3 </span>          
+<span class="lineno">    3 </span>
 <span class="lineno">    4 </span>import Language.Haskell.Tools.AST.Ann (Ann, AnnListG)
-<span class="lineno">    5 </span>import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs (UExpr, UFieldWildcard)  
+<span class="lineno">    5 </span>import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs (UExpr, UFieldWildcard, UUnboxedSumPlaceHolder)
 <span class="lineno">    6 </span>import Language.Haskell.Tools.AST.Representation.Literals (ULiteral)
 <span class="lineno">    7 </span>import Language.Haskell.Tools.AST.Representation.Names (UName, UOperator)
 <span class="lineno">    8 </span>import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (UQuasiQuote, USplice)
 <span class="lineno">    9 </span>import Language.Haskell.Tools.AST.Representation.Types (UType)
 <span class="lineno">   10 </span>
-<span class="lineno">   11 </span>        
+<span class="lineno">   11 </span>
 <span class="lineno">   12 </span>-- | Representation of patterns for pattern bindings
 <span class="lineno">   13 </span>data UPattern dom stage
 <span class="lineno">   14 </span>  = UVarPat         { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_patternName</span></span></span> :: Ann UName dom stage
@@ -77,16 +77,20 @@ span.spaces    { background: white }
 <span class="lineno">   58 </span>  | UNPlusKPat     { _patternName :: Ann UName dom stage
 <span class="lineno">   59 </span>                   , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_patternLit</span></span></span> :: Ann ULiteral dom stage
 <span class="lineno">   60 </span>                   }
-<span class="lineno">   61 </span>                  
-<span class="lineno">   62 </span>-- Field specification of a record pattern
-<span class="lineno">   63 </span>data UPatternField dom stage
-<span class="lineno">   64 </span>  = UNormalFieldPattern   { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_fieldPatternName</span></span></span> :: Ann UName dom stage
-<span class="lineno">   65 </span>                          , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_fieldPattern</span></span></span> :: Ann UPattern dom stage
-<span class="lineno">   66 </span>                          } -- ^ Named field pattern (@ p = Point 3 2 @)
-<span class="lineno">   67 </span>  | UFieldPunPattern      { _fieldPatternName :: Ann UName dom stage
-<span class="lineno">   68 </span>                          } -- ^ Named field pun (@ p @)
-<span class="lineno">   69 </span>  | UFieldWildcardPattern { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_fieldPatternWildcard</span></span></span> :: Ann UFieldWildcard dom stage
-<span class="lineno">   70 </span>                          } -- ^ Wildcard field pattern (@ .. @)
+<span class="lineno">   61 </span>  | UUnboxedSumPat { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_patternSumPlaceholdersBefore</span></span></span> :: AnnListG UUnboxedSumPlaceHolder dom stage
+<span class="lineno">   62 </span>                   , _patternInner :: Ann UPattern dom stage
+<span class="lineno">   63 </span>                   , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_patternSumPlaceholdersAfter</span></span></span> :: AnnListG UUnboxedSumPlaceHolder dom stage
+<span class="lineno">   64 </span>                   } -- ^ Unboxed sum pattern (@ (# | expr #) @).
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>-- Field specification of a record pattern
+<span class="lineno">   67 </span>data UPatternField dom stage
+<span class="lineno">   68 </span>  = UNormalFieldPattern   { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_fieldPatternName</span></span></span> :: Ann UName dom stage
+<span class="lineno">   69 </span>                          , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_fieldPattern</span></span></span> :: Ann UPattern dom stage
+<span class="lineno">   70 </span>                          } -- ^ Named field pattern (@ p = Point 3 2 @)
+<span class="lineno">   71 </span>  | UFieldPunPattern      { _fieldPatternName :: Ann UName dom stage
+<span class="lineno">   72 </span>                          } -- ^ Named field pun (@ p @)
+<span class="lineno">   73 </span>  | UFieldWildcardPattern { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_fieldPatternWildcard</span></span></span> :: Ann UFieldWildcard dom stage
+<span class="lineno">   74 </span>                          } -- ^ Wildcard field pattern (@ .. @)
 
 </pre>
 </body>

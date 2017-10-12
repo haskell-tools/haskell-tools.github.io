@@ -153,32 +153,33 @@ span.spaces    { background: white }
 <span class="lineno">  134 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UMatchLhs dom st
 <span class="lineno">  135 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UInlinePragma dom st
 <span class="lineno">  136 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug USpecializePragma dom st
-<span class="lineno">  137 </span>
-<span class="lineno">  138 </span>-- ULiteral
-<span class="lineno">  139 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug ULiteral dom st
-<span class="lineno">  140 </span>instance (Domain dom, SourceInfo st, ASTDebug k dom st, Generic (k dom st)) =&gt; ASTDebug (UPromoted k) dom st
-<span class="lineno">  141 </span>
-<span class="lineno">  142 </span>-- Base
-<span class="lineno">  143 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UOperator dom st
-<span class="lineno">  144 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UName dom st
-<span class="lineno">  145 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UQualifiedName dom st
-<span class="lineno">  146 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UModuleName dom st
-<span class="lineno">  147 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UNamePart dom st
-<span class="lineno">  148 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UStringNode dom st
-<span class="lineno">  149 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UDataOrNewtypeKeyword dom st
-<span class="lineno">  150 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UDoKind dom st
-<span class="lineno">  151 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug TypeKeyword dom st
-<span class="lineno">  152 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UOverlapPragma dom st
-<span class="lineno">  153 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UCallConv dom st
-<span class="lineno">  154 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UArrowAppl dom st
-<span class="lineno">  155 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug USafety dom st
-<span class="lineno">  156 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UConlikeAnnot dom st
-<span class="lineno">  157 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug Assoc dom st
-<span class="lineno">  158 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug Precedence dom st
-<span class="lineno">  159 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug LineNumber dom st
-<span class="lineno">  160 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UPhaseControl dom st
-<span class="lineno">  161 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug PhaseNumber dom st
-<span class="lineno">  162 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug PhaseInvert dom st
+<span class="lineno">  137 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UUnboxedSumPlaceHolder dom st
+<span class="lineno">  138 </span>
+<span class="lineno">  139 </span>-- ULiteral
+<span class="lineno">  140 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug ULiteral dom st
+<span class="lineno">  141 </span>instance (Domain dom, SourceInfo st, ASTDebug k dom st, Generic (k dom st)) =&gt; ASTDebug (UPromoted k) dom st
+<span class="lineno">  142 </span>
+<span class="lineno">  143 </span>-- Base
+<span class="lineno">  144 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UOperator dom st
+<span class="lineno">  145 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UName dom st
+<span class="lineno">  146 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UQualifiedName dom st
+<span class="lineno">  147 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UModuleName dom st
+<span class="lineno">  148 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UNamePart dom st
+<span class="lineno">  149 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UStringNode dom st
+<span class="lineno">  150 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UDataOrNewtypeKeyword dom st
+<span class="lineno">  151 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UDoKind dom st
+<span class="lineno">  152 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug TypeKeyword dom st
+<span class="lineno">  153 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UOverlapPragma dom st
+<span class="lineno">  154 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UCallConv dom st
+<span class="lineno">  155 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UArrowAppl dom st
+<span class="lineno">  156 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug USafety dom st
+<span class="lineno">  157 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UConlikeAnnot dom st
+<span class="lineno">  158 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug Assoc dom st
+<span class="lineno">  159 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug Precedence dom st
+<span class="lineno">  160 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug LineNumber dom st
+<span class="lineno">  161 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug UPhaseControl dom st
+<span class="lineno">  162 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug PhaseNumber dom st
+<span class="lineno">  163 </span>instance (Domain dom, SourceInfo st) =&gt; ASTDebug PhaseInvert dom st
 
 </pre>
 </body>
