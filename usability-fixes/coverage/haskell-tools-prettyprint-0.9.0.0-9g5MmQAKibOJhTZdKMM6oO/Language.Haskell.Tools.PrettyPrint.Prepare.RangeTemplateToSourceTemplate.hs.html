@@ -84,7 +84,7 @@ span.spaces    { background: white }
 <span class="lineno">   65 </span><span class="spaces">         </span><span class="istickedoff">-&gt; do (own, rest) &lt;- List.splitAt (length seps) &lt;$&gt; get</span>
 <span class="lineno">   66 </span><span class="spaces">               </span><span class="istickedoff">put rest</span>
 <span class="lineno">   67 </span><span class="spaces">               </span><span class="istickedoff">return (SourceTemplateList (RealSrcSpan rng) bef aft sep indented (Prelude.zip (Prelude.map ((:[]) . NormalText) own) (Prelude.map RealSrcSpan seps)) 0 Nothing))</span>
-<span class="lineno">   68 </span><span class="spaces">     </span><span class="istickedoff">(\(RangeTemplateOpt rng bef aft) -&gt; return (SourceTemplateOpt (RealSrcSpan rng) bef aft <span class="nottickedoff">0</span> Nothing)))</span>
+<span class="lineno">   68 </span><span class="spaces">     </span><span class="istickedoff">(\(RangeTemplateOpt rng bef aft) -&gt; return (SourceTemplateOpt (RealSrcSpan rng) bef aft <span class="nottickedoff">0</span> <span class="nottickedoff">Nothing</span>)))</span>
 <span class="lineno">   69 </span><span class="spaces">     </span><span class="istickedoff">(return <span class="nottickedoff">()</span>) (return <span class="nottickedoff">()</span>)</span>
 <span class="lineno">   70 </span><span class="spaces">  </span><span class="istickedoff">where getTextFor RangeChildElem = return [ChildElem]</span>
 <span class="lineno">   71 </span><span class="spaces">        </span><span class="istickedoff">getTextFor (RangeElem rng) = do (src:rest) &lt;- get</span>

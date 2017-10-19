@@ -63,7 +63,7 @@ span.spaces    { background: white }
 <span class="lineno">   44 </span><span class="spaces">  </span><span class="istickedoff">let createCName sc def id = mkCNameInfo sc def id fixity</span>
 <span class="lineno">   45 </span><span class="spaces">        </span><span class="istickedoff">where fixity = if any (any ((getOccName id ==) . getOccName . (^. _1))) (drop 1 sc)</span>
 <span class="lineno">   46 </span><span class="spaces">                          </span><span class="istickedoff">then Nothing</span>
-<span class="lineno">   47 </span><span class="spaces">                          </span><span class="istickedoff">else fmap (snd . snd) $ List.find (\(mod,(occ,_)) -&gt; Just mod == (nameModule_maybe $ varName id) &amp;&amp; occ == getOccName id) fixities</span>
+<span class="lineno">   47 </span><span class="spaces">                          </span><span class="istickedoff">else fmap <span class="nottickedoff">(snd . snd)</span> $ List.find (\(mod,(occ,_)) -&gt; Just mod == (nameModule_maybe $ varName id) &amp;&amp; <span class="nottickedoff">occ == getOccName id</span>) fixities</span>
 <span class="lineno">   48 </span><span class="spaces">  </span><span class="istickedoff">evalStateT (semaTraverse</span>
 <span class="lineno">   49 </span><span class="spaces">    </span><span class="istickedoff">(AST.SemaTrf</span>
 <span class="lineno">   50 </span><span class="spaces">      </span><span class="istickedoff">(\ni -&gt; case (AST.semanticsSourceInfo ni, AST.semanticsName ni) of</span>

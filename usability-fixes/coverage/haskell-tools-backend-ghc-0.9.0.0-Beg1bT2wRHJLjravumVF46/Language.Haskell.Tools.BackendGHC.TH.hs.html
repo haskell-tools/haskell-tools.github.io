@@ -43,7 +43,7 @@ span.spaces    { background: white }
 <span class="lineno">   24 </span> -- the lexer does not provide us with tokens '[', '|' and '|]'
 <span class="lineno">   25 </span><span class="decl"><span class="istickedoff">trfQuasiQuotation' (HsQuasiQuote _ id l str)</span>
 <span class="lineno">   26 </span><span class="spaces">  </span><span class="istickedoff">= AST.UQuasiQuote &lt;$&gt; annLocNoSema quoterLoc (trfName' id)</span>
-<span class="lineno">   27 </span><span class="spaces">                    </span><span class="istickedoff">&lt;*&gt; annLocNoSema (pure strLoc) (pure $ AST.QQString (unpackFS str))</span>
+<span class="lineno">   27 </span><span class="spaces">                    </span><span class="istickedoff">&lt;*&gt; annLocNoSema (pure strLoc) (pure $ AST.QQString <span class="nottickedoff">(unpackFS str)</span>)</span>
 <span class="lineno">   28 </span><span class="spaces">  </span><span class="istickedoff">where -- assume that there are no white spaces ain the head and the end of the quasi quote</span>
 <span class="lineno">   29 </span><span class="spaces">        </span><span class="istickedoff">quoterLoc = do rng &lt;- asks contRange</span>
 <span class="lineno">   30 </span><span class="spaces">                       </span><span class="istickedoff">return $ mkSrcSpan (updateCol (+1) (srcSpanStart rng)) (updateCol (subtract 1) (srcSpanStart l))</span>

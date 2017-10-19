@@ -63,7 +63,7 @@ span.spaces    { background: white }
 <span class="lineno">   44 </span>                           , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">usageQualifier</span></span></span> :: String
 <span class="lineno">   45 </span>                           , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">usageAs</span></span></span> :: String
 <span class="lineno">   46 </span>                           }
-<span class="lineno">   47 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">   47 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span>)
 <span class="lineno">   48 </span>
 <span class="lineno">   49 </span>instance Outputable UsageSpec where
 <span class="lineno">   50 </span>  <span class="decl"><span class="istickedoff">ppr (UsageSpec q useQ asQ)</span>
@@ -76,15 +76,15 @@ span.spaces    { background: white }
 <span class="lineno">   57 </span>-- | Semantic info type for any node not
 <span class="lineno">   58 </span>-- carrying additional semantic information
 <span class="lineno">   59 </span>data NoSemanticInfo = NoSemanticInfo
-<span class="lineno">   60 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">   60 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span>)
 <span class="lineno">   61 </span>
 <span class="lineno">   62 </span>mkNoSemanticInfo :: NoSemanticInfo
-<span class="lineno">   63 </span><span class="decl"><span class="istickedoff">mkNoSemanticInfo = NoSemanticInfo</span></span>
+<span class="lineno">   63 </span><span class="decl"><span class="nottickedoff">mkNoSemanticInfo = NoSemanticInfo</span></span>
 <span class="lineno">   64 </span>
 <span class="lineno">   65 </span>-- | Info for expressions that tells which definitions are in scope
 <span class="lineno">   66 </span>data ScopeInfo = ScopeInfo { <span class="istickedoff"><span class="decl"><span class="istickedoff">_exprScopedLocals</span></span></span> :: Scope
 <span class="lineno">   67 </span>                           }
-<span class="lineno">   68 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">   68 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span>)
 <span class="lineno">   69 </span>
 <span class="lineno">   70 </span>-- | Creates the information about the definitions in scope
 <span class="lineno">   71 </span>mkScopeInfo :: Scope -&gt; ScopeInfo
@@ -106,7 +106,7 @@ span.spaces    { background: white }
 <span class="lineno">   87 </span>                                   , _nameLocation :: SrcSpan
 <span class="lineno">   88 </span>                                   }
 <span class="lineno">   89 </span>
-<span class="lineno">   90 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">   90 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
 <span class="lineno">   91 </span>
 <span class="lineno">   92 </span>-- | Creates semantic information for an unambiguous name
 <span class="lineno">   93 </span>mkNameInfo :: Scope -&gt; Bool -&gt; n -&gt; NameInfo n
@@ -126,7 +126,7 @@ span.spaces    { background: white }
 <span class="lineno">  107 </span>                           , <span class="istickedoff"><span class="decl"><span class="istickedoff">_cnameInfo</span></span></span> :: Id
 <span class="lineno">  108 </span>                           , <span class="istickedoff"><span class="decl"><span class="istickedoff">_cnameFixity</span></span></span> :: Maybe GHC.Fixity
 <span class="lineno">  109 </span>                           }
-<span class="lineno">  110 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">  110 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span>)
 <span class="lineno">  111 </span>
 <span class="lineno">  112 </span>-- | Create a typed name semantic information
 <span class="lineno">  113 </span>mkCNameInfo :: Scope -&gt; Bool -&gt; Id -&gt; Maybe GHC.Fixity -&gt; CNameInfo
@@ -136,7 +136,7 @@ span.spaces    { background: white }
 <span class="lineno">  117 </span>  = PName { <span class="istickedoff"><span class="decl"><span class="istickedoff">_pName</span></span></span> :: n
 <span class="lineno">  118 </span>          , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_pNameParent</span></span></span> :: Maybe n
 <span class="lineno">  119 </span>          }
-<span class="lineno">  120 </span>  deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">  120 </span>  deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>
 <span class="lineno">  121 </span>
 <span class="lineno">  122 </span>-- | Info for the module element
 <span class="lineno">  123 </span>data ModuleInfo n = ModuleInfo { <span class="istickedoff"><span class="decl"><span class="istickedoff">_defModuleName</span></span></span> :: GHC.Module
@@ -146,14 +146,14 @@ span.spaces    { background: white }
 <span class="lineno">  127 </span>                               , <span class="istickedoff"><span class="decl"><span class="istickedoff">_prelOrphanInsts</span></span></span> :: [ClsInst] -- ^ Class instances implicitly passed from Prelude.
 <span class="lineno">  128 </span>                               , <span class="istickedoff"><span class="decl"><span class="istickedoff">_prelFamInsts</span></span></span> :: [FamInst] -- ^ Family instances implicitly passed from Prelude.
 <span class="lineno">  129 </span>                               }
-<span class="lineno">  130 </span>  deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">  130 </span>  deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>
 <span class="lineno">  131 </span>
 <span class="lineno">  132 </span>instance Data DynFlags where
 <span class="lineno">  133 </span>  <span class="decl"><span class="nottickedoff">gunfold _ _ _ = error &quot;Cannot construct dyn flags&quot;</span></span>
 <span class="lineno">  134 </span>  <span class="decl"><span class="nottickedoff">toConstr _ = dynFlagsCon</span></span>
-<span class="lineno">  135 </span>  <span class="decl"><span class="istickedoff">dataTypeOf _ = dynFlagsType</span></span>
+<span class="lineno">  135 </span>  <span class="decl"><span class="nottickedoff">dataTypeOf _ = dynFlagsType</span></span>
 <span class="lineno">  136 </span>
-<span class="lineno">  137 </span><span class="decl"><span class="istickedoff">dynFlagsType = mkDataType <span class="nottickedoff">&quot;DynFlags.DynFlags&quot;</span> [<span class="nottickedoff">dynFlagsCon</span>]</span></span>
+<span class="lineno">  137 </span><span class="decl"><span class="nottickedoff">dynFlagsType = mkDataType &quot;DynFlags.DynFlags&quot; [dynFlagsCon]</span></span>
 <span class="lineno">  138 </span><span class="decl"><span class="nottickedoff">dynFlagsCon = mkConstr dynFlagsType &quot;DynFlags&quot; [] Data.Prefix</span></span>
 <span class="lineno">  139 </span>
 <span class="lineno">  140 </span>-- | Creates semantic information for the module element
@@ -167,10 +167,10 @@ span.spaces    { background: white }
 <span class="lineno">  148 </span>                               , <span class="istickedoff"><span class="decl"><span class="istickedoff">_importedOrphanInsts</span></span></span> :: [ClsInst] -- ^ Class instances implicitly passed.
 <span class="lineno">  149 </span>                               , <span class="istickedoff"><span class="decl"><span class="istickedoff">_importedFamInsts</span></span></span> :: [FamInst] -- ^ Family instances implicitly passed.
 <span class="lineno">  150 </span>                               }
-<span class="lineno">  151 </span>  deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">  151 </span>  deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>
 <span class="lineno">  152 </span>
-<span class="lineno">  153 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">deriving instance Data FamInst</span></span></span></span></span></span></span></span></span></span></span></span>
-<span class="lineno">  154 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">deriving instance Data FamFlavor</span></span></span></span></span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">  153 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">deriving instance Data FamInst</span></span></span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">  154 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">deriving instance Data FamFlavor</span></span></span></span></span></span></span></span></span></span></span></span></span></span>
 <span class="lineno">  155 </span>
 <span class="lineno">  156 </span>-- | Creates semantic information for an import declaration
 <span class="lineno">  157 </span>mkImportInfo :: GHC.Module -&gt; [n] -&gt; [PName n] -&gt; [ClsInst] -&gt; [FamInst] -&gt; ImportInfo n
@@ -179,7 +179,7 @@ span.spaces    { background: white }
 <span class="lineno">  160 </span>-- | Info corresponding to an record-wildcard
 <span class="lineno">  161 </span>data ImplicitFieldInfo = ImplicitFieldInfo { <span class="istickedoff"><span class="decl"><span class="istickedoff">_implicitFieldBindings</span></span></span> :: [(Name, Name)] -- ^ The implicitly bounded names
 <span class="lineno">  162 </span>                                           }
-<span class="lineno">  163 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">  163 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span>)
 <span class="lineno">  164 </span>
 <span class="lineno">  165 </span>-- | Creates semantic information for a wildcard field binding
 <span class="lineno">  166 </span>mkImplicitFieldInfo :: [(Name, Name)] -&gt; ImplicitFieldInfo

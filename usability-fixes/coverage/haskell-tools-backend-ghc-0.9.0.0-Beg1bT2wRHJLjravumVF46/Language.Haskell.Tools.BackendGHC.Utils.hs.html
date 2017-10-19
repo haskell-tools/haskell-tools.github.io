@@ -73,8 +73,8 @@ span.spaces    { background: white }
 <span class="lineno">   54 </span><span class="spaces">                                      </span><span class="istickedoff">|| nameLoc == getLoc idecl) imports</span>
 <span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">(_,preludeImports) &lt;- if prelude then getImportedNames &quot;Prelude&quot; Nothing else return (<span class="nottickedoff">ms_mod mod</span>, [])</span>
 <span class="lineno">   56 </span><span class="spaces">  </span><span class="istickedoff">(insts, famInsts) &lt;- if prelude then lift $ getOrphanAndFamInstances (Module baseUnitId (GHC.mkModuleName &quot;Prelude&quot;))</span>
-<span class="lineno">   57 </span><span class="spaces">                                  </span><span class="istickedoff">else return ([], [])</span>
-<span class="lineno">   58 </span><span class="spaces">  </span><span class="istickedoff">return $ mkModuleInfo (ms_mod mod) (ms_hspp_opts mod) (case ms_hsc_src mod of HsSrcFile -&gt; False; _ -&gt; True) preludeImports insts famInsts</span></span>
+<span class="lineno">   57 </span><span class="spaces">                                  </span><span class="istickedoff">else return (<span class="nottickedoff">[]</span>, <span class="nottickedoff">[]</span>)</span>
+<span class="lineno">   58 </span><span class="spaces">  </span><span class="istickedoff">return $ mkModuleInfo (ms_mod mod) (ms_hspp_opts mod) (case ms_hsc_src mod of HsSrcFile -&gt; False; _ -&gt; <span class="nottickedoff">True</span>) preludeImports insts famInsts</span></span>
 <span class="lineno">   59 </span>
 <span class="lineno">   60 </span>-- | Creates a semantic information for a name
 <span class="lineno">   61 </span>createNameInfo :: n -&gt; Trf (NameInfo n)
@@ -90,10 +90,10 @@ span.spaces    { background: white }
 <span class="lineno">   71 </span>
 <span class="lineno">   72 </span>-- | Creates a semantic information for an implicit name
 <span class="lineno">   73 </span>createImplicitNameInfo :: String -&gt; Trf (NameInfo n)
-<span class="lineno">   74 </span><span class="decl"><span class="istickedoff">createImplicitNameInfo name = do locals &lt;- asks localsInScope</span>
-<span class="lineno">   75 </span><span class="spaces">                                 </span><span class="istickedoff">isDefining &lt;- asks defining</span>
+<span class="lineno">   74 </span><span class="decl"><span class="istickedoff">createImplicitNameInfo name = do locals &lt;- asks <span class="nottickedoff">localsInScope</span></span>
+<span class="lineno">   75 </span><span class="spaces">                                 </span><span class="istickedoff">isDefining &lt;- asks <span class="nottickedoff">defining</span></span>
 <span class="lineno">   76 </span><span class="spaces">                                 </span><span class="istickedoff">rng &lt;- asks contRange</span>
-<span class="lineno">   77 </span><span class="spaces">                                 </span><span class="istickedoff">return (mkImplicitNameInfo locals isDefining name rng)</span></span>
+<span class="lineno">   77 </span><span class="spaces">                                 </span><span class="istickedoff">return (mkImplicitNameInfo <span class="nottickedoff">locals</span> <span class="nottickedoff">isDefining</span> <span class="nottickedoff">name</span> rng)</span></span>
 <span class="lineno">   78 </span>
 <span class="lineno">   79 </span>-- | Creates a semantic information for an implicit name
 <span class="lineno">   80 </span>createImplicitFldInfo :: (GHCName n, HsHasName n) =&gt; (a -&gt; n) -&gt; [HsRecField n a] -&gt; Trf ImplicitFieldInfo
@@ -176,7 +176,7 @@ span.spaces    { background: white }
 <span class="lineno">  157 </span><span class="spaces"></span><span class="istickedoff">ieSpecMatches _ _ = return False</span></span>
 <span class="lineno">  158 </span>
 <span class="lineno">  159 </span>noSemaInfo :: src -&gt; NodeInfo NoSemanticInfo src
-<span class="lineno">  160 </span><span class="decl"><span class="istickedoff">noSemaInfo = NodeInfo mkNoSemanticInfo</span></span>
+<span class="lineno">  160 </span><span class="decl"><span class="istickedoff">noSemaInfo = NodeInfo <span class="nottickedoff">mkNoSemanticInfo</span></span></span>
 <span class="lineno">  161 </span>
 <span class="lineno">  162 </span>-- | Creates a place for a missing node with a default location
 <span class="lineno">  163 </span>nothing :: String -&gt; String -&gt; Trf SrcLoc -&gt; Trf (AnnMaybeG e (Dom n) RangeStage)
@@ -187,30 +187,30 @@ span.spaces    { background: white }
 <span class="lineno">  168 </span>
 <span class="lineno">  169 </span>-- | Creates a place for a list of nodes with a default place if the list is empty.
 <span class="lineno">  170 </span>makeList :: String -&gt; Trf SrcLoc -&gt; Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
-<span class="lineno">  171 </span><span class="decl"><span class="istickedoff">makeList sep ann ls = AnnListG &lt;$&gt; (noSemaInfo . ListPos &quot;&quot; &quot;&quot; sep Nothing &lt;$&gt; ann) &lt;*&gt; ls</span></span>
+<span class="lineno">  171 </span><span class="decl"><span class="istickedoff">makeList sep ann ls = AnnListG &lt;$&gt; (noSemaInfo . ListPos &quot;&quot; &quot;&quot; <span class="nottickedoff">sep</span> Nothing &lt;$&gt; ann) &lt;*&gt; ls</span></span>
 <span class="lineno">  172 </span>
 <span class="lineno">  173 </span>makeListBefore :: String -&gt; String -&gt; Trf SrcLoc -&gt; Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
 <span class="lineno">  174 </span><span class="decl"><span class="istickedoff">makeListBefore bef sep ann ls = do isEmpty &lt;- null &lt;$&gt; ls</span>
-<span class="lineno">  175 </span><span class="spaces">                                   </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos (if isEmpty then bef else &quot;&quot;) &quot;&quot; sep Nothing &lt;$&gt; ann) &lt;*&gt; ls</span></span>
+<span class="lineno">  175 </span><span class="spaces">                                   </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos (if <span class="tickonlyfalse">isEmpty</span> then <span class="nottickedoff">bef</span> else &quot;&quot;) &quot;&quot; <span class="nottickedoff">sep</span> Nothing &lt;$&gt; ann) &lt;*&gt; ls</span></span>
 <span class="lineno">  176 </span>
 <span class="lineno">  177 </span>makeListAfter :: String -&gt; String -&gt; Trf SrcLoc -&gt; Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
 <span class="lineno">  178 </span><span class="decl"><span class="istickedoff">makeListAfter aft sep ann ls = do isEmpty &lt;- null &lt;$&gt; ls</span>
-<span class="lineno">  179 </span><span class="spaces">                                  </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos &quot;&quot; (if isEmpty then aft else &quot;&quot;) sep Nothing &lt;$&gt; ann) &lt;*&gt; ls</span></span>
+<span class="lineno">  179 </span><span class="spaces">                                  </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos &quot;&quot; (if <span class="tickonlyfalse">isEmpty</span> then <span class="nottickedoff">aft</span> else &quot;&quot;) <span class="nottickedoff">sep</span> Nothing &lt;$&gt; ann) &lt;*&gt; ls</span></span>
 <span class="lineno">  180 </span>
 <span class="lineno">  181 </span>makeNonemptyList :: String -&gt; Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
-<span class="lineno">  182 </span><span class="decl"><span class="istickedoff">makeNonemptyList sep ls = AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; sep Nothing noSrcLoc) &lt;$&gt; ls</span></span>
+<span class="lineno">  182 </span><span class="decl"><span class="istickedoff">makeNonemptyList sep ls = AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; <span class="nottickedoff">sep</span> Nothing noSrcLoc) &lt;$&gt; ls</span></span>
 <span class="lineno">  183 </span>
 <span class="lineno">  184 </span>-- | Creates a place for an indented list of nodes with a default place if the list is empty.
 <span class="lineno">  185 </span>makeIndentedList :: Trf SrcLoc -&gt; Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
 <span class="lineno">  186 </span><span class="decl"><span class="istickedoff">makeIndentedList ann ls = do</span>
 <span class="lineno">  187 </span><span class="spaces">  </span><span class="istickedoff">elems &lt;- ls</span>
 <span class="lineno">  188 </span><span class="spaces">  </span><span class="istickedoff">indent &lt;- elementsWithoutSemi elems</span>
-<span class="lineno">  189 </span><span class="spaces">  </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos  &quot;&quot; &quot;&quot; &quot;\n&quot; (Just indent) &lt;$&gt; ann) &lt;*&gt; pure elems</span></span>
+<span class="lineno">  189 </span><span class="spaces">  </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos  &quot;&quot; &quot;&quot; <span class="nottickedoff">&quot;\n&quot;</span> (Just indent) &lt;$&gt; ann) &lt;*&gt; pure elems</span></span>
 <span class="lineno">  190 </span>
 <span class="lineno">  191 </span>makeIndentedListNewlineBefore :: Trf SrcLoc -&gt; Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
 <span class="lineno">  192 </span><span class="decl"><span class="istickedoff">makeIndentedListNewlineBefore ann ls = do elems &lt;- ls</span>
 <span class="lineno">  193 </span><span class="spaces">                                          </span><span class="istickedoff">indent &lt;- elementsWithoutSemi elems</span>
-<span class="lineno">  194 </span><span class="spaces">                                          </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos (if null elems then &quot;\n&quot; else &quot;&quot;) &quot;&quot; &quot;\n&quot; (Just indent) &lt;$&gt; ann) &lt;*&gt; pure elems</span></span>
+<span class="lineno">  194 </span><span class="spaces">                                          </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos (if <span class="tickonlyfalse">null elems</span> then <span class="nottickedoff">&quot;\n&quot;</span> else &quot;&quot;) &quot;&quot; &quot;\n&quot; (Just indent) &lt;$&gt; ann) &lt;*&gt; pure elems</span></span>
 <span class="lineno">  195 </span>
 <span class="lineno">  196 </span>makeIndentedListBefore :: String -&gt; Trf SrcLoc -&gt; Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
 <span class="lineno">  197 </span><span class="decl"><span class="istickedoff">makeIndentedListBefore bef sp ls = do elems &lt;- ls</span>
@@ -220,11 +220,11 @@ span.spaces    { background: white }
 <span class="lineno">  201 </span>makeNonemptyIndentedList :: Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
 <span class="lineno">  202 </span><span class="decl"><span class="istickedoff">makeNonemptyIndentedList ls = do elems &lt;- ls</span>
 <span class="lineno">  203 </span><span class="spaces">                                 </span><span class="istickedoff">indent &lt;- elementsWithoutSemi elems</span>
-<span class="lineno">  204 </span><span class="spaces">                                 </span><span class="istickedoff">AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; &quot;\n&quot; (Just indent) noSrcLoc) &lt;$&gt; pure elems</span></span>
+<span class="lineno">  204 </span><span class="spaces">                                 </span><span class="istickedoff">AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; <span class="nottickedoff">&quot;\n&quot;</span> (Just indent) noSrcLoc) &lt;$&gt; pure elems</span></span>
 <span class="lineno">  205 </span>
 <span class="lineno">  206 </span>-- | Get the elements where there is no ; before
 <span class="lineno">  207 </span>elementsWithoutSemi :: [Ann e (Dom n) RangeStage] -&gt; Trf [Bool]
-<span class="lineno">  208 </span><span class="decl"><span class="istickedoff">elementsWithoutSemi [] = return []</span>
+<span class="lineno">  208 </span><span class="decl"><span class="istickedoff">elementsWithoutSemi [] = return <span class="nottickedoff">[]</span></span>
 <span class="lineno">  209 </span><span class="spaces"></span><span class="istickedoff">elementsWithoutSemi (fst:rest) = indentedElements' (srcSpanEnd $ getRange fst) rest</span>
 <span class="lineno">  210 </span><span class="spaces">  </span><span class="istickedoff">where indentedElements' lastEnd (elem:rest)</span>
 <span class="lineno">  211 </span><span class="spaces">          </span><span class="istickedoff">= let sepRange = mkSrcSpan lastEnd (srcSpanStart $ getRange elem)</span>
@@ -238,11 +238,11 @@ span.spaces    { background: white }
 <span class="lineno">  219 </span><span class="decl"><span class="istickedoff">trfLoc f sema = trfLocCorrect sema pure f</span></span>
 <span class="lineno">  220 </span>
 <span class="lineno">  221 </span>trfLocNoSema :: SemanticInfo (Dom n) b ~ NoSemanticInfo =&gt; (a -&gt; Trf (b (Dom n) RangeStage)) -&gt; Located a -&gt; Trf (Ann b (Dom n) RangeStage)
-<span class="lineno">  222 </span><span class="decl"><span class="istickedoff">trfLocNoSema f = trfLoc f (pure mkNoSemanticInfo)</span></span>
+<span class="lineno">  222 </span><span class="decl"><span class="istickedoff">trfLocNoSema f = trfLoc f (pure <span class="nottickedoff">mkNoSemanticInfo</span>)</span></span>
 <span class="lineno">  223 </span>
 <span class="lineno">  224 </span>-- | Transforms a possibly-missing node with the default location of the end of the focus.
 <span class="lineno">  225 </span>trfMaybe :: String -&gt; String -&gt; (Located a -&gt; Trf (Ann e (Dom n) RangeStage)) -&gt; Maybe (Located a) -&gt; Trf (AnnMaybeG e (Dom n) RangeStage)
-<span class="lineno">  226 </span><span class="decl"><span class="istickedoff">trfMaybe bef aft f = trfMaybeDefault bef aft f atTheEnd</span></span>
+<span class="lineno">  226 </span><span class="decl"><span class="istickedoff">trfMaybe bef aft f = trfMaybeDefault <span class="nottickedoff">bef</span> <span class="nottickedoff">aft</span> f atTheEnd</span></span>
 <span class="lineno">  227 </span>
 <span class="lineno">  228 </span>-- | Transforms a possibly-missing node with a default location
 <span class="lineno">  229 </span>trfMaybeDefault :: String -&gt; String -&gt; (Located a -&gt; Trf (Ann e (Dom n) RangeStage)) -&gt; Trf SrcLoc -&gt; Maybe (Located a) -&gt; Trf (AnnMaybeG e (Dom n) RangeStage)
@@ -257,24 +257,24 @@ span.spaces    { background: white }
 <span class="lineno">  238 </span>-- | Transform a located part of the AST by automatically transforming the location.
 <span class="lineno">  239 </span>-- Sets the source range for transforming children.
 <span class="lineno">  240 </span>trfMaybeLoc :: (a -&gt; Trf (Maybe (b (Dom n) RangeStage))) -&gt; SemanticInfo (Dom n) b -&gt; Located a -&gt; Trf (Maybe (Ann b (Dom n) RangeStage))
-<span class="lineno">  241 </span><span class="decl"><span class="istickedoff">trfMaybeLoc f sema (L l e) = do fmap (Ann (NodeInfo sema (NodeSpan l))) &lt;$&gt; local (\s -&gt; s { contRange = l }) (f e)</span></span>
+<span class="lineno">  241 </span><span class="decl"><span class="istickedoff">trfMaybeLoc f sema (L l e) = do fmap (Ann (NodeInfo <span class="nottickedoff">sema</span> (NodeSpan l))) &lt;$&gt; local (\s -&gt; s { contRange = l }) (f e)</span></span>
 <span class="lineno">  242 </span>
 <span class="lineno">  243 </span>trfMaybeLocNoSema :: SemanticInfo (Dom n) b ~ NoSemanticInfo =&gt; (a -&gt; Trf (Maybe (b (Dom n) RangeStage))) -&gt; Located a -&gt; Trf (Maybe (Ann b (Dom n) RangeStage))
-<span class="lineno">  244 </span><span class="decl"><span class="istickedoff">trfMaybeLocNoSema f = trfMaybeLoc f mkNoSemanticInfo</span></span>
+<span class="lineno">  244 </span><span class="decl"><span class="istickedoff">trfMaybeLocNoSema f = trfMaybeLoc f <span class="nottickedoff">mkNoSemanticInfo</span></span></span>
 <span class="lineno">  245 </span>
 <span class="lineno">  246 </span>-- | Creates a place for a list of nodes with the default place at the end of the focus if the list is empty.
 <span class="lineno">  247 </span>trfAnnList :: SemanticInfo (Dom n) b ~ NoSemanticInfo =&gt; String -&gt; (a -&gt; Trf (b (Dom n) RangeStage)) -&gt; [Located a] -&gt; Trf (AnnListG b (Dom n) RangeStage)
-<span class="lineno">  248 </span><span class="decl"><span class="istickedoff">trfAnnList sep _ [] = makeList sep atTheEnd (pure [])</span>
-<span class="lineno">  249 </span><span class="spaces"></span><span class="istickedoff">trfAnnList sep f ls = makeList sep (pure $ noSrcLoc) (mapM (trfLoc f (pure mkNoSemanticInfo)) ls)</span></span>
+<span class="lineno">  248 </span><span class="decl"><span class="istickedoff">trfAnnList sep _ [] = makeList <span class="nottickedoff">sep</span> atTheEnd (pure [])</span>
+<span class="lineno">  249 </span><span class="spaces"></span><span class="istickedoff">trfAnnList sep f ls = makeList <span class="nottickedoff">sep</span> (pure $ noSrcLoc) (mapM (trfLoc f (pure <span class="nottickedoff">mkNoSemanticInfo</span>)) ls)</span></span>
 <span class="lineno">  250 </span>
 <span class="lineno">  251 </span>trfAnnList' :: String -&gt; (Located a -&gt; Trf (Ann b (Dom n) RangeStage)) -&gt; [Located a] -&gt; Trf (AnnListG b (Dom n) RangeStage)
-<span class="lineno">  252 </span><span class="decl"><span class="istickedoff">trfAnnList' sep _ [] = makeList sep atTheEnd (pure [])</span>
-<span class="lineno">  253 </span><span class="spaces"></span><span class="istickedoff">trfAnnList' sep f ls = makeList sep (pure $ noSrcLoc) (mapM f ls)</span></span>
+<span class="lineno">  252 </span><span class="decl"><span class="istickedoff">trfAnnList' sep _ [] = makeList <span class="nottickedoff">sep</span> atTheEnd (pure [])</span>
+<span class="lineno">  253 </span><span class="spaces"></span><span class="istickedoff">trfAnnList' sep f ls = makeList <span class="nottickedoff">sep</span> (pure $ noSrcLoc) (mapM f ls)</span></span>
 <span class="lineno">  254 </span>
 <span class="lineno">  255 </span>
 <span class="lineno">  256 </span>-- | Creates a place for a list of nodes that cannot be empty.
 <span class="lineno">  257 </span>nonemptyAnnList :: [Ann e (Dom n) RangeStage] -&gt; AnnListG e (Dom n) RangeStage
-<span class="lineno">  258 </span><span class="decl"><span class="istickedoff">nonemptyAnnList = AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; &quot;&quot; Nothing noSrcLoc)</span></span>
+<span class="lineno">  258 </span><span class="decl"><span class="istickedoff">nonemptyAnnList = AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; <span class="nottickedoff">&quot;&quot;</span> Nothing noSrcLoc)</span></span>
 <span class="lineno">  259 </span>
 <span class="lineno">  260 </span>-- | Creates an optional node from an existing element
 <span class="lineno">  261 </span>makeJust :: Ann e (Dom n) RangeStage -&gt; AnnMaybeG e (Dom n) RangeStage
@@ -288,7 +288,7 @@ span.spaces    { background: white }
 <span class="lineno">  269 </span><span class="spaces">                             </span><span class="istickedoff">return (Ann (NodeInfo sema (NodeSpan loc)) node)</span></span>
 <span class="lineno">  270 </span>
 <span class="lineno">  271 </span>annLocNoSema :: SemanticInfo (Dom n) b ~ NoSemanticInfo =&gt; Trf SrcSpan -&gt; Trf (b (Dom n) RangeStage) -&gt; Trf (Ann b (Dom n) RangeStage)
-<span class="lineno">  272 </span><span class="decl"><span class="istickedoff">annLocNoSema = annLoc (pure mkNoSemanticInfo)</span></span>
+<span class="lineno">  272 </span><span class="decl"><span class="istickedoff">annLocNoSema = annLoc (pure <span class="nottickedoff">mkNoSemanticInfo</span>)</span></span>
 <span class="lineno">  273 </span>
 <span class="lineno">  274 </span>-- * Focus manipulation
 <span class="lineno">  275 </span>
@@ -358,7 +358,7 @@ span.spaces    { background: white }
 <span class="lineno">  339 </span><span class="decl"><span class="istickedoff">annFrom kw sema = annLoc sema (combineSrcSpans &lt;$&gt; tokenLoc kw &lt;*&gt; asks (srcLocSpan . srcSpanEnd . contRange))</span></span>
 <span class="lineno">  340 </span>
 <span class="lineno">  341 </span>annFromNoSema :: SemanticInfo (Dom n) e ~ NoSemanticInfo =&gt; AnnKeywordId -&gt; Trf (e (Dom n) RangeStage) -&gt; Trf (Ann e (Dom n) RangeStage)
-<span class="lineno">  342 </span><span class="decl"><span class="istickedoff">annFromNoSema kw = annFrom kw (pure mkNoSemanticInfo)</span></span>
+<span class="lineno">  342 </span><span class="decl"><span class="istickedoff">annFromNoSema kw = annFrom kw (pure <span class="nottickedoff">mkNoSemanticInfo</span>)</span></span>
 <span class="lineno">  343 </span>
 <span class="lineno">  344 </span>-- | Gets the position at the beginning of the focus
 <span class="lineno">  345 </span>atTheStart :: Trf SrcLoc
@@ -412,7 +412,7 @@ span.spaces    { background: white }
 <span class="lineno">  393 </span><span class="decl"><span class="istickedoff">annCont sema = annLoc sema (asks contRange)</span></span>
 <span class="lineno">  394 </span>
 <span class="lineno">  395 </span>annContNoSema :: SemanticInfo (Dom n) e ~ NoSemanticInfo =&gt; Trf (e (Dom n) RangeStage) -&gt; Trf (Ann e (Dom n) RangeStage)
-<span class="lineno">  396 </span><span class="decl"><span class="istickedoff">annContNoSema = annCont (pure mkNoSemanticInfo)</span></span>
+<span class="lineno">  396 </span><span class="decl"><span class="istickedoff">annContNoSema = annCont (pure <span class="nottickedoff">mkNoSemanticInfo</span>)</span></span>
 <span class="lineno">  397 </span>
 <span class="lineno">  398 </span>-- | Annotates the element with the same annotation that is on the other element
 <span class="lineno">  399 </span>copyAnnot :: SemanticInfo (Dom n) a ~ SemanticInfo (Dom n) b
