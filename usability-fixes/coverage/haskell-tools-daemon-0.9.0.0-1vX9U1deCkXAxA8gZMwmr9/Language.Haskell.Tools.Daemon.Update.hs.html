@@ -102,8 +102,8 @@ span.spaces    { background: white }
 <span class="lineno">   83 </span><span class="spaces">       </span><span class="istickedoff">return True</span>
 <span class="lineno">   84 </span><span class="spaces"></span><span class="istickedoff"></span>
 <span class="lineno">   85 </span><span class="spaces"></span><span class="istickedoff">updateClient' _ (SetWorkingDir fp)</span>
-<span class="lineno">   86 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do liftIO (setCurrentDirectory fp)</span></span>
-<span class="lineno">   87 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">return True</span></span>
+<span class="lineno">   86 </span><span class="spaces">  </span><span class="istickedoff">= do liftIO (setCurrentDirectory fp)</span>
+<span class="lineno">   87 </span><span class="spaces">       </span><span class="istickedoff">return True</span>
 <span class="lineno">   88 </span><span class="spaces"></span><span class="istickedoff"></span>
 <span class="lineno">   89 </span><span class="spaces"></span><span class="istickedoff">updateClient' UpdateCtx{..} (SetGHCFlags flags)</span>
 <span class="lineno">   90 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do (unused, change) &lt;- lift (useFlags flags)</span></span>
@@ -152,7 +152,7 @@ span.spaces    { background: white }
 <span class="lineno">  133 </span><span class="spaces">  </span><span class="istickedoff">= do (selectedMod, otherMods) &lt;- getFileMods modPath</span>
 <span class="lineno">  134 </span><span class="spaces">       </span><span class="istickedoff">performRefactoring (refact:selection:args)</span>
 <span class="lineno">  135 </span><span class="spaces">                          </span><span class="istickedoff">(maybe (Left modPath) Right selectedMod) otherMods</span>
-<span class="lineno">  136 </span><span class="spaces">       </span><span class="istickedoff">when shutdown $ <span class="nottickedoff">liftIO $ response Disconnected</span></span>
+<span class="lineno">  136 </span><span class="spaces">       </span><span class="istickedoff">when shutdown $ liftIO $ response Disconnected</span>
 <span class="lineno">  137 </span><span class="spaces">       </span><span class="istickedoff">return (not shutdown)</span>
 <span class="lineno">  138 </span><span class="spaces">  </span><span class="istickedoff">where performRefactoring cmd actualMod otherMods = do</span>
 <span class="lineno">  139 </span><span class="spaces">          </span><span class="istickedoff">res &lt;- lift $ performCommand refactorings cmd actualMod otherMods</span>

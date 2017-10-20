@@ -81,7 +81,7 @@ span.spaces    { background: white }
 <span class="lineno">   62 </span><span class="spaces">       </span><span class="istickedoff">hSetBuffering stdout LineBuffering</span>
 <span class="lineno">   63 </span><span class="spaces">       </span><span class="istickedoff">hSetBuffering stderr LineBuffering</span>
 <span class="lineno">   64 </span><span class="spaces">       </span><span class="istickedoff">conn &lt;- daemonConnect mode portNumber</span>
-<span class="lineno">   65 </span><span class="spaces">       </span><span class="istickedoff">putMVar connStore <span class="nottickedoff">conn</span></span>
+<span class="lineno">   65 </span><span class="spaces">       </span><span class="istickedoff">putMVar connStore conn</span>
 <span class="lineno">   66 </span><span class="spaces">       </span><span class="istickedoff">when (not silentMode) $ <span class="nottickedoff">putStrLn $ &quot;Connection established&quot;</span></span>
 <span class="lineno">   67 </span><span class="spaces">       </span><span class="istickedoff">ghcSess &lt;- initGhcSession (generateCode sharedOptions)</span>
 <span class="lineno">   68 </span><span class="spaces">       </span><span class="istickedoff">state &lt;- newMVar initSession</span>
