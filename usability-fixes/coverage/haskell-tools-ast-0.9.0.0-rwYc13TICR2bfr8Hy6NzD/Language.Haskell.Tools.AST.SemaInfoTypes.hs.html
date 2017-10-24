@@ -208,9 +208,9 @@ span.spaces    { background: white }
 <span class="lineno">  189 </span><span class="spaces">        </span><span class="nottickedoff">++ showSDocUnsafe (ppr nameInfo) ++ showSDocUnsafe (ppr fixity) ++ &quot;)&quot;</span></span>
 <span class="lineno">  190 </span>
 <span class="lineno">  191 </span>instance Outputable n =&gt; Show (PName n) where
-<span class="lineno">  192 </span>  <span class="decl"><span class="istickedoff">show (PName n (Just parent))</span>
-<span class="lineno">  193 </span><span class="spaces">    </span><span class="istickedoff">= showSDocUnsafe (ppr n) ++ &quot;[in &quot; ++ showSDocUnsafe (ppr parent) ++ &quot;]&quot;</span>
-<span class="lineno">  194 </span><span class="spaces">  </span><span class="istickedoff">show (PName n Nothing) = showSDocUnsafe (ppr n)</span></span>
+<span class="lineno">  192 </span>  <span class="decl"><span class="nottickedoff">show (PName n (Just parent))</span>
+<span class="lineno">  193 </span><span class="spaces">    </span><span class="nottickedoff">= showSDocUnsafe (ppr n) ++ &quot;[in &quot; ++ showSDocUnsafe (ppr parent) ++ &quot;]&quot;</span>
+<span class="lineno">  194 </span><span class="spaces">  </span><span class="nottickedoff">show (PName n Nothing) = showSDocUnsafe (ppr n)</span></span>
 <span class="lineno">  195 </span>
 <span class="lineno">  196 </span>instance Outputable n =&gt; Show (ModuleInfo n) where
 <span class="lineno">  197 </span>  <span class="decl"><span class="nottickedoff">show (ModuleInfo mod _ isboot imp clsInsts famInsts)</span>
