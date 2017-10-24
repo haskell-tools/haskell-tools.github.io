@@ -56,7 +56,7 @@ span.spaces    { background: white }
 <span class="lineno">   37 </span>
 <span class="lineno">   38 </span>instance GHCName RdrName where
 <span class="lineno">   39 </span>  <span class="decl"><span class="istickedoff">rdrName = id</span></span>
-<span class="lineno">   40 </span>  <span class="decl"><span class="istickedoff">getFromNameUsing _ n = return $ pure <span class="nottickedoff">(nameRdrName n)</span></span></span>
+<span class="lineno">   40 </span>  <span class="decl"><span class="istickedoff">getFromNameUsing _ n = return $ pure (nameRdrName <span class="nottickedoff">n</span>)</span></span>
 <span class="lineno">   41 </span>  <span class="decl"><span class="nottickedoff">getBindsAndSigs (ValBindsIn binds sigs) = (sigs, binds)</span>
 <span class="lineno">   42 </span><span class="spaces">  </span><span class="nottickedoff">getBindsAndSigs _ = error &quot;ValBindsOut: ValBindsOut in parsed source&quot;</span></span>
 <span class="lineno">   43 </span>  <span class="decl"><span class="nottickedoff">nameFromId = nameRdrName . getName</span></span>
