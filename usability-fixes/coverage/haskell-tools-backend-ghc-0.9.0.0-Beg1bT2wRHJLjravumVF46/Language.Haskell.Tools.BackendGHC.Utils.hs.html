@@ -168,8 +168,8 @@ span.spaces    { background: white }
 <span class="lineno">  149 </span>
 <span class="lineno">  150 </span>forceElements :: [a] -&gt; [a]
 <span class="lineno">  151 </span><span class="decl"><span class="istickedoff">forceElements [] = []</span>
-<span class="lineno">  152 </span><span class="spaces"></span><span class="istickedoff">forceElements (!a:ls) = let res = forceElements ls</span>
-<span class="lineno">  153 </span><span class="spaces">                         </span><span class="istickedoff">in res `seq` (a : ls)</span></span>
+<span class="lineno">  152 </span><span class="spaces"></span><span class="istickedoff">forceElements (a : ls) = let res = forceElements ls</span>
+<span class="lineno">  153 </span><span class="spaces">                          </span><span class="istickedoff">in a `seq` res `seq` (a : ls)</span></span>
 <span class="lineno">  154 </span>
 <span class="lineno">  155 </span>
 <span class="lineno">  156 </span>ieSpecMatches :: (HsHasName name, GhcMonad m) =&gt; IE name -&gt; GHC.Name -&gt; m Bool
@@ -301,237 +301,230 @@ span.spaces    { background: white }
 <span class="lineno">  282 </span><span class="spaces">                             </span><span class="istickedoff">sema &lt;- semam</span>
 <span class="lineno">  283 </span><span class="spaces">                             </span><span class="istickedoff">return (Ann (NodeInfo sema (NodeSpan loc)) node)</span></span>
 <span class="lineno">  284 </span>
-<span class="lineno">  285 </span>-- | Annotates a node with the given location and focuses on the given source span. Strict in the annotation.
-<span class="lineno">  286 </span>annLoc' :: Trf (SemanticInfo (Dom n) b) -&gt; Trf SrcSpan -&gt; Trf (b (Dom n) RangeStage) -&gt; Trf (Ann b (Dom n) RangeStage)
-<span class="lineno">  287 </span><span class="decl"><span class="istickedoff">annLoc' semam locm nodem = do loc &lt;- locm</span>
-<span class="lineno">  288 </span><span class="spaces">                              </span><span class="istickedoff">node &lt;- focusOn loc nodem</span>
-<span class="lineno">  289 </span><span class="spaces">                              </span><span class="istickedoff">sema &lt;- semam</span>
-<span class="lineno">  290 </span><span class="spaces">                              </span><span class="istickedoff">return $ sema `seq` (Ann (NodeInfo sema (NodeSpan loc)) node)</span></span>
-<span class="lineno">  291 </span>
-<span class="lineno">  292 </span>annLocNoSema :: SemanticInfo (Dom n) b ~ NoSemanticInfo =&gt; Trf SrcSpan -&gt; Trf (b (Dom n) RangeStage) -&gt; Trf (Ann b (Dom n) RangeStage)
-<span class="lineno">  293 </span><span class="decl"><span class="istickedoff">annLocNoSema = annLoc (pure <span class="nottickedoff">mkNoSemanticInfo</span>)</span></span>
-<span class="lineno">  294 </span>
-<span class="lineno">  295 </span>-- * Focus manipulation
+<span class="lineno">  285 </span>annLocNoSema :: SemanticInfo (Dom n) b ~ NoSemanticInfo =&gt; Trf SrcSpan -&gt; Trf (b (Dom n) RangeStage) -&gt; Trf (Ann b (Dom n) RangeStage)
+<span class="lineno">  286 </span><span class="decl"><span class="istickedoff">annLocNoSema = annLoc (pure <span class="nottickedoff">mkNoSemanticInfo</span>)</span></span>
+<span class="lineno">  287 </span>
+<span class="lineno">  288 </span>-- * Focus manipulation
+<span class="lineno">  289 </span>
+<span class="lineno">  290 </span>focusOn :: SrcSpan -&gt; Trf a -&gt; Trf a
+<span class="lineno">  291 </span><span class="decl"><span class="istickedoff">focusOn sp = local (\s -&gt; s { contRange = sp })</span></span>
+<span class="lineno">  292 </span>
+<span class="lineno">  293 </span>updateFocus :: (SrcSpan -&gt; Trf SrcSpan) -&gt; Trf a -&gt; Trf a
+<span class="lineno">  294 </span><span class="decl"><span class="istickedoff">updateFocus f trf = do newSpan &lt;- f =&lt;&lt; asks contRange</span>
+<span class="lineno">  295 </span><span class="spaces">                       </span><span class="istickedoff">focusOn newSpan trf</span></span>
 <span class="lineno">  296 </span>
-<span class="lineno">  297 </span>focusOn :: SrcSpan -&gt; Trf a -&gt; Trf a
-<span class="lineno">  298 </span><span class="decl"><span class="istickedoff">focusOn sp = local (\s -&gt; s { contRange = sp })</span></span>
+<span class="lineno">  297 </span>focusAfterLoc :: SrcLoc -&gt; Trf a -&gt; Trf a
+<span class="lineno">  298 </span><span class="decl"><span class="istickedoff">focusAfterLoc loc = local (\s -&gt; s { contRange = mkSrcSpan loc (srcSpanEnd (contRange s)) })</span></span>
 <span class="lineno">  299 </span>
-<span class="lineno">  300 </span>updateFocus :: (SrcSpan -&gt; Trf SrcSpan) -&gt; Trf a -&gt; Trf a
-<span class="lineno">  301 </span><span class="decl"><span class="istickedoff">updateFocus f trf = do newSpan &lt;- f =&lt;&lt; asks contRange</span>
-<span class="lineno">  302 </span><span class="spaces">                       </span><span class="istickedoff">focusOn newSpan trf</span></span>
-<span class="lineno">  303 </span>
-<span class="lineno">  304 </span>focusAfterLoc :: SrcLoc -&gt; Trf a -&gt; Trf a
-<span class="lineno">  305 </span><span class="decl"><span class="istickedoff">focusAfterLoc loc = local (\s -&gt; s { contRange = mkSrcSpan loc (srcSpanEnd (contRange s)) })</span></span>
+<span class="lineno">  300 </span>focusBeforeLoc :: SrcLoc -&gt; Trf a -&gt; Trf a
+<span class="lineno">  301 </span><span class="decl"><span class="istickedoff">focusBeforeLoc loc = local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) loc })</span></span>
+<span class="lineno">  302 </span>
+<span class="lineno">  303 </span>-- | Focuses the transformation to go between tokens. The tokens must be found inside the current range.
+<span class="lineno">  304 </span>between :: AnnKeywordId -&gt; AnnKeywordId -&gt; Trf a -&gt; Trf a
+<span class="lineno">  305 </span><span class="decl"><span class="istickedoff">between firstTok lastTok = focusAfter firstTok . focusBefore lastTok</span></span>
 <span class="lineno">  306 </span>
-<span class="lineno">  307 </span>focusBeforeLoc :: SrcLoc -&gt; Trf a -&gt; Trf a
-<span class="lineno">  308 </span><span class="decl"><span class="istickedoff">focusBeforeLoc loc = local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) loc })</span></span>
-<span class="lineno">  309 </span>
-<span class="lineno">  310 </span>-- | Focuses the transformation to go between tokens. The tokens must be found inside the current range.
-<span class="lineno">  311 </span>between :: AnnKeywordId -&gt; AnnKeywordId -&gt; Trf a -&gt; Trf a
-<span class="lineno">  312 </span><span class="decl"><span class="istickedoff">between firstTok lastTok = focusAfter firstTok . focusBefore lastTok</span></span>
-<span class="lineno">  313 </span>
-<span class="lineno">  314 </span>-- | Focuses the transformation to go between tokens if they are present
-<span class="lineno">  315 </span>betweenIfPresent :: AnnKeywordId -&gt; AnnKeywordId -&gt; Trf a -&gt; Trf a
-<span class="lineno">  316 </span><span class="decl"><span class="istickedoff">betweenIfPresent firstTok lastTok = focusAfterIfPresent firstTok . focusBeforeIfPresent lastTok</span></span>
-<span class="lineno">  317 </span>
-<span class="lineno">  318 </span>-- | Focuses the transformation to be performed after the given token. The token must be found inside the current range.
-<span class="lineno">  319 </span>focusAfter :: AnnKeywordId -&gt; Trf a -&gt; Trf a
-<span class="lineno">  320 </span><span class="decl"><span class="istickedoff">focusAfter firstTok trf</span>
-<span class="lineno">  321 </span><span class="spaces">  </span><span class="istickedoff">= do firstToken &lt;- tokenLoc firstTok</span>
-<span class="lineno">  322 </span><span class="spaces">       </span><span class="istickedoff">if <span class="tickonlytrue">(isGoodSrcSpan firstToken)</span></span>
-<span class="lineno">  323 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf</span>
-<span class="lineno">  324 </span><span class="spaces">          </span><span class="istickedoff">else <span class="nottickedoff">do rng &lt;- asks contRange</span></span>
-<span class="lineno">  325 </span><span class="spaces">                  </span><span class="istickedoff"><span class="nottickedoff">convertionProblem $ &quot;focusAfter: token not found in &quot; ++ show rng ++ &quot;: &quot; ++ show firstTok</span></span></span>
+<span class="lineno">  307 </span>-- | Focuses the transformation to go between tokens if they are present
+<span class="lineno">  308 </span>betweenIfPresent :: AnnKeywordId -&gt; AnnKeywordId -&gt; Trf a -&gt; Trf a
+<span class="lineno">  309 </span><span class="decl"><span class="istickedoff">betweenIfPresent firstTok lastTok = focusAfterIfPresent firstTok . focusBeforeIfPresent lastTok</span></span>
+<span class="lineno">  310 </span>
+<span class="lineno">  311 </span>-- | Focuses the transformation to be performed after the given token. The token must be found inside the current range.
+<span class="lineno">  312 </span>focusAfter :: AnnKeywordId -&gt; Trf a -&gt; Trf a
+<span class="lineno">  313 </span><span class="decl"><span class="istickedoff">focusAfter firstTok trf</span>
+<span class="lineno">  314 </span><span class="spaces">  </span><span class="istickedoff">= do firstToken &lt;- tokenLoc firstTok</span>
+<span class="lineno">  315 </span><span class="spaces">       </span><span class="istickedoff">if <span class="tickonlytrue">(isGoodSrcSpan firstToken)</span></span>
+<span class="lineno">  316 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf</span>
+<span class="lineno">  317 </span><span class="spaces">          </span><span class="istickedoff">else <span class="nottickedoff">do rng &lt;- asks contRange</span></span>
+<span class="lineno">  318 </span><span class="spaces">                  </span><span class="istickedoff"><span class="nottickedoff">convertionProblem $ &quot;focusAfter: token not found in &quot; ++ show rng ++ &quot;: &quot; ++ show firstTok</span></span></span>
+<span class="lineno">  319 </span>
+<span class="lineno">  320 </span>focusAfterIfPresent :: AnnKeywordId -&gt; Trf a -&gt; Trf a
+<span class="lineno">  321 </span><span class="decl"><span class="istickedoff">focusAfterIfPresent firstTok trf</span>
+<span class="lineno">  322 </span><span class="spaces">  </span><span class="istickedoff">= do firstToken &lt;- tokenLoc firstTok</span>
+<span class="lineno">  323 </span><span class="spaces">       </span><span class="istickedoff">if (isGoodSrcSpan firstToken)</span>
+<span class="lineno">  324 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf</span>
+<span class="lineno">  325 </span><span class="spaces">          </span><span class="istickedoff">else trf</span></span>
 <span class="lineno">  326 </span>
-<span class="lineno">  327 </span>focusAfterIfPresent :: AnnKeywordId -&gt; Trf a -&gt; Trf a
-<span class="lineno">  328 </span><span class="decl"><span class="istickedoff">focusAfterIfPresent firstTok trf</span>
-<span class="lineno">  329 </span><span class="spaces">  </span><span class="istickedoff">= do firstToken &lt;- tokenLoc firstTok</span>
-<span class="lineno">  330 </span><span class="spaces">       </span><span class="istickedoff">if (isGoodSrcSpan firstToken)</span>
-<span class="lineno">  331 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf</span>
-<span class="lineno">  332 </span><span class="spaces">          </span><span class="istickedoff">else trf</span></span>
-<span class="lineno">  333 </span>
-<span class="lineno">  334 </span>-- | Focuses the transformation to be performed before the given token. The token must be found inside the current range.
-<span class="lineno">  335 </span>focusBefore :: AnnKeywordId -&gt; Trf a -&gt; Trf a
-<span class="lineno">  336 </span><span class="decl"><span class="istickedoff">focusBefore lastTok trf</span>
-<span class="lineno">  337 </span><span class="spaces">  </span><span class="istickedoff">= do lastToken &lt;- tokenLocBack lastTok</span>
-<span class="lineno">  338 </span><span class="spaces">       </span><span class="istickedoff">if <span class="tickonlytrue">(isGoodSrcSpan lastToken)</span></span>
-<span class="lineno">  339 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)}) trf</span>
-<span class="lineno">  340 </span><span class="spaces">          </span><span class="istickedoff">else <span class="nottickedoff">do rng &lt;- asks contRange</span></span>
-<span class="lineno">  341 </span><span class="spaces">                  </span><span class="istickedoff"><span class="nottickedoff">convertionProblem $ &quot;focusBefore: token not found in &quot; ++ show rng ++ &quot;: &quot; ++ show lastTok</span></span></span>
+<span class="lineno">  327 </span>-- | Focuses the transformation to be performed before the given token. The token must be found inside the current range.
+<span class="lineno">  328 </span>focusBefore :: AnnKeywordId -&gt; Trf a -&gt; Trf a
+<span class="lineno">  329 </span><span class="decl"><span class="istickedoff">focusBefore lastTok trf</span>
+<span class="lineno">  330 </span><span class="spaces">  </span><span class="istickedoff">= do lastToken &lt;- tokenLocBack lastTok</span>
+<span class="lineno">  331 </span><span class="spaces">       </span><span class="istickedoff">if <span class="tickonlytrue">(isGoodSrcSpan lastToken)</span></span>
+<span class="lineno">  332 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)}) trf</span>
+<span class="lineno">  333 </span><span class="spaces">          </span><span class="istickedoff">else <span class="nottickedoff">do rng &lt;- asks contRange</span></span>
+<span class="lineno">  334 </span><span class="spaces">                  </span><span class="istickedoff"><span class="nottickedoff">convertionProblem $ &quot;focusBefore: token not found in &quot; ++ show rng ++ &quot;: &quot; ++ show lastTok</span></span></span>
+<span class="lineno">  335 </span>
+<span class="lineno">  336 </span>focusBeforeIfPresent :: AnnKeywordId -&gt; Trf a -&gt; Trf a
+<span class="lineno">  337 </span><span class="decl"><span class="istickedoff">focusBeforeIfPresent lastTok trf</span>
+<span class="lineno">  338 </span><span class="spaces">  </span><span class="istickedoff">= do lastToken &lt;- tokenLocBack lastTok</span>
+<span class="lineno">  339 </span><span class="spaces">       </span><span class="istickedoff">if (isGoodSrcSpan lastToken)</span>
+<span class="lineno">  340 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)}) trf</span>
+<span class="lineno">  341 </span><span class="spaces">          </span><span class="istickedoff">else trf</span></span>
 <span class="lineno">  342 </span>
-<span class="lineno">  343 </span>focusBeforeIfPresent :: AnnKeywordId -&gt; Trf a -&gt; Trf a
-<span class="lineno">  344 </span><span class="decl"><span class="istickedoff">focusBeforeIfPresent lastTok trf</span>
-<span class="lineno">  345 </span><span class="spaces">  </span><span class="istickedoff">= do lastToken &lt;- tokenLocBack lastTok</span>
-<span class="lineno">  346 </span><span class="spaces">       </span><span class="istickedoff">if (isGoodSrcSpan lastToken)</span>
-<span class="lineno">  347 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)}) trf</span>
-<span class="lineno">  348 </span><span class="spaces">          </span><span class="istickedoff">else trf</span></span>
-<span class="lineno">  349 </span>
-<span class="lineno">  350 </span>-- | Gets the position before the given token
-<span class="lineno">  351 </span>before :: AnnKeywordId -&gt; Trf SrcLoc
-<span class="lineno">  352 </span><span class="decl"><span class="istickedoff">before tok = srcSpanStart &lt;$&gt; tokenLoc tok</span></span>
-<span class="lineno">  353 </span>
-<span class="lineno">  354 </span>-- | Gets the position after the given token
-<span class="lineno">  355 </span>after :: AnnKeywordId -&gt; Trf SrcLoc
-<span class="lineno">  356 </span><span class="decl"><span class="istickedoff">after tok = srcSpanEnd &lt;$&gt; tokenLoc tok</span></span>
+<span class="lineno">  343 </span>-- | Gets the position before the given token
+<span class="lineno">  344 </span>before :: AnnKeywordId -&gt; Trf SrcLoc
+<span class="lineno">  345 </span><span class="decl"><span class="istickedoff">before tok = srcSpanStart &lt;$&gt; tokenLoc tok</span></span>
+<span class="lineno">  346 </span>
+<span class="lineno">  347 </span>-- | Gets the position after the given token
+<span class="lineno">  348 </span>after :: AnnKeywordId -&gt; Trf SrcLoc
+<span class="lineno">  349 </span><span class="decl"><span class="istickedoff">after tok = srcSpanEnd &lt;$&gt; tokenLoc tok</span></span>
+<span class="lineno">  350 </span>
+<span class="lineno">  351 </span>-- | The element should span from the given token to the end of focus
+<span class="lineno">  352 </span>annFrom :: AnnKeywordId -&gt; Trf (SemanticInfo (Dom n) e) -&gt; Trf (e (Dom n) RangeStage) -&gt; Trf (Ann e (Dom n) RangeStage)
+<span class="lineno">  353 </span><span class="decl"><span class="istickedoff">annFrom kw sema = annLoc sema (combineSrcSpans &lt;$&gt; tokenLoc kw &lt;*&gt; asks (srcLocSpan . srcSpanEnd . contRange))</span></span>
+<span class="lineno">  354 </span>
+<span class="lineno">  355 </span>annFromNoSema :: SemanticInfo (Dom n) e ~ NoSemanticInfo =&gt; AnnKeywordId -&gt; Trf (e (Dom n) RangeStage) -&gt; Trf (Ann e (Dom n) RangeStage)
+<span class="lineno">  356 </span><span class="decl"><span class="istickedoff">annFromNoSema kw = annFrom kw (pure <span class="nottickedoff">mkNoSemanticInfo</span>)</span></span>
 <span class="lineno">  357 </span>
-<span class="lineno">  358 </span>-- | The element should span from the given token to the end of focus
-<span class="lineno">  359 </span>annFrom :: AnnKeywordId -&gt; Trf (SemanticInfo (Dom n) e) -&gt; Trf (e (Dom n) RangeStage) -&gt; Trf (Ann e (Dom n) RangeStage)
-<span class="lineno">  360 </span><span class="decl"><span class="istickedoff">annFrom kw sema = annLoc sema (combineSrcSpans &lt;$&gt; tokenLoc kw &lt;*&gt; asks (srcLocSpan . srcSpanEnd . contRange))</span></span>
+<span class="lineno">  358 </span>-- | Gets the position at the beginning of the focus
+<span class="lineno">  359 </span>atTheStart :: Trf SrcLoc
+<span class="lineno">  360 </span><span class="decl"><span class="istickedoff">atTheStart = asks (srcSpanStart . contRange)</span></span>
 <span class="lineno">  361 </span>
-<span class="lineno">  362 </span>annFromNoSema :: SemanticInfo (Dom n) e ~ NoSemanticInfo =&gt; AnnKeywordId -&gt; Trf (e (Dom n) RangeStage) -&gt; Trf (Ann e (Dom n) RangeStage)
-<span class="lineno">  363 </span><span class="decl"><span class="istickedoff">annFromNoSema kw = annFrom kw (pure <span class="nottickedoff">mkNoSemanticInfo</span>)</span></span>
-<span class="lineno">  364 </span>
-<span class="lineno">  365 </span>-- | Gets the position at the beginning of the focus
-<span class="lineno">  366 </span>atTheStart :: Trf SrcLoc
-<span class="lineno">  367 </span><span class="decl"><span class="istickedoff">atTheStart = asks (srcSpanStart . contRange)</span></span>
-<span class="lineno">  368 </span>
-<span class="lineno">  369 </span>-- | Gets the position at the end of the focus
-<span class="lineno">  370 </span>atTheEnd :: Trf SrcLoc
-<span class="lineno">  371 </span><span class="decl"><span class="istickedoff">atTheEnd = asks (srcSpanEnd . contRange)</span></span>
+<span class="lineno">  362 </span>-- | Gets the position at the end of the focus
+<span class="lineno">  363 </span>atTheEnd :: Trf SrcLoc
+<span class="lineno">  364 </span><span class="decl"><span class="istickedoff">atTheEnd = asks (srcSpanEnd . contRange)</span></span>
+<span class="lineno">  365 </span>
+<span class="lineno">  366 </span>-- | Searches for a token inside the focus and retrieves its location
+<span class="lineno">  367 </span>tokenLoc :: AnnKeywordId -&gt; Trf SrcSpan
+<span class="lineno">  368 </span><span class="decl"><span class="istickedoff">tokenLoc keyw = fromMaybe noSrcSpan &lt;$&gt; (getKeywordInside keyw &lt;$&gt; asks contRange &lt;*&gt; asks srcMap)</span></span>
+<span class="lineno">  369 </span>
+<span class="lineno">  370 </span>allTokenLoc :: AnnKeywordId -&gt; Trf [SrcSpan]
+<span class="lineno">  371 </span><span class="decl"><span class="istickedoff">allTokenLoc keyw = getKeywordsInside keyw &lt;$&gt; asks contRange &lt;*&gt; asks srcMap</span></span>
 <span class="lineno">  372 </span>
-<span class="lineno">  373 </span>-- | Searches for a token inside the focus and retrieves its location
-<span class="lineno">  374 </span>tokenLoc :: AnnKeywordId -&gt; Trf SrcSpan
-<span class="lineno">  375 </span><span class="decl"><span class="istickedoff">tokenLoc keyw = fromMaybe noSrcSpan &lt;$&gt; (getKeywordInside keyw &lt;$&gt; asks contRange &lt;*&gt; asks srcMap)</span></span>
+<span class="lineno">  373 </span>-- | Searches for a token backward inside the focus and retrieves its location
+<span class="lineno">  374 </span>tokenLocBack :: AnnKeywordId -&gt; Trf SrcSpan
+<span class="lineno">  375 </span><span class="decl"><span class="istickedoff">tokenLocBack keyw = fromMaybe noSrcSpan &lt;$&gt; (getKeywordInsideBack keyw &lt;$&gt; asks contRange &lt;*&gt; asks srcMap)</span></span>
 <span class="lineno">  376 </span>
-<span class="lineno">  377 </span>allTokenLoc :: AnnKeywordId -&gt; Trf [SrcSpan]
-<span class="lineno">  378 </span><span class="decl"><span class="istickedoff">allTokenLoc keyw = getKeywordsInside keyw &lt;$&gt; asks contRange &lt;*&gt; asks srcMap</span></span>
-<span class="lineno">  379 </span>
-<span class="lineno">  380 </span>-- | Searches for a token backward inside the focus and retrieves its location
-<span class="lineno">  381 </span>tokenLocBack :: AnnKeywordId -&gt; Trf SrcSpan
-<span class="lineno">  382 </span><span class="decl"><span class="istickedoff">tokenLocBack keyw = fromMaybe noSrcSpan &lt;$&gt; (getKeywordInsideBack keyw &lt;$&gt; asks contRange &lt;*&gt; asks srcMap)</span></span>
+<span class="lineno">  377 </span>tokenBefore :: SrcLoc -&gt; AnnKeywordId -&gt; Trf SrcSpan
+<span class="lineno">  378 </span><span class="decl"><span class="istickedoff">tokenBefore loc keyw</span>
+<span class="lineno">  379 </span><span class="spaces">  </span><span class="istickedoff">= fromMaybe noSrcSpan &lt;$&gt; (getKeywordInsideBack keyw &lt;$&gt; (mkSrcSpan &lt;$&gt; (asks (srcSpanStart . contRange)) &lt;*&gt; pure loc) &lt;*&gt; asks srcMap)</span></span>
+<span class="lineno">  380 </span>
+<span class="lineno">  381 </span>allTokensAfter :: SrcLoc -&gt; Trf [(SrcSpan, AnnKeywordId)]
+<span class="lineno">  382 </span><span class="decl"><span class="istickedoff">allTokensAfter loc = getTokensAfter loc &lt;$&gt; asks srcMap</span></span>
 <span class="lineno">  383 </span>
-<span class="lineno">  384 </span>tokenBefore :: SrcLoc -&gt; AnnKeywordId -&gt; Trf SrcSpan
-<span class="lineno">  385 </span><span class="decl"><span class="istickedoff">tokenBefore loc keyw</span>
-<span class="lineno">  386 </span><span class="spaces">  </span><span class="istickedoff">= fromMaybe noSrcSpan &lt;$&gt; (getKeywordInsideBack keyw &lt;$&gt; (mkSrcSpan &lt;$&gt; (asks (srcSpanStart . contRange)) &lt;*&gt; pure loc) &lt;*&gt; asks srcMap)</span></span>
+<span class="lineno">  384 </span>tokensAfter :: AnnKeywordId -&gt; Trf [SrcSpan]
+<span class="lineno">  385 </span><span class="decl"><span class="istickedoff">tokensAfter keyw</span>
+<span class="lineno">  386 </span><span class="spaces">  </span><span class="istickedoff">= map fst . filter ((==keyw) . snd) &lt;$&gt; (asks (srcSpanEnd . contRange) &gt;&gt;= allTokensAfter)</span></span>
 <span class="lineno">  387 </span>
-<span class="lineno">  388 </span>allTokensAfter :: SrcLoc -&gt; Trf [(SrcSpan, AnnKeywordId)]
-<span class="lineno">  389 </span><span class="decl"><span class="istickedoff">allTokensAfter loc = getTokensAfter loc &lt;$&gt; asks srcMap</span></span>
-<span class="lineno">  390 </span>
-<span class="lineno">  391 </span>tokensAfter :: AnnKeywordId -&gt; Trf [SrcSpan]
-<span class="lineno">  392 </span><span class="decl"><span class="istickedoff">tokensAfter keyw</span>
-<span class="lineno">  393 </span><span class="spaces">  </span><span class="istickedoff">= map fst . filter ((==keyw) . snd) &lt;$&gt; (asks (srcSpanEnd . contRange) &gt;&gt;= allTokensAfter)</span></span>
-<span class="lineno">  394 </span>
-<span class="lineno">  395 </span>
-<span class="lineno">  396 </span>-- | Searches for tokens in the given order inside the parent element and returns their combined location
-<span class="lineno">  397 </span>tokensLoc :: [AnnKeywordId] -&gt; Trf SrcSpan
-<span class="lineno">  398 </span><span class="decl"><span class="istickedoff">tokensLoc keys = foldLocs &lt;$&gt; eachTokenLoc keys</span></span>
-<span class="lineno">  399 </span>
-<span class="lineno">  400 </span>-- | Searches for tokens in the given order inside the parent element and returns their location
-<span class="lineno">  401 </span>eachTokenLoc :: [AnnKeywordId] -&gt; Trf [SrcSpan]
-<span class="lineno">  402 </span><span class="decl"><span class="istickedoff">eachTokenLoc (keyw:rest)</span>
-<span class="lineno">  403 </span><span class="spaces">  </span><span class="istickedoff">= do spanFirst &lt;- tokenLoc keyw</span>
-<span class="lineno">  404 </span><span class="spaces">       </span><span class="istickedoff">spanRest &lt;- focusAfterLoc (srcSpanEnd spanFirst) (eachTokenLoc rest)</span>
-<span class="lineno">  405 </span><span class="spaces">       </span><span class="istickedoff">return (spanFirst : spanRest)</span>
-<span class="lineno">  406 </span><span class="spaces"></span><span class="istickedoff">eachTokenLoc [] = pure []</span></span>
-<span class="lineno">  407 </span>
-<span class="lineno">  408 </span>-- | Searches for a token and retrieves its location anywhere
-<span class="lineno">  409 </span>uniqueTokenAnywhere :: AnnKeywordId -&gt; Trf SrcSpan
-<span class="lineno">  410 </span><span class="decl"><span class="istickedoff">uniqueTokenAnywhere keyw = fromMaybe <span class="nottickedoff">noSrcSpan</span> &lt;$&gt; (getKeywordAnywhere keyw &lt;$&gt; asks srcMap)</span></span>
+<span class="lineno">  388 </span>
+<span class="lineno">  389 </span>-- | Searches for tokens in the given order inside the parent element and returns their combined location
+<span class="lineno">  390 </span>tokensLoc :: [AnnKeywordId] -&gt; Trf SrcSpan
+<span class="lineno">  391 </span><span class="decl"><span class="istickedoff">tokensLoc keys = foldLocs &lt;$&gt; eachTokenLoc keys</span></span>
+<span class="lineno">  392 </span>
+<span class="lineno">  393 </span>-- | Searches for tokens in the given order inside the parent element and returns their location
+<span class="lineno">  394 </span>eachTokenLoc :: [AnnKeywordId] -&gt; Trf [SrcSpan]
+<span class="lineno">  395 </span><span class="decl"><span class="istickedoff">eachTokenLoc (keyw:rest)</span>
+<span class="lineno">  396 </span><span class="spaces">  </span><span class="istickedoff">= do spanFirst &lt;- tokenLoc keyw</span>
+<span class="lineno">  397 </span><span class="spaces">       </span><span class="istickedoff">spanRest &lt;- focusAfterLoc (srcSpanEnd spanFirst) (eachTokenLoc rest)</span>
+<span class="lineno">  398 </span><span class="spaces">       </span><span class="istickedoff">return (spanFirst : spanRest)</span>
+<span class="lineno">  399 </span><span class="spaces"></span><span class="istickedoff">eachTokenLoc [] = pure []</span></span>
+<span class="lineno">  400 </span>
+<span class="lineno">  401 </span>-- | Searches for a token and retrieves its location anywhere
+<span class="lineno">  402 </span>uniqueTokenAnywhere :: AnnKeywordId -&gt; Trf SrcSpan
+<span class="lineno">  403 </span><span class="decl"><span class="istickedoff">uniqueTokenAnywhere keyw = fromMaybe <span class="nottickedoff">noSrcSpan</span> &lt;$&gt; (getKeywordAnywhere keyw &lt;$&gt; asks srcMap)</span></span>
+<span class="lineno">  404 </span>
+<span class="lineno">  405 </span>-- | Annotates the given element with the current focus as a location.
+<span class="lineno">  406 </span>annCont :: Trf (SemanticInfo (Dom n) e) -&gt; Trf (e (Dom n) RangeStage) -&gt; Trf (Ann e (Dom n) RangeStage)
+<span class="lineno">  407 </span><span class="decl"><span class="istickedoff">annCont sema = annLoc sema (asks contRange)</span></span>
+<span class="lineno">  408 </span>
+<span class="lineno">  409 </span>annContNoSema :: SemanticInfo (Dom n) e ~ NoSemanticInfo =&gt; Trf (e (Dom n) RangeStage) -&gt; Trf (Ann e (Dom n) RangeStage)
+<span class="lineno">  410 </span><span class="decl"><span class="istickedoff">annContNoSema = annCont (pure <span class="nottickedoff">mkNoSemanticInfo</span>)</span></span>
 <span class="lineno">  411 </span>
-<span class="lineno">  412 </span>-- | Annotates the given element with the current focus as a location.
-<span class="lineno">  413 </span>annCont :: Trf (SemanticInfo (Dom n) e) -&gt; Trf (e (Dom n) RangeStage) -&gt; Trf (Ann e (Dom n) RangeStage)
-<span class="lineno">  414 </span><span class="decl"><span class="istickedoff">annCont sema = annLoc sema (asks contRange)</span></span>
-<span class="lineno">  415 </span>
-<span class="lineno">  416 </span>annContNoSema :: SemanticInfo (Dom n) e ~ NoSemanticInfo =&gt; Trf (e (Dom n) RangeStage) -&gt; Trf (Ann e (Dom n) RangeStage)
-<span class="lineno">  417 </span><span class="decl"><span class="istickedoff">annContNoSema = annCont (pure <span class="nottickedoff">mkNoSemanticInfo</span>)</span></span>
-<span class="lineno">  418 </span>
-<span class="lineno">  419 </span>-- | Annotates the element with the same annotation that is on the other element
-<span class="lineno">  420 </span>copyAnnot :: SemanticInfo (Dom n) a ~ SemanticInfo (Dom n) b
-<span class="lineno">  421 </span>               =&gt; (Ann a (Dom n) RangeStage -&gt; b (Dom n) RangeStage) -&gt; Trf (Ann a (Dom n) RangeStage) -&gt; Trf (Ann b (Dom n) RangeStage)
-<span class="lineno">  422 </span><span class="decl"><span class="istickedoff">copyAnnot f at = (\(Ann i a) -&gt; Ann i (f (Ann i a))) &lt;$&gt; at</span></span>
-<span class="lineno">  423 </span>
-<span class="lineno">  424 </span>-- | Combine source spans into one that contains them all
-<span class="lineno">  425 </span>foldLocs :: [SrcSpan] -&gt; SrcSpan
-<span class="lineno">  426 </span><span class="decl"><span class="istickedoff">foldLocs = foldl combineSrcSpans noSrcSpan</span></span>
-<span class="lineno">  427 </span>
-<span class="lineno">  428 </span>-- | The location after the given string
-<span class="lineno">  429 </span>advanceStr :: String -&gt; SrcLoc -&gt; SrcLoc
-<span class="lineno">  430 </span><span class="decl"><span class="istickedoff">advanceStr str (RealSrcLoc l) = RealSrcLoc $ foldl advanceSrcLoc l str</span>
-<span class="lineno">  431 </span><span class="spaces"></span><span class="istickedoff">advanceStr _ l = <span class="nottickedoff">l</span></span></span>
-<span class="lineno">  432 </span>
-<span class="lineno">  433 </span>-- | Update column information in a source location
-<span class="lineno">  434 </span>updateCol :: (Int -&gt; Int) -&gt; SrcLoc -&gt; SrcLoc
-<span class="lineno">  435 </span><span class="decl"><span class="istickedoff">updateCol _ loc@(UnhelpfulLoc _) = <span class="nottickedoff">loc</span></span>
-<span class="lineno">  436 </span><span class="spaces"></span><span class="istickedoff">updateCol f (RealSrcLoc loc) = mkSrcLoc (srcLocFile loc) (srcLocLine loc) (f $ srcLocCol loc)</span></span>
-<span class="lineno">  437 </span>
-<span class="lineno">  438 </span>-- | Update the start of the src span
-<span class="lineno">  439 </span>updateStart :: (SrcLoc -&gt; SrcLoc) -&gt; SrcSpan -&gt; SrcSpan
-<span class="lineno">  440 </span><span class="decl"><span class="istickedoff">updateStart f sp = mkSrcSpan (f (srcSpanStart sp)) (srcSpanEnd sp)</span></span>
-<span class="lineno">  441 </span>
-<span class="lineno">  442 </span>-- | Update the end of the src span
-<span class="lineno">  443 </span>updateEnd :: (SrcLoc -&gt; SrcLoc) -&gt; SrcSpan -&gt; SrcSpan
-<span class="lineno">  444 </span><span class="decl"><span class="istickedoff">updateEnd f sp = mkSrcSpan (srcSpanStart sp) (f (srcSpanEnd sp))</span></span>
-<span class="lineno">  445 </span>
-<span class="lineno">  446 </span>-- | Combine source spans of elements into one that contains them all
-<span class="lineno">  447 </span>collectLocs :: [Located e] -&gt; SrcSpan
-<span class="lineno">  448 </span><span class="decl"><span class="istickedoff">collectLocs = foldLocs . map getLoc</span></span>
-<span class="lineno">  449 </span>
-<span class="lineno">  450 </span>-- | Rearrange definitions to appear in the order they are defined in the source file.
-<span class="lineno">  451 </span>orderDefs :: [Ann e (Dom n) RangeStage] -&gt; [Ann e (Dom n) RangeStage]
-<span class="lineno">  452 </span><span class="decl"><span class="istickedoff">orderDefs = sortBy (compare `on` srcSpanStart . (^. AST.annotation &amp; AST.sourceInfo &amp; AST.nodeSpan))</span></span>
-<span class="lineno">  453 </span>
-<span class="lineno">  454 </span>-- | Orders a list of elements to the order they are defined in the source file.
-<span class="lineno">  455 </span>orderAnnList :: AnnListG e (Dom n) RangeStage -&gt; AnnListG e (Dom n) RangeStage
-<span class="lineno">  456 </span><span class="decl"><span class="istickedoff">orderAnnList (AnnListG a ls) = AnnListG a (orderDefs ls)</span></span>
-<span class="lineno">  457 </span>
-<span class="lineno">  458 </span>-- | Only keeps one of the elements that are on the same source location
-<span class="lineno">  459 </span>removeDuplicates :: [Located e] -&gt; [Located e]
-<span class="lineno">  460 </span><span class="decl"><span class="istickedoff">removeDuplicates (fst:rest) = fst : removeDuplicates (filter ((/= getLoc fst) . getLoc) rest)</span>
-<span class="lineno">  461 </span><span class="spaces"></span><span class="istickedoff">removeDuplicates [] = []</span></span>
-<span class="lineno">  462 </span>
-<span class="lineno">  463 </span>-- | Orders a list of elements to the order they are defined in the source file.
-<span class="lineno">  464 </span>orderLocated :: [Located e] -&gt; [Located e]
-<span class="lineno">  465 </span><span class="decl"><span class="istickedoff">orderLocated = sortBy (compare `on` getLoc)</span></span>
-<span class="lineno">  466 </span>
-<span class="lineno">  467 </span>-- | Transform a list of definitions where the defined names are in scope for subsequent definitions
-<span class="lineno">  468 </span>trfScopedSequence :: HsHasName d =&gt; (d -&gt; Trf e) -&gt; [d] -&gt; Trf [e]
-<span class="lineno">  469 </span><span class="decl"><span class="istickedoff">trfScopedSequence f (def:rest) = (:) &lt;$&gt; f def &lt;*&gt; addToScope def (trfScopedSequence f rest)</span>
-<span class="lineno">  470 </span><span class="spaces"></span><span class="istickedoff">trfScopedSequence _ [] = pure []</span></span>
-<span class="lineno">  471 </span>
-<span class="lineno">  472 </span>-- | Splits a given string at whitespaces while calculating the source location of the fragments
-<span class="lineno">  473 </span>splitLocated :: Located String -&gt; [Located String]
-<span class="lineno">  474 </span><span class="decl"><span class="istickedoff">splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) Nothing</span>
-<span class="lineno">  475 </span><span class="spaces">  </span><span class="istickedoff">where splitLocated' :: String -&gt; RealSrcLoc -&gt; Maybe (RealSrcLoc, String) -&gt; [Located String]</span>
-<span class="lineno">  476 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc (Just (startLoc, str)) | isSpace c</span>
-<span class="lineno">  477 </span><span class="spaces">          </span><span class="istickedoff">= L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str) : splitLocated' rest (advanceSrcLoc currLoc c) Nothing</span>
-<span class="lineno">  478 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc Nothing | isSpace c = splitLocated' rest (advanceSrcLoc currLoc c) Nothing</span>
-<span class="lineno">  479 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc (Just (startLoc, str)) = splitLocated' rest (advanceSrcLoc currLoc c) (Just (startLoc, c:str))</span>
-<span class="lineno">  480 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc Nothing = splitLocated' rest (advanceSrcLoc currLoc c) (Just (currLoc, [c]))</span>
-<span class="lineno">  481 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' [] currLoc (Just (startLoc, str)) = [L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str)]</span>
-<span class="lineno">  482 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' [] _ Nothing = <span class="nottickedoff">[]</span></span>
-<span class="lineno">  483 </span><span class="spaces"></span><span class="istickedoff">splitLocated _ = <span class="nottickedoff">convProblem &quot;splitLocated: unhelpful span given&quot;</span></span></span>
-<span class="lineno">  484 </span>
-<span class="lineno">  485 </span>compareSpans :: SrcSpan -&gt; SrcSpan -&gt; Ordering
-<span class="lineno">  486 </span><span class="decl"><span class="nottickedoff">compareSpans (RealSrcSpan a) (RealSrcSpan b)</span>
-<span class="lineno">  487 </span><span class="spaces">  </span><span class="nottickedoff">| a `containsSpan` b = GT</span>
-<span class="lineno">  488 </span><span class="spaces">  </span><span class="nottickedoff">| b `containsSpan` a = LT</span>
-<span class="lineno">  489 </span><span class="spaces"></span><span class="nottickedoff">compareSpans _ _ = EQ</span></span>
+<span class="lineno">  412 </span>-- | Annotates the element with the same annotation that is on the other element
+<span class="lineno">  413 </span>copyAnnot :: SemanticInfo (Dom n) a ~ SemanticInfo (Dom n) b
+<span class="lineno">  414 </span>               =&gt; (Ann a (Dom n) RangeStage -&gt; b (Dom n) RangeStage) -&gt; Trf (Ann a (Dom n) RangeStage) -&gt; Trf (Ann b (Dom n) RangeStage)
+<span class="lineno">  415 </span><span class="decl"><span class="istickedoff">copyAnnot f at = (\(Ann i a) -&gt; Ann i (f (Ann i a))) &lt;$&gt; at</span></span>
+<span class="lineno">  416 </span>
+<span class="lineno">  417 </span>-- | Combine source spans into one that contains them all
+<span class="lineno">  418 </span>foldLocs :: [SrcSpan] -&gt; SrcSpan
+<span class="lineno">  419 </span><span class="decl"><span class="istickedoff">foldLocs = foldl combineSrcSpans noSrcSpan</span></span>
+<span class="lineno">  420 </span>
+<span class="lineno">  421 </span>-- | The location after the given string
+<span class="lineno">  422 </span>advanceStr :: String -&gt; SrcLoc -&gt; SrcLoc
+<span class="lineno">  423 </span><span class="decl"><span class="istickedoff">advanceStr str (RealSrcLoc l) = RealSrcLoc $ foldl advanceSrcLoc l str</span>
+<span class="lineno">  424 </span><span class="spaces"></span><span class="istickedoff">advanceStr _ l = <span class="nottickedoff">l</span></span></span>
+<span class="lineno">  425 </span>
+<span class="lineno">  426 </span>-- | Update column information in a source location
+<span class="lineno">  427 </span>updateCol :: (Int -&gt; Int) -&gt; SrcLoc -&gt; SrcLoc
+<span class="lineno">  428 </span><span class="decl"><span class="istickedoff">updateCol _ loc@(UnhelpfulLoc _) = <span class="nottickedoff">loc</span></span>
+<span class="lineno">  429 </span><span class="spaces"></span><span class="istickedoff">updateCol f (RealSrcLoc loc) = mkSrcLoc (srcLocFile loc) (srcLocLine loc) (f $ srcLocCol loc)</span></span>
+<span class="lineno">  430 </span>
+<span class="lineno">  431 </span>-- | Update the start of the src span
+<span class="lineno">  432 </span>updateStart :: (SrcLoc -&gt; SrcLoc) -&gt; SrcSpan -&gt; SrcSpan
+<span class="lineno">  433 </span><span class="decl"><span class="istickedoff">updateStart f sp = mkSrcSpan (f (srcSpanStart sp)) (srcSpanEnd sp)</span></span>
+<span class="lineno">  434 </span>
+<span class="lineno">  435 </span>-- | Update the end of the src span
+<span class="lineno">  436 </span>updateEnd :: (SrcLoc -&gt; SrcLoc) -&gt; SrcSpan -&gt; SrcSpan
+<span class="lineno">  437 </span><span class="decl"><span class="istickedoff">updateEnd f sp = mkSrcSpan (srcSpanStart sp) (f (srcSpanEnd sp))</span></span>
+<span class="lineno">  438 </span>
+<span class="lineno">  439 </span>-- | Combine source spans of elements into one that contains them all
+<span class="lineno">  440 </span>collectLocs :: [Located e] -&gt; SrcSpan
+<span class="lineno">  441 </span><span class="decl"><span class="istickedoff">collectLocs = foldLocs . map getLoc</span></span>
+<span class="lineno">  442 </span>
+<span class="lineno">  443 </span>-- | Rearrange definitions to appear in the order they are defined in the source file.
+<span class="lineno">  444 </span>orderDefs :: [Ann e (Dom n) RangeStage] -&gt; [Ann e (Dom n) RangeStage]
+<span class="lineno">  445 </span><span class="decl"><span class="istickedoff">orderDefs = sortBy (compare `on` srcSpanStart . (^. AST.annotation &amp; AST.sourceInfo &amp; AST.nodeSpan))</span></span>
+<span class="lineno">  446 </span>
+<span class="lineno">  447 </span>-- | Orders a list of elements to the order they are defined in the source file.
+<span class="lineno">  448 </span>orderAnnList :: AnnListG e (Dom n) RangeStage -&gt; AnnListG e (Dom n) RangeStage
+<span class="lineno">  449 </span><span class="decl"><span class="istickedoff">orderAnnList (AnnListG a ls) = AnnListG a (orderDefs ls)</span></span>
+<span class="lineno">  450 </span>
+<span class="lineno">  451 </span>-- | Only keeps one of the elements that are on the same source location
+<span class="lineno">  452 </span>removeDuplicates :: [Located e] -&gt; [Located e]
+<span class="lineno">  453 </span><span class="decl"><span class="istickedoff">removeDuplicates (fst:rest) = fst : removeDuplicates (filter ((/= getLoc fst) . getLoc) rest)</span>
+<span class="lineno">  454 </span><span class="spaces"></span><span class="istickedoff">removeDuplicates [] = []</span></span>
+<span class="lineno">  455 </span>
+<span class="lineno">  456 </span>-- | Orders a list of elements to the order they are defined in the source file.
+<span class="lineno">  457 </span>orderLocated :: [Located e] -&gt; [Located e]
+<span class="lineno">  458 </span><span class="decl"><span class="istickedoff">orderLocated = sortBy (compare `on` getLoc)</span></span>
+<span class="lineno">  459 </span>
+<span class="lineno">  460 </span>-- | Transform a list of definitions where the defined names are in scope for subsequent definitions
+<span class="lineno">  461 </span>trfScopedSequence :: HsHasName d =&gt; (d -&gt; Trf e) -&gt; [d] -&gt; Trf [e]
+<span class="lineno">  462 </span><span class="decl"><span class="istickedoff">trfScopedSequence f (def:rest) = (:) &lt;$&gt; f def &lt;*&gt; addToScope def (trfScopedSequence f rest)</span>
+<span class="lineno">  463 </span><span class="spaces"></span><span class="istickedoff">trfScopedSequence _ [] = pure []</span></span>
+<span class="lineno">  464 </span>
+<span class="lineno">  465 </span>-- | Splits a given string at whitespaces while calculating the source location of the fragments
+<span class="lineno">  466 </span>splitLocated :: Located String -&gt; [Located String]
+<span class="lineno">  467 </span><span class="decl"><span class="istickedoff">splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) Nothing</span>
+<span class="lineno">  468 </span><span class="spaces">  </span><span class="istickedoff">where splitLocated' :: String -&gt; RealSrcLoc -&gt; Maybe (RealSrcLoc, String) -&gt; [Located String]</span>
+<span class="lineno">  469 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc (Just (startLoc, str)) | isSpace c</span>
+<span class="lineno">  470 </span><span class="spaces">          </span><span class="istickedoff">= L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str) : splitLocated' rest (advanceSrcLoc currLoc c) Nothing</span>
+<span class="lineno">  471 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc Nothing | isSpace c = splitLocated' rest (advanceSrcLoc currLoc c) Nothing</span>
+<span class="lineno">  472 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc (Just (startLoc, str)) = splitLocated' rest (advanceSrcLoc currLoc c) (Just (startLoc, c:str))</span>
+<span class="lineno">  473 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc Nothing = splitLocated' rest (advanceSrcLoc currLoc c) (Just (currLoc, [c]))</span>
+<span class="lineno">  474 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' [] currLoc (Just (startLoc, str)) = [L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str)]</span>
+<span class="lineno">  475 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' [] _ Nothing = <span class="nottickedoff">[]</span></span>
+<span class="lineno">  476 </span><span class="spaces"></span><span class="istickedoff">splitLocated _ = <span class="nottickedoff">convProblem &quot;splitLocated: unhelpful span given&quot;</span></span></span>
+<span class="lineno">  477 </span>
+<span class="lineno">  478 </span>compareSpans :: SrcSpan -&gt; SrcSpan -&gt; Ordering
+<span class="lineno">  479 </span><span class="decl"><span class="nottickedoff">compareSpans (RealSrcSpan a) (RealSrcSpan b)</span>
+<span class="lineno">  480 </span><span class="spaces">  </span><span class="nottickedoff">| a `containsSpan` b = GT</span>
+<span class="lineno">  481 </span><span class="spaces">  </span><span class="nottickedoff">| b `containsSpan` a = LT</span>
+<span class="lineno">  482 </span><span class="spaces"></span><span class="nottickedoff">compareSpans _ _ = EQ</span></span>
+<span class="lineno">  483 </span>
+<span class="lineno">  484 </span>-- | Report errors when cannot convert a type of element
+<span class="lineno">  485 </span>unhandledElement :: (Data a, Outputable a) =&gt; String -&gt; a -&gt; Trf b
+<span class="lineno">  486 </span><span class="decl"><span class="nottickedoff">unhandledElement label e = convertionProblem (&quot;Illegal &quot; ++ label ++ &quot;: &quot; ++ showSDocUnsafe (ppr e) ++ &quot; (ctor: &quot; ++ show (toConstr e) ++ &quot;)&quot;)</span></span>
+<span class="lineno">  487 </span>
+<span class="lineno">  488 </span>unhandledElementNoPpr :: (Data a) =&gt; String -&gt; a -&gt; Trf b
+<span class="lineno">  489 </span><span class="decl"><span class="nottickedoff">unhandledElementNoPpr label e = convertionProblem (&quot;Illegal &quot; ++ label ++ &quot;: (ctor: &quot; ++ show (toConstr e) ++ &quot;)&quot;)</span></span>
 <span class="lineno">  490 </span>
-<span class="lineno">  491 </span>-- | Report errors when cannot convert a type of element
-<span class="lineno">  492 </span>unhandledElement :: (Data a, Outputable a) =&gt; String -&gt; a -&gt; Trf b
-<span class="lineno">  493 </span><span class="decl"><span class="nottickedoff">unhandledElement label e = convertionProblem (&quot;Illegal &quot; ++ label ++ &quot;: &quot; ++ showSDocUnsafe (ppr e) ++ &quot; (ctor: &quot; ++ show (toConstr e) ++ &quot;)&quot;)</span></span>
-<span class="lineno">  494 </span>
-<span class="lineno">  495 </span>unhandledElementNoPpr :: (Data a) =&gt; String -&gt; a -&gt; Trf b
-<span class="lineno">  496 </span><span class="decl"><span class="nottickedoff">unhandledElementNoPpr label e = convertionProblem (&quot;Illegal &quot; ++ label ++ &quot;: (ctor: &quot; ++ show (toConstr e) ++ &quot;)&quot;)</span></span>
-<span class="lineno">  497 </span>
-<span class="lineno">  498 </span>
-<span class="lineno">  499 </span>instance Monoid SrcSpan where
-<span class="lineno">  500 </span>  <span class="decl"><span class="istickedoff">span1@(RealSrcSpan _) `mappend` _ = span1</span>
-<span class="lineno">  501 </span><span class="spaces">  </span><span class="istickedoff">_ `mappend` span2 = <span class="nottickedoff">span2</span></span></span>
-<span class="lineno">  502 </span>  <span class="decl"><span class="nottickedoff">mempty = noSrcSpan</span></span>
-<span class="lineno">  503 </span>
-<span class="lineno">  504 </span>data ConvertionProblem = ConvertionProblem SrcSpan String
-<span class="lineno">  505 </span>                       | UnrootedConvertionProblem String
-<span class="lineno">  506 </span>  deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>
-<span class="lineno">  507 </span>
-<span class="lineno">  508 </span>instance Exception ConvertionProblem
-<span class="lineno">  509 </span>
-<span class="lineno">  510 </span>convertionProblem :: String -&gt; Trf a
-<span class="lineno">  511 </span><span class="decl"><span class="nottickedoff">convertionProblem msg = do rng &lt;- asks contRange</span>
-<span class="lineno">  512 </span><span class="spaces">                           </span><span class="nottickedoff">throw $ ConvertionProblem rng msg</span></span>
-<span class="lineno">  513 </span>
-<span class="lineno">  514 </span>convProblem :: String -&gt; a
-<span class="lineno">  515 </span><span class="decl"><span class="nottickedoff">convProblem = throw . UnrootedConvertionProblem</span></span>
+<span class="lineno">  491 </span>
+<span class="lineno">  492 </span>instance Monoid SrcSpan where
+<span class="lineno">  493 </span>  <span class="decl"><span class="istickedoff">span1@(RealSrcSpan _) `mappend` _ = span1</span>
+<span class="lineno">  494 </span><span class="spaces">  </span><span class="istickedoff">_ `mappend` span2 = <span class="nottickedoff">span2</span></span></span>
+<span class="lineno">  495 </span>  <span class="decl"><span class="nottickedoff">mempty = noSrcSpan</span></span>
+<span class="lineno">  496 </span>
+<span class="lineno">  497 </span>data ConvertionProblem = ConvertionProblem SrcSpan String
+<span class="lineno">  498 </span>                       | UnrootedConvertionProblem String
+<span class="lineno">  499 </span>  deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>
+<span class="lineno">  500 </span>
+<span class="lineno">  501 </span>instance Exception ConvertionProblem
+<span class="lineno">  502 </span>
+<span class="lineno">  503 </span>convertionProblem :: String -&gt; Trf a
+<span class="lineno">  504 </span><span class="decl"><span class="nottickedoff">convertionProblem msg = do rng &lt;- asks contRange</span>
+<span class="lineno">  505 </span><span class="spaces">                           </span><span class="nottickedoff">throw $ ConvertionProblem rng msg</span></span>
+<span class="lineno">  506 </span>
+<span class="lineno">  507 </span>convProblem :: String -&gt; a
+<span class="lineno">  508 </span><span class="decl"><span class="nottickedoff">convProblem = throw . UnrootedConvertionProblem</span></span>
 
 </pre>
 </body>
