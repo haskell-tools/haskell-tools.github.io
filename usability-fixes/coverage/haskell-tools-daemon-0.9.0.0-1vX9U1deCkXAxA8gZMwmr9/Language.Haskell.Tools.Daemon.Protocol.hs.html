@@ -1,0 +1,139 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE DeriveGeneric
+<span class="lineno">    2 </span>           , OverloadedStrings
+<span class="lineno">    3 </span>           , DeriveAnyClass
+<span class="lineno">    4 </span>           #-}
+<span class="lineno">    5 </span>-- | This module declares the messages that can be sent from the client to the
+<span class="lineno">    6 </span>-- daemon engine and from the engine to the client.
+<span class="lineno">    7 </span>module Language.Haskell.Tools.Daemon.Protocol where
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>import Control.DeepSeq (NFData)
+<span class="lineno">   10 </span>import qualified Data.Aeson as A ((.=))
+<span class="lineno">   11 </span>import Data.Aeson hiding ((.=))
+<span class="lineno">   12 </span>import GHC.Generics (Generic)
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>import FastString (unpackFS)
+<span class="lineno">   15 </span>import SrcLoc
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>import Language.Haskell.Tools.Daemon.PackageDB (PackageDB)
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>-- | The messages expected from the client.
+<span class="lineno">   20 </span>data ClientMessage
+<span class="lineno">   21 </span>  = KeepAlive -- ^ A simple ping message to check that the server is running.
+<span class="lineno">   22 </span>  | Reset
+<span class="lineno">   23 </span>  | Handshake { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">clientVersion</span></span></span> :: [Int] }
+<span class="lineno">   24 </span>    -- ^ Tells the client version and asks the servers version.
+<span class="lineno">   25 </span>  | SetPackageDB { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">pkgDB</span></span></span> :: PackageDB }
+<span class="lineno">   26 </span>    -- ^ Sets the package database for the engine to use.
+<span class="lineno">   27 </span>  | AddPackages { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">addedPathes</span></span></span> :: [FilePath] }
+<span class="lineno">   28 </span>    -- ^ Registers packages to the engine. They will be subject to subsequent
+<span class="lineno">   29 </span>    -- refactorings. Will cause the packages to be loaded, resulting in
+<span class="lineno">   30 </span>    -- LoadingModules, LoadedModules or CompilationProblem responses.
+<span class="lineno">   31 </span>  | RemovePackages { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">removedPathes</span></span></span> :: [FilePath] }
+<span class="lineno">   32 </span>    -- ^ Deregisters the given packages from the engine. They will not be
+<span class="lineno">   33 </span>    -- subjects of further refactorings.
+<span class="lineno">   34 </span>  | SetWorkingDir { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">newWorkingDir</span></span></span> :: FilePath }
+<span class="lineno">   35 </span>    -- ^ Sets the working directory for the compilation. Important when
+<span class="lineno">   36 </span>    -- compiling code that loads resources based on relative pathes.
+<span class="lineno">   37 </span>  | SetGHCFlags { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">ghcFlags</span></span></span> :: [String] }
+<span class="lineno">   38 </span>    -- ^ Sets the compilation flags. The unused flags are returned via the
+<span class="lineno">   39 </span>    -- UnusedFlags response.
+<span class="lineno">   40 </span>  | PerformRefactoring { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">refactoring</span></span></span> :: String
+<span class="lineno">   41 </span>                       , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">modulePath</span></span></span> :: FilePath
+<span class="lineno">   42 </span>                       , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">editorSelection</span></span></span> :: String
+<span class="lineno">   43 </span>                       , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">details</span></span></span> :: [String] -- ^ Additional details for the refactoring like the
+<span class="lineno">   44 </span>                                             -- names of generated definitions.
+<span class="lineno">   45 </span>                       , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">shutdownAfter</span></span></span> :: Bool -- ^ Stop the daemon after performing the refactoring.
+<span class="lineno">   46 </span>                       , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">diffMode</span></span></span> :: Bool -- ^ Don't change the files, send back the result as
+<span class="lineno">   47 </span>                                          -- a unified diff.
+<span class="lineno">   48 </span>                       }
+<span class="lineno">   49 </span>    -- ^ Orders the engine to perform the refactoring on the module given
+<span class="lineno">   50 </span>    -- with the selection and details. Successful refactorings will cause re-loading of modules.
+<span class="lineno">   51 </span>    -- If 'shutdownAfter' or 'diffMode' is not set, after the refactoring,
+<span class="lineno">   52 </span>    -- modules are re-loaded, LoadingModules, LoadedModules responses are sent.
+<span class="lineno">   53 </span>  | UndoLast
+<span class="lineno">   54 </span>    -- ^ Asks the daemon to undo the last refactoring.
+<span class="lineno">   55 </span>  | Disconnect
+<span class="lineno">   56 </span>    -- ^ Stops the engine. It replies with Disconnected.
+<span class="lineno">   57 </span>  | ReLoad { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">addedModules</span></span></span> :: [FilePath]
+<span class="lineno">   58 </span>           , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">changedModules</span></span></span> :: [FilePath]
+<span class="lineno">   59 </span>           , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">removedModules</span></span></span> :: [FilePath]
+<span class="lineno">   60 </span>           }
+<span class="lineno">   61 </span>    -- ^ Instructs the engine to re-load a changed module.
+<span class="lineno">   62 </span>    -- LoadingModules, LoadedModules responses may be sent.
+<span class="lineno">   63 </span>  | Stop -- TODO: remove
+<span class="lineno">   64 </span>    -- ^ Stops the server. OBSOLATE
+<span class="lineno">   65 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>, Generic)
+<span class="lineno">   66 </span>
+<span class="lineno">   67 </span>instance FromJSON ClientMessage
+<span class="lineno">   68 </span>
+<span class="lineno">   69 </span>-- | The possible responses that the server can give.
+<span class="lineno">   70 </span>data ResponseMsg
+<span class="lineno">   71 </span>  = KeepAliveResponse -- ^ A response to KeepAlive
+<span class="lineno">   72 </span>  | HandshakeResponse { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">serverVersion</span></span></span> :: [Int] }
+<span class="lineno">   73 </span>    -- ^ Tells the version of the server.
+<span class="lineno">   74 </span>  | ErrorMessage { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">errorMsg</span></span></span> :: String }
+<span class="lineno">   75 </span>    -- ^ An error message marking internal problems or user mistakes.
+<span class="lineno">   76 </span>    -- TODO: separate internal problems and user mistakes.
+<span class="lineno">   77 </span>  | CompilationProblem { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">errorMarkers</span></span></span> :: [(SrcSpan, String)]
+<span class="lineno">   78 </span>                       , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">errorHints</span></span></span> :: [String]
+<span class="lineno">   79 </span>                       }
+<span class="lineno">   80 </span>    -- ^ A response that tells there are errors in the source code given.
+<span class="lineno">   81 </span>  | DiffInfo { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">diffInfo</span></span></span> :: String }
+<span class="lineno">   82 </span>    -- ^ Information about changes that would be caused by the refactoring.
+<span class="lineno">   83 </span>  | LoadingModules { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">modulesToLoad</span></span></span> :: [FilePath] }
+<span class="lineno">   84 </span>    -- ^ The traversal of the project is done, now the engine is loading the
+<span class="lineno">   85 </span>    -- given modules.
+<span class="lineno">   86 </span>  | LoadedModules { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">loadedModules</span></span></span> :: [(FilePath, String)] }
+<span class="lineno">   87 </span>    -- ^ The engine has loaded the given module.
+<span class="lineno">   88 </span>  | UnusedFlags { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">unusedFlags</span></span></span> :: [String] }
+<span class="lineno">   89 </span>    -- ^ Returns the flags that are not used by the engine.
+<span class="lineno">   90 </span>  | Disconnected
+<span class="lineno">   91 </span>    -- ^ The engine has closed the connection.
+<span class="lineno">   92 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>, Generic)
+<span class="lineno">   93 </span>
+<span class="lineno">   94 </span>instance ToJSON ResponseMsg
+<span class="lineno">   95 </span>
+<span class="lineno">   96 </span>instance ToJSON SrcSpan where
+<span class="lineno">   97 </span>  <span class="decl"><span class="istickedoff">toJSON (RealSrcSpan sp) = object [ &quot;file&quot; A..= unpackFS (srcSpanFile sp)</span>
+<span class="lineno">   98 </span><span class="spaces">                                   </span><span class="istickedoff">, &quot;startRow&quot; A..= srcLocLine (realSrcSpanStart sp)</span>
+<span class="lineno">   99 </span><span class="spaces">                                   </span><span class="istickedoff">, &quot;startCol&quot; A..= srcLocCol (realSrcSpanStart sp)</span>
+<span class="lineno">  100 </span><span class="spaces">                                   </span><span class="istickedoff">, &quot;endRow&quot; A..= srcLocLine (realSrcSpanEnd sp)</span>
+<span class="lineno">  101 </span><span class="spaces">                                   </span><span class="istickedoff">, &quot;endCol&quot; A..= srcLocCol (realSrcSpanEnd sp)</span>
+<span class="lineno">  102 </span><span class="spaces">                                   </span><span class="istickedoff">]</span>
+<span class="lineno">  103 </span><span class="spaces">  </span><span class="istickedoff">toJSON _ = <span class="nottickedoff">Null</span></span></span>
+<span class="lineno">  104 </span>
+<span class="lineno">  105 </span>data UndoRefactor = RemoveAdded { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">undoRemovePath</span></span></span> :: FilePath }
+<span class="lineno">  106 </span>                  | RestoreRemoved { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">undoRestorePath</span></span></span> :: FilePath
+<span class="lineno">  107 </span>                                   , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">undoRestoreContents</span></span></span> :: String
+<span class="lineno">  108 </span>                                   }
+<span class="lineno">  109 </span>                  | UndoChanges { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">undoChangedPath</span></span></span> :: FilePath
+<span class="lineno">  110 </span>                                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">undoDiff</span></span></span> :: FileDiff
+<span class="lineno">  111 </span>                                }
+<span class="lineno">  112 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>, Generic, NFData)
+<span class="lineno">  113 </span>
+<span class="lineno">  114 </span>instance ToJSON UndoRefactor
+<span class="lineno">  115 </span>
+<span class="lineno">  116 </span>type FileDiff = [(Int, Int, String)]
+
+</pre>
+</body>
+</html>

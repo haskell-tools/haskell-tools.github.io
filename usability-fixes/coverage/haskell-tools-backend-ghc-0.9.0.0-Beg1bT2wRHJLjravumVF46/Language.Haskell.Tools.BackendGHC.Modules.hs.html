@@ -1,0 +1,237 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE LambdaCase
+<span class="lineno">    2 </span>           , ViewPatterns
+<span class="lineno">    3 </span>           , FlexibleContexts
+<span class="lineno">    4 </span>           , ScopedTypeVariables
+<span class="lineno">    5 </span>           , TypeApplications
+<span class="lineno">    6 </span>           , TupleSections
+<span class="lineno">    7 </span>           , TypeFamilies
+<span class="lineno">    8 </span>           , BangPatterns
+<span class="lineno">    9 </span>           #-}
+<span class="lineno">   10 </span>-- | Functions that convert the module-related elements (modules, imports, exports) of the GHC AST to corresponding elements in the Haskell-tools AST representation
+<span class="lineno">   11 </span>-- Also contains the entry point of the transformation that collects the information from different GHC AST representations.
+<span class="lineno">   12 </span>module Language.Haskell.Tools.BackendGHC.Modules where
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>import Control.Monad.Reader
+<span class="lineno">   15 </span>import Control.Reference hiding (element)
+<span class="lineno">   16 </span>import Data.Generics.Uniplate.Data ()
+<span class="lineno">   17 </span>import Data.List as List
+<span class="lineno">   18 </span>import Data.Map as Map (fromList, lookup)
+<span class="lineno">   19 </span>import Data.Maybe
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>import BasicTypes as GHC (WarningTxt(..), StringLiteral(..))
+<span class="lineno">   22 </span>import FastString as GHC (unpackFS)
+<span class="lineno">   23 </span>import FieldLabel as GHC (FieldLbl(..))
+<span class="lineno">   24 </span>import GHC
+<span class="lineno">   25 </span>import SrcLoc as GHC
+<span class="lineno">   26 </span>import TcRnMonad as GHC (Applicative(..), (&lt;$&gt;))
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG, AnnListG(..), Dom, RangeStage
+<span class="lineno">   29 </span>                                  , sourceInfo, semantics, annotation, nodeSpan)
+<span class="lineno">   30 </span>import qualified Language.Haskell.Tools.AST as AST
+<span class="lineno">   31 </span>import Language.Haskell.Tools.AST.SemaInfoTypes as AST (nameInfo, implicitNames, importedNames)
+<span class="lineno">   32 </span>import Language.Haskell.Tools.BackendGHC.Decls (trfDecls, trfDeclsGroup)
+<span class="lineno">   33 </span>import Language.Haskell.Tools.BackendGHC.Exprs (trfText')
+<span class="lineno">   34 </span>import Language.Haskell.Tools.BackendGHC.Monad
+<span class="lineno">   35 </span>import Language.Haskell.Tools.BackendGHC.Names (TransformName, trfName)
+<span class="lineno">   36 </span>import Language.Haskell.Tools.BackendGHC.Utils
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>trfModule :: ModSummary -&gt; Located (HsModule RdrName) -&gt; Trf (Ann AST.UModule (Dom RdrName) RangeStage)
+<span class="lineno">   39 </span><span class="decl"><span class="istickedoff">trfModule mod hsMod = do !modInfo &lt;- createModuleInfo mod (maybe <span class="nottickedoff">noSrcSpan</span> getLoc $ hsmodName $ unLoc hsMod) (hsmodImports $ unLoc hsMod)</span>
+<span class="lineno">   40 </span><span class="spaces">                         </span><span class="istickedoff">trfLocCorrect (pure <span class="nottickedoff">modInfo</span>)</span>
+<span class="lineno">   41 </span><span class="spaces">                            </span><span class="istickedoff">(\sr -&gt; combineSrcSpans sr &lt;$&gt; (uniqueTokenAnywhere AnnEofPos))</span>
+<span class="lineno">   42 </span><span class="spaces">                            </span><span class="istickedoff">(\(HsModule name exports imports decls deprec _) -&gt;</span>
+<span class="lineno">   43 </span><span class="spaces">                               </span><span class="istickedoff">AST.UModule &lt;$&gt; trfFilePragmas</span>
+<span class="lineno">   44 </span><span class="spaces">                                           </span><span class="istickedoff">&lt;*&gt; trfModuleHead name <span class="nottickedoff">(srcSpanStart (foldLocs (map getLoc imports ++ map getLoc decls)))</span> exports deprec</span>
+<span class="lineno">   45 </span><span class="spaces">                                           </span><span class="istickedoff">&lt;*&gt; trfImports imports</span>
+<span class="lineno">   46 </span><span class="spaces">                                           </span><span class="istickedoff">&lt;*&gt; trfDecls decls) $ hsMod</span></span>
+<span class="lineno">   47 </span>
+<span class="lineno">   48 </span>trfModuleRename :: ModSummary -&gt; Ann AST.UModule (Dom RdrName) RangeStage
+<span class="lineno">   49 </span>                              -&gt; (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
+<span class="lineno">   50 </span>                              -&gt; Located (HsModule RdrName)
+<span class="lineno">   51 </span>                              -&gt; Trf (Ann AST.UModule (Dom GHC.Name) RangeStage)
+<span class="lineno">   52 </span><span class="decl"><span class="istickedoff">trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod</span>
+<span class="lineno">   53 </span><span class="spaces">    </span><span class="istickedoff">= do !info &lt;- createModuleInfo mod (maybe <span class="nottickedoff">noSrcSpan</span> getLoc $ hsmodName $ unLoc hsMod) imports</span>
+<span class="lineno">   54 </span><span class="spaces">         </span><span class="istickedoff">trfLocCorrect (pure info) (\sr -&gt; combineSrcSpans sr &lt;$&gt; (uniqueTokenAnywhere AnnEofPos)) (trfModuleRename' (info ^. implicitNames)) hsMod</span>
+<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">where roleAnnots = rangeMod ^? AST.modDecl&amp;AST.annList&amp;filtered ((\case Ann _ (AST.URoleDecl {}) -&gt; True; _ -&gt; False))</span>
+<span class="lineno">   56 </span><span class="spaces">        </span><span class="istickedoff">originalNames = Map.fromList $ catMaybes $ map getSourceAndInfo (rangeMod ^? biplateRef)</span>
+<span class="lineno">   57 </span><span class="spaces">        </span><span class="istickedoff">getSourceAndInfo :: Ann AST.UQualifiedName (Dom RdrName) RangeStage -&gt; Maybe (SrcSpan, RdrName)</span>
+<span class="lineno">   58 </span><span class="spaces">        </span><span class="istickedoff">getSourceAndInfo n = (,) &lt;$&gt; (n ^? annotation&amp;sourceInfo&amp;nodeSpan) &lt;*&gt; (n ^? semantics&amp;nameInfo)</span>
+<span class="lineno">   59 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   60 </span><span class="spaces">        </span><span class="istickedoff">exportDecls = rangeMod ^? AST.modHead &amp; AST.annJust &amp; AST.mhExports &amp; AST.annJust &amp; AST.espExports &amp; AST.annList</span>
+<span class="lineno">   61 </span><span class="spaces">        </span><span class="istickedoff">exportSubspecs = map (\e -&gt; e ^? AST.exportDecl &amp; AST.ieSubspec &amp; AST.annJust &amp; AST.essList &amp; AST.annList) exportDecls</span>
+<span class="lineno">   62 </span><span class="spaces">        </span><span class="istickedoff">exportSubspecsRngs = map (map AST.getRange) exportSubspecs</span>
+<span class="lineno">   63 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   64 </span><span class="spaces">        </span><span class="istickedoff">replaceSubspecLocs :: [LIE Name] -&gt; [LIE Name]</span>
+<span class="lineno">   65 </span><span class="spaces">        </span><span class="istickedoff">replaceSubspecLocs exps = zipWith (\ss ie -&gt; case ie of (L l (IEThingWith n wc ls flds)) -&gt; L l (IEThingWith n <span class="nottickedoff">wc</span> (replaceNames ss ls) (replaceFieldNames (drop (length ls) ss) flds))</span>
+<span class="lineno">   66 </span><span class="spaces">                                                                </span><span class="istickedoff">_ -&gt; ie) exportSubspecsRngs exps</span>
+<span class="lineno">   67 </span><span class="spaces">          </span><span class="istickedoff">where replaceNames ss ls = zipWith (\(L _ iew) l -&gt; case iew of IEName (L _ n) -&gt; L <span class="nottickedoff">l</span> (IEName (L l n))</span>
+<span class="lineno">   68 </span><span class="spaces">                                                                          </span><span class="istickedoff">_              -&gt; <span class="nottickedoff">L l iew</span>) ls ss</span>
+<span class="lineno">   69 </span><span class="spaces">                </span><span class="istickedoff">replaceFieldNames ss ls = zipWith (\(L _ iew) l -&gt; L l iew) ls ss</span>
+<span class="lineno">   70 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   71 </span><span class="spaces">        </span><span class="istickedoff">trfModuleRename' preludeImports hsMod@(HsModule name exports _ _ deprec _) = do</span>
+<span class="lineno">   72 </span><span class="spaces">          </span><span class="istickedoff">transformedImports &lt;- orderAnnList &lt;$&gt; (trfImports imports)</span>
+<span class="lineno">   73 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   74 </span><span class="spaces">          </span><span class="istickedoff">let importNames impd = ( impd ^. AST.importModule &amp; AST.moduleNameString</span>
+<span class="lineno">   75 </span><span class="spaces">                                 </span><span class="istickedoff">, impd ^? AST.importAs &amp; AST.annJust &amp; AST.importRename &amp; AST.moduleNameString</span>
+<span class="lineno">   76 </span><span class="spaces">                                 </span><span class="istickedoff">, AST.isAnnJust (impd ^. AST.importQualified)</span>
+<span class="lineno">   77 </span><span class="spaces">                                 </span><span class="istickedoff">, impd ^. semantics&amp;importedNames )</span>
+<span class="lineno">   78 </span><span class="spaces">              </span><span class="istickedoff">-- if there is a qualified form of the import Prelude, the names should be empty</span>
+<span class="lineno">   79 </span><span class="spaces">              </span><span class="istickedoff">importPrelude names = ( &quot;Prelude&quot;, Nothing, False, names)</span>
+<span class="lineno">   80 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   81 </span><span class="spaces">          </span><span class="istickedoff">addToScopeImported (map importNames (transformedImports ^? AST.annList) ++ [importPrelude preludeImports])</span>
+<span class="lineno">   82 </span><span class="spaces">            </span><span class="istickedoff">$ loadSplices hsMod</span>
+<span class="lineno">   83 </span><span class="spaces">            </span><span class="istickedoff">$ setOriginalNames originalNames . setDeclsToInsert roleAnnots</span>
+<span class="lineno">   84 </span><span class="spaces">            </span><span class="istickedoff">$ do filePrags &lt;- trfFilePragmas</span>
+<span class="lineno">   85 </span><span class="spaces">                 </span><span class="istickedoff">AST.UModule filePrags</span>
+<span class="lineno">   86 </span><span class="spaces">                  </span><span class="istickedoff">&lt;$&gt; trfModuleHead name</span>
+<span class="lineno">   87 </span><span class="spaces">                       </span><span class="istickedoff"><span class="nottickedoff">(srcSpanEnd (AST.getRange filePrags))</span></span>
+<span class="lineno">   88 </span><span class="spaces">                       </span><span class="istickedoff">(case (exports, exps) of (Just (L l _), Just ie) -&gt; Just (L l (replaceSubspecLocs (orderLocated ie)))</span>
+<span class="lineno">   89 </span><span class="spaces">                                                </span><span class="istickedoff">_                       -&gt; Nothing)</span>
+<span class="lineno">   90 </span><span class="spaces">                       </span><span class="istickedoff">deprec</span>
+<span class="lineno">   91 </span><span class="spaces">                  </span><span class="istickedoff">&lt;*&gt; return transformedImports</span>
+<span class="lineno">   92 </span><span class="spaces">                  </span><span class="istickedoff">&lt;*&gt; trfDeclsGroup gr</span></span>
+<span class="lineno">   93 </span>
+<span class="lineno">   94 </span>loadSplices :: HsModule RdrName -&gt; Trf a -&gt; Trf a
+<span class="lineno">   95 </span><span class="decl"><span class="istickedoff">loadSplices hsMod trf = do</span>
+<span class="lineno">   96 </span><span class="spaces">    </span><span class="istickedoff">let declSpls = map (\(SpliceDecl sp _) -&gt; sp) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]</span>
+<span class="lineno">   97 </span><span class="spaces">        </span><span class="istickedoff">exprSpls = catMaybes $ map (\case L l (HsSpliceE sp) -&gt; Just (L l sp); _ -&gt; Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]</span>
+<span class="lineno">   98 </span><span class="spaces">        </span><span class="istickedoff">typeSpls = catMaybes $ map (\case L l (HsSpliceTy sp _) -&gt; Just (L l sp); _ -&gt; Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]</span>
+<span class="lineno">   99 </span><span class="spaces">    </span><span class="istickedoff">setSplices declSpls typeSpls exprSpls trf</span></span>
+<span class="lineno">  100 </span>
+<span class="lineno">  101 </span>trfModuleHead :: TransformName n r =&gt; Maybe (Located ModuleName) -&gt; SrcLoc -&gt; Maybe (Located [LIE n]) -&gt; Maybe (Located WarningTxt) -&gt; Trf (AnnMaybeG AST.UModuleHead (Dom r) RangeStage)
+<span class="lineno">  102 </span><span class="decl"><span class="istickedoff">trfModuleHead (Just mn) _ exports modPrag</span>
+<span class="lineno">  103 </span><span class="spaces">  </span><span class="istickedoff">= makeJust &lt;$&gt; (annLocNoSema (tokensLoc [AnnModule, AnnWhere])</span>
+<span class="lineno">  104 </span><span class="spaces">                               </span><span class="istickedoff">(AST.UModuleHead &lt;$&gt; trfModuleName mn</span>
+<span class="lineno">  105 </span><span class="spaces">                                                </span><span class="istickedoff">&lt;*&gt; trfModulePragma (srcSpanEnd $ getLoc mn) modPrag</span>
+<span class="lineno">  106 </span><span class="spaces">                                                </span><span class="istickedoff">&lt;*&gt; trfExportList (before AnnWhere) exports))</span>
+<span class="lineno">  107 </span><span class="spaces"></span><span class="istickedoff">trfModuleHead _ rng Nothing _ = <span class="nottickedoff">nothing &quot;&quot; &quot;&quot; (pure rng)</span></span>
+<span class="lineno">  108 </span><span class="spaces"></span><span class="istickedoff">trfModuleHead Nothing _ (Just _) _ = <span class="nottickedoff">convertionProblem &quot;trfModuleHead: no head but has exports&quot;</span></span></span>
+<span class="lineno">  109 </span>
+<span class="lineno">  110 </span>trfFilePragmas :: Trf (AnnListG AST.UFilePragma (Dom r) RangeStage)
+<span class="lineno">  111 </span><span class="decl"><span class="istickedoff">trfFilePragmas = do pragmas &lt;- asks pragmaComms</span>
+<span class="lineno">  112 </span><span class="spaces">                    </span><span class="istickedoff">languagePragmas &lt;- mapM trfLanguagePragma (fromMaybe [] $ (Map.lookup &quot;LANGUAGE&quot;) pragmas)</span>
+<span class="lineno">  113 </span><span class="spaces">                    </span><span class="istickedoff">optionsPragmas &lt;- mapM trfOptionsPragma (fromMaybe [] $ (Map.lookup &quot;OPTIONS_GHC&quot;) pragmas)</span>
+<span class="lineno">  114 </span><span class="spaces">                    </span><span class="istickedoff">makeList <span class="nottickedoff">&quot;&quot;</span> atTheStart $ pure $ orderDefs $ languagePragmas ++ optionsPragmas</span></span>
+<span class="lineno">  115 </span>
+<span class="lineno">  116 </span>trfLanguagePragma :: Located String -&gt; Trf (Ann AST.UFilePragma (Dom r) RangeStage)
+<span class="lineno">  117 </span><span class="decl"><span class="istickedoff">trfLanguagePragma lstr@(L l _) = annLocNoSema (pure l) (AST.ULanguagePragma &lt;$&gt; makeList <span class="nottickedoff">&quot;, &quot;</span> (pure $ srcSpanStart $ getLoc $ last pragmaElems)</span>
+<span class="lineno">  118 </span><span class="spaces">                                                                                              </span><span class="istickedoff">(mapM (trfLocNoSema (pure . AST.ULanguageExtension)) extensions))</span>
+<span class="lineno">  119 </span><span class="spaces">  </span><span class="istickedoff">where pragmaElems = splitLocated lstr</span>
+<span class="lineno">  120 </span><span class="spaces">        </span><span class="istickedoff">extensions = filter ((\sp -&gt; srcSpanStart sp /= srcSpanEnd sp) . getLoc)</span>
+<span class="lineno">  121 </span><span class="spaces">                       </span><span class="istickedoff">$ map (removeEnd . removeLang . removeStart) pragmaElems</span>
+<span class="lineno">  122 </span><span class="spaces">        </span><span class="istickedoff">removeStart pr@(L l txt) = if &quot;{-#&quot; `isPrefixOf` txt then L (updateStart (updateCol (+3)) l) (drop 3 txt) else pr</span>
+<span class="lineno">  123 </span><span class="spaces">        </span><span class="istickedoff">removeLang pr@(L l txt) = if &quot;LANGUAGE&quot; `isPrefixOf` txt then L (updateStart (updateCol (+8)) l) (drop 8 txt) else pr</span>
+<span class="lineno">  124 </span><span class="spaces">        </span><span class="istickedoff">removeEnd pr@(L l txt) = if &quot;#-}&quot; `isSuffixOf` txt then L (updateEnd (updateCol (subtract 3)) l) <span class="nottickedoff">(reverse $ drop 3 $ reverse $ txt)</span> else pr</span></span>
+<span class="lineno">  125 </span>
+<span class="lineno">  126 </span>trfOptionsPragma :: Located String -&gt; Trf (Ann AST.UFilePragma (Dom r) RangeStage)
+<span class="lineno">  127 </span><span class="decl"><span class="istickedoff">trfOptionsPragma (L l str) = annLocNoSema (pure l) (AST.UOptionsPragma &lt;$&gt; annContNoSema (pure $ AST.UStringNode <span class="nottickedoff">str</span>))</span></span>
+<span class="lineno">  128 </span>
+<span class="lineno">  129 </span>trfModulePragma :: SrcLoc -&gt; Maybe (Located WarningTxt) -&gt; Trf (AnnMaybeG AST.UModulePragma (Dom r) RangeStage)
+<span class="lineno">  130 </span><span class="decl"><span class="istickedoff">trfModulePragma l = trfMaybeDefault <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">(trfLocNoSema $ \case WarningTxt _ txts -&gt; AST.UModuleWarningPragma &lt;$&gt; trfAnnList &quot; &quot; trfText' txts</span></span>
+<span class="lineno">  131 </span><span class="spaces">                                                                 </span><span class="istickedoff"><span class="nottickedoff">DeprecatedTxt _ txts -&gt; AST.UModuleDeprecatedPragma &lt;$&gt; trfAnnList &quot; &quot; trfText' txts)</span></span>
+<span class="lineno">  132 </span><span class="spaces">                                    </span><span class="istickedoff">(pure l)</span></span>
+<span class="lineno">  133 </span>
+<span class="lineno">  134 </span>trfExportList :: TransformName n r =&gt; Trf SrcLoc -&gt; Maybe (Located [LIE n]) -&gt; Trf (AnnMaybeG AST.UExportSpecs (Dom r) RangeStage)
+<span class="lineno">  135 </span><span class="decl"><span class="istickedoff">trfExportList loc = trfMaybeDefault &quot;&quot; &quot; &quot; (trfLocNoSema trfExportList') loc</span></span>
+<span class="lineno">  136 </span>
+<span class="lineno">  137 </span>trfExportList' :: TransformName n r =&gt; [LIE n] -&gt; Trf (AST.UExportSpecs (Dom r) RangeStage)
+<span class="lineno">  138 </span><span class="decl"><span class="istickedoff">trfExportList' exps = AST.UExportSpecs &lt;$&gt; (makeList <span class="nottickedoff">&quot;, &quot;</span> (after AnnOpenP) (orderDefs . catMaybes &lt;$&gt; (mapM trfExport exps)))</span></span>
+<span class="lineno">  139 </span>
+<span class="lineno">  140 </span>trfExport :: TransformName n r =&gt; LIE n -&gt; Trf (Maybe (Ann AST.UExportSpec (Dom r) RangeStage))
+<span class="lineno">  141 </span><span class="decl"><span class="istickedoff">trfExport = trfMaybeLocNoSema $ \case</span>
+<span class="lineno">  142 </span><span class="spaces">  </span><span class="istickedoff">IEModuleContents n -&gt; Just . AST.UModuleExport &lt;$&gt; (trfModuleName n)</span>
+<span class="lineno">  143 </span><span class="spaces">  </span><span class="istickedoff">other -&gt; do trf &lt;- trfIESpec' other</span>
+<span class="lineno">  144 </span><span class="spaces">              </span><span class="istickedoff">fmap AST.UDeclExport &lt;$&gt; (sequence $ fmap (annContNoSema . return) trf)</span></span>
+<span class="lineno">  145 </span>
+<span class="lineno">  146 </span>trfImports :: TransformName n r =&gt; [LImportDecl n] -&gt; Trf (AnnListG AST.UImportDecl (Dom r) RangeStage)
+<span class="lineno">  147 </span><span class="decl"><span class="istickedoff">trfImports (filter (not . ideclImplicit . unLoc) -&gt; imps)</span>
+<span class="lineno">  148 </span><span class="spaces">  </span><span class="istickedoff">= AnnListG &lt;$&gt; importDefaultLoc &lt;*&gt; mapM trfImport imps</span>
+<span class="lineno">  149 </span><span class="spaces">  </span><span class="istickedoff">where importDefaultLoc = noSemaInfo . AST.ListPos (if <span class="tickonlyfalse">List.null imps</span> then <span class="nottickedoff">&quot;\n&quot;</span> else &quot;&quot;) &quot;&quot; &quot;\n&quot; (Just []) . srcSpanEnd</span>
+<span class="lineno">  150 </span><span class="spaces">                             </span><span class="istickedoff">&lt;$&gt; (combineSrcSpans &lt;$&gt; asks (srcLocSpan . srcSpanStart . contRange)</span>
+<span class="lineno">  151 </span><span class="spaces">                                                  </span><span class="istickedoff">&lt;*&gt; (srcLocSpan . srcSpanEnd &lt;$&gt; tokenLoc AnnWhere))</span></span>
+<span class="lineno">  152 </span>trfImport :: TransformName n r =&gt; LImportDecl n -&gt; Trf (Ann AST.UImportDecl (Dom r) RangeStage)
+<span class="lineno">  153 </span><span class="decl"><span class="istickedoff">trfImport (L l impDecl@(GHC.ImportDecl _ name pkg isSrc _ isQual _ declAs declHiding)) = focusOn l $</span>
+<span class="lineno">  154 </span><span class="spaces">  </span><span class="istickedoff">do safeTok &lt;- tokenLoc AnnSafe</span>
+<span class="lineno">  155 </span><span class="spaces">     </span><span class="istickedoff">let -- default positions of optional parts of an import declaration</span>
+<span class="lineno">  156 </span><span class="spaces">         </span><span class="istickedoff">annBeforeQual = if isSrc then AnnClose else AnnImport</span>
+<span class="lineno">  157 </span><span class="spaces">         </span><span class="istickedoff">annBeforeSafe = if isQual then AnnQualified else annBeforeQual</span>
+<span class="lineno">  158 </span><span class="spaces">         </span><span class="istickedoff">annBeforePkg = if isGoodSrcSpan safeTok then AnnSafe else annBeforeSafe</span>
+<span class="lineno">  159 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  160 </span><span class="spaces">     </span><span class="istickedoff">!importData &lt;- createImportData impDecl</span>
+<span class="lineno">  161 </span><span class="spaces">     </span><span class="istickedoff">annLoc (pure importData) (pure l) $ AST.UImportDecl</span>
+<span class="lineno">  162 </span><span class="spaces">       </span><span class="istickedoff">&lt;$&gt; (if isSrc then makeJust &lt;$&gt; annLocNoSema (tokensLoc [AnnOpen, AnnClose]) (pure AST.UImportSource)</span>
+<span class="lineno">  163 </span><span class="spaces">                     </span><span class="istickedoff">else nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> (after AnnImport))</span>
+<span class="lineno">  164 </span><span class="spaces">       </span><span class="istickedoff">&lt;*&gt; (if isQual then makeJust &lt;$&gt; (annLocNoSema (tokenLoc AnnQualified) (pure AST.UImportQualified))</span>
+<span class="lineno">  165 </span><span class="spaces">                      </span><span class="istickedoff">else nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> (after annBeforeQual))</span>
+<span class="lineno">  166 </span><span class="spaces">       </span><span class="istickedoff">&lt;*&gt; (if isGoodSrcSpan safeTok then makeJust &lt;$&gt; (annLocNoSema (pure safeTok) (pure AST.UImportSafe))</span>
+<span class="lineno">  167 </span><span class="spaces">                                     </span><span class="istickedoff">else nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> (after annBeforeSafe))</span>
+<span class="lineno">  168 </span><span class="spaces">       </span><span class="istickedoff">&lt;*&gt; maybe (nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> (after annBeforePkg))</span>
+<span class="lineno">  169 </span><span class="spaces">                 </span><span class="istickedoff">(\str -&gt; makeJust &lt;$&gt; (annLocNoSema (tokenLoc AnnPackageName) (pure (AST.UStringNode <span class="nottickedoff">(unpackFS $ sl_fs str)</span>)))) pkg</span>
+<span class="lineno">  170 </span><span class="spaces">       </span><span class="istickedoff">&lt;*&gt; trfModuleName name</span>
+<span class="lineno">  171 </span><span class="spaces">       </span><span class="istickedoff">&lt;*&gt; maybe (nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> (pure $ srcSpanEnd (getLoc name))) (\mn -&gt; makeJust &lt;$&gt; (trfRenaming mn)) declAs</span>
+<span class="lineno">  172 </span><span class="spaces">       </span><span class="istickedoff">&lt;*&gt; trfImportSpecs declHiding</span>
+<span class="lineno">  173 </span><span class="spaces">  </span><span class="istickedoff">where trfRenaming mn = annLocNoSema (combineSrcSpans (getLoc mn) &lt;$&gt; tokenLoc AnnAs)</span>
+<span class="lineno">  174 </span><span class="spaces">                                      </span><span class="istickedoff">(AST.UImportRenaming &lt;$&gt; (trfModuleName mn))</span></span>
+<span class="lineno">  175 </span>
+<span class="lineno">  176 </span>trfImportSpecs :: TransformName n r =&gt; Maybe (Bool, Located [LIE n]) -&gt; Trf (AnnMaybeG AST.UImportSpec (Dom r) RangeStage)
+<span class="lineno">  177 </span><span class="decl"><span class="istickedoff">trfImportSpecs (Just (True, l))</span>
+<span class="lineno">  178 </span><span class="spaces">  </span><span class="istickedoff">= makeJust &lt;$&gt; trfLocNoSema (\specs -&gt; AST.UImportSpecHiding &lt;$&gt; (makeList <span class="nottickedoff">&quot;, &quot;</span> (after AnnOpenP) (catMaybes &lt;$&gt; mapM trfIESpec (removeDuplicates specs)))) l</span>
+<span class="lineno">  179 </span><span class="spaces"></span><span class="istickedoff">trfImportSpecs (Just (False, l))</span>
+<span class="lineno">  180 </span><span class="spaces">  </span><span class="istickedoff">= makeJust &lt;$&gt; trfLocNoSema (\specs -&gt; AST.UImportSpecList &lt;$&gt; (makeList <span class="nottickedoff">&quot;, &quot;</span> (after AnnOpenP) (catMaybes &lt;$&gt; mapM trfIESpec (removeDuplicates specs)))) l</span>
+<span class="lineno">  181 </span><span class="spaces"></span><span class="istickedoff">trfImportSpecs Nothing = nothing &quot; &quot; &quot;&quot; atTheEnd</span></span>
+<span class="lineno">  182 </span>
+<span class="lineno">  183 </span>trfIESpec :: TransformName n r =&gt; LIE n -&gt; Trf (Maybe (Ann AST.UIESpec (Dom r) RangeStage))
+<span class="lineno">  184 </span><span class="decl"><span class="istickedoff">trfIESpec = trfMaybeLocNoSema trfIESpec'</span></span>
+<span class="lineno">  185 </span>
+<span class="lineno">  186 </span>trfIESpec' :: TransformName n r =&gt; IE n -&gt; Trf (Maybe (AST.UIESpec (Dom r) RangeStage))
+<span class="lineno">  187 </span><span class="decl"><span class="istickedoff">trfIESpec' (IEVar n) = Just &lt;$&gt; (AST.UIESpec &lt;$&gt; trfImportModifier &lt;*&gt; trfName (getWrappedName n) &lt;*&gt; (nothing <span class="nottickedoff">&quot;(&quot;</span> <span class="nottickedoff">&quot;)&quot;</span> atTheEnd))</span>
+<span class="lineno">  188 </span><span class="spaces"></span><span class="istickedoff">trfIESpec' (IEThingAbs n) = Just &lt;$&gt; (AST.UIESpec &lt;$&gt; trfImportModifier &lt;*&gt; trfName (getWrappedName n) &lt;*&gt; (nothing <span class="nottickedoff">&quot;(&quot;</span> <span class="nottickedoff">&quot;)&quot;</span> atTheEnd))</span>
+<span class="lineno">  189 </span><span class="spaces"></span><span class="istickedoff">trfIESpec' (IEThingAll n)</span>
+<span class="lineno">  190 </span><span class="spaces">  </span><span class="istickedoff">= Just &lt;$&gt; (AST.UIESpec &lt;$&gt; trfImportModifier &lt;*&gt; trfName (getWrappedName n) &lt;*&gt; (makeJust &lt;$&gt; subspec))</span>
+<span class="lineno">  191 </span><span class="spaces">  </span><span class="istickedoff">where subspec = annLocNoSema (combineSrcSpans &lt;$&gt; tokenLocBack AnnOpenP &lt;*&gt; tokenLocBack AnnCloseP) (pure AST.USubSpecAll)</span>
+<span class="lineno">  192 </span><span class="spaces"></span><span class="istickedoff">trfIESpec' (IEThingWith n _ ls flds)</span>
+<span class="lineno">  193 </span><span class="spaces">  </span><span class="istickedoff">= Just &lt;$&gt; (AST.UIESpec &lt;$&gt; trfImportModifier &lt;*&gt; trfName (getWrappedName n) &lt;*&gt; (makeJust &lt;$&gt; subspec))</span>
+<span class="lineno">  194 </span><span class="spaces">  </span><span class="istickedoff">where subspec = annLocNoSema (combineSrcSpans &lt;$&gt; tokenLocBack AnnOpenP &lt;*&gt; tokenLocBack AnnCloseP)</span>
+<span class="lineno">  195 </span><span class="spaces">                    </span><span class="istickedoff">$ AST.USubSpecList &lt;$&gt; between AnnOpenP AnnCloseP (makeList <span class="nottickedoff">&quot;, &quot;</span> atTheStart ((++) &lt;$&gt; mapM (trfName . getWrappedName) ls &lt;*&gt; mapM trfName (map (fmap flSelector) flds)))</span>
+<span class="lineno">  196 </span><span class="spaces"></span><span class="istickedoff">trfIESpec' _ = <span class="nottickedoff">pure Nothing</span></span></span>
+<span class="lineno">  197 </span>
+<span class="lineno">  198 </span>getWrappedName :: Located (IEWrappedName n) -&gt; Located n
+<span class="lineno">  199 </span><span class="decl"><span class="istickedoff">getWrappedName (L _ (IEName n)) = n</span>
+<span class="lineno">  200 </span><span class="spaces"></span><span class="istickedoff">getWrappedName (L _ (IEPattern n)) = n</span>
+<span class="lineno">  201 </span><span class="spaces"></span><span class="istickedoff">getWrappedName (L _ (IEType n)) = n</span></span>
+<span class="lineno">  202 </span>
+<span class="lineno">  203 </span>-- TODO: easier with wrapped names
+<span class="lineno">  204 </span>trfImportModifier :: Trf (AnnMaybeG AST.UImportModifier (Dom r) RangeStage)
+<span class="lineno">  205 </span><span class="decl"><span class="istickedoff">trfImportModifier = do</span>
+<span class="lineno">  206 </span><span class="spaces">  </span><span class="istickedoff">patLoc &lt;- tokenLoc AnnPattern</span>
+<span class="lineno">  207 </span><span class="spaces">  </span><span class="istickedoff">if isGoodSrcSpan patLoc then makeJust &lt;$&gt; annLocNoSema (return patLoc) (return AST.UImportPattern)</span>
+<span class="lineno">  208 </span><span class="spaces">                          </span><span class="istickedoff">else nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> atTheStart</span></span>
+<span class="lineno">  209 </span>
+<span class="lineno">  210 </span>trfModuleName :: Located ModuleName -&gt; Trf (Ann AST.UModuleName (Dom r) RangeStage)
+<span class="lineno">  211 </span><span class="decl"><span class="istickedoff">trfModuleName = trfLocNoSema trfModuleName'</span></span>
+<span class="lineno">  212 </span>
+<span class="lineno">  213 </span>trfModuleName' :: ModuleName -&gt; Trf (AST.UModuleName (Dom r) RangeStage)
+<span class="lineno">  214 </span><span class="decl"><span class="istickedoff">trfModuleName' = pure . AST.UModuleName . moduleNameString</span></span>
+
+</pre>
+</body>
+</html>
