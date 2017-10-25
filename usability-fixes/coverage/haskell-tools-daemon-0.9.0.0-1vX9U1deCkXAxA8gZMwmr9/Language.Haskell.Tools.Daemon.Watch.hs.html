@@ -61,31 +61,32 @@ span.spaces    { background: white }
 <span class="lineno">   42 </span><span class="spaces">            </span><span class="nottickedoff">addedFiles = catMaybes $ map getAddedFile changes</span>
 <span class="lineno">   43 </span><span class="spaces">            </span><span class="nottickedoff">removedFiles = catMaybes $ map getRemovedFile changes</span>
 <span class="lineno">   44 </span><span class="spaces">            </span><span class="nottickedoff">reloadAction = reloadModules upClient addedFiles changedFiles removedFiles</span>
-<span class="lineno">   45 </span><span class="spaces">        </span><span class="nottickedoff">when (length changedFiles + length addedFiles + length removedFiles &gt; 0)</span>
-<span class="lineno">   46 </span><span class="spaces">          </span><span class="nottickedoff">(void $ modifyMVar daemonSess (\st -&gt; swap &lt;$&gt; reflectGhc (runStateT reloadAction st) ghcSess) &gt;&gt; return True</span>
-<span class="lineno">   47 </span><span class="spaces">                     </span><span class="nottickedoff">`catches` userExceptionHandlers</span>
-<span class="lineno">   48 </span><span class="spaces">                                 </span><span class="nottickedoff">(\s -&gt; upClient (ErrorMessage s) &gt;&gt; return True)</span>
-<span class="lineno">   49 </span><span class="spaces">                                 </span><span class="nottickedoff">(\err hint -&gt; upClient (CompilationProblem err hint) &gt;&gt; return True))</span>
-<span class="lineno">   50 </span><span class="spaces">            </span><span class="nottickedoff">`catches` exceptionHandlers (return ()) (upClient . ErrorMessage)</span>
-<span class="lineno">   51 </span><span class="spaces">      </span><span class="nottickedoff">return $ (Just process, [reloaderThread])</span>
-<span class="lineno">   52 </span><span class="spaces"></span><span class="nottickedoff"></span>
-<span class="lineno">   53 </span><span class="spaces">    </span><span class="nottickedoff">getModifiedFile (Mod file) = Just file</span>
-<span class="lineno">   54 </span><span class="spaces">    </span><span class="nottickedoff">getModifiedFile _ = Nothing</span>
-<span class="lineno">   55 </span><span class="spaces"></span><span class="nottickedoff"></span>
-<span class="lineno">   56 </span><span class="spaces">    </span><span class="nottickedoff">getAddedFile (Add file) = Just file</span>
-<span class="lineno">   57 </span><span class="spaces">    </span><span class="nottickedoff">getAddedFile _ = Nothing</span>
-<span class="lineno">   58 </span><span class="spaces"></span><span class="nottickedoff"></span>
-<span class="lineno">   59 </span><span class="spaces">    </span><span class="nottickedoff">getRemovedFile (Rem file) = Just file</span>
-<span class="lineno">   60 </span><span class="spaces">    </span><span class="nottickedoff">getRemovedFile _ = Nothing</span>
-<span class="lineno">   61 </span><span class="spaces"></span><span class="nottickedoff"></span>
-<span class="lineno">   62 </span><span class="spaces">    </span><span class="nottickedoff">guessExePath = do exePath &lt;- getExecutablePath</span>
-<span class="lineno">   63 </span><span class="spaces">                      </span><span class="nottickedoff">return $ takeDirectory exePath &lt;/&gt; &quot;hfswatch&quot;</span></span>
-<span class="lineno">   64 </span>
-<span class="lineno">   65 </span>-- | Stops the watch process and all threads associated with it.
-<span class="lineno">   66 </span>stopWatch :: WatchProcess -&gt; [ThreadId] -&gt; IO ()
-<span class="lineno">   67 </span><span class="decl"><span class="nottickedoff">stopWatch WatchProcess{..} threads</span>
-<span class="lineno">   68 </span><span class="spaces">  </span><span class="nottickedoff">= do forM threads killThread</span>
-<span class="lineno">   69 </span><span class="spaces">       </span><span class="nottickedoff">wShutdown</span></span>
+<span class="lineno">   45 </span><span class="spaces">            </span><span class="nottickedoff">handlers = userExceptionHandlers</span>
+<span class="lineno">   46 </span><span class="spaces">                           </span><span class="nottickedoff">(upClient . ErrorMessage)</span>
+<span class="lineno">   47 </span><span class="spaces">                           </span><span class="nottickedoff">(\err hint -&gt; upClient (CompilationProblem err hint))</span>
+<span class="lineno">   48 </span><span class="spaces">                         </span><span class="nottickedoff">++ exceptionHandlers (return ()) (upClient . ErrorMessage)</span>
+<span class="lineno">   49 </span><span class="spaces">        </span><span class="nottickedoff">when (length changedFiles + length addedFiles + length removedFiles &gt; 0)</span>
+<span class="lineno">   50 </span><span class="spaces">          </span><span class="nottickedoff">(void (modifyMVar daemonSess (\st -&gt; swap &lt;$&gt; reflectGhc (runStateT reloadAction st) ghcSess))</span>
+<span class="lineno">   51 </span><span class="spaces">             </span><span class="nottickedoff">`catches` handlers)</span>
+<span class="lineno">   52 </span><span class="spaces">      </span><span class="nottickedoff">return $ (Just process, [reloaderThread])</span>
+<span class="lineno">   53 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   54 </span><span class="spaces">    </span><span class="nottickedoff">getModifiedFile (Mod file) = Just file</span>
+<span class="lineno">   55 </span><span class="spaces">    </span><span class="nottickedoff">getModifiedFile _ = Nothing</span>
+<span class="lineno">   56 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   57 </span><span class="spaces">    </span><span class="nottickedoff">getAddedFile (Add file) = Just file</span>
+<span class="lineno">   58 </span><span class="spaces">    </span><span class="nottickedoff">getAddedFile _ = Nothing</span>
+<span class="lineno">   59 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   60 </span><span class="spaces">    </span><span class="nottickedoff">getRemovedFile (Rem file) = Just file</span>
+<span class="lineno">   61 </span><span class="spaces">    </span><span class="nottickedoff">getRemovedFile _ = Nothing</span>
+<span class="lineno">   62 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   63 </span><span class="spaces">    </span><span class="nottickedoff">guessExePath = do exePath &lt;- getExecutablePath</span>
+<span class="lineno">   64 </span><span class="spaces">                      </span><span class="nottickedoff">return $ takeDirectory exePath &lt;/&gt; &quot;hfswatch&quot;</span></span>
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>-- | Stops the watch process and all threads associated with it.
+<span class="lineno">   67 </span>stopWatch :: WatchProcess -&gt; [ThreadId] -&gt; IO ()
+<span class="lineno">   68 </span><span class="decl"><span class="nottickedoff">stopWatch WatchProcess{..} threads</span>
+<span class="lineno">   69 </span><span class="spaces">  </span><span class="nottickedoff">= do forM threads killThread</span>
+<span class="lineno">   70 </span><span class="spaces">       </span><span class="nottickedoff">wShutdown</span></span>
 
 </pre>
 </body>

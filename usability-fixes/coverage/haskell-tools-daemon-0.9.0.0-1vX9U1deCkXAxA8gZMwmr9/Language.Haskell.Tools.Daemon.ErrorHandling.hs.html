@@ -44,7 +44,7 @@ span.spaces    { background: white }
 <span class="lineno">   25 </span>import Language.Haskell.Tools.Refactor
 <span class="lineno">   26 </span>import Language.Haskell.Tools.Daemon.GetModules
 <span class="lineno">   27 </span>
-<span class="lineno">   28 </span>userExceptionHandlers :: (String -&gt; IO Bool) -&gt; ([(SrcSpan, String)] -&gt; [String] -&gt; IO Bool) -&gt; [Handler Bool]
+<span class="lineno">   28 </span>userExceptionHandlers :: (String -&gt; IO a) -&gt; ([(SrcSpan, String)] -&gt; [String] -&gt; IO a) -&gt; [Handler a]
 <span class="lineno">   29 </span><span class="decl"><span class="istickedoff">userExceptionHandlers sendError sendCompProblems =</span>
 <span class="lineno">   30 </span><span class="spaces">  </span><span class="istickedoff">[ Handler <span class="nottickedoff">(\(UnsupportedPackage e) -&gt; sendError (&quot;There are unsupported elements in your package: &quot; ++ e ++ &quot; please correct them before loading them into Haskell-tools.&quot;))</span></span>
 <span class="lineno">   31 </span><span class="spaces">  </span><span class="istickedoff">, Handler <span class="nottickedoff">(\(UnsupportedExtension e) -&gt; sendError (&quot;The extension you use is not supported: &quot; ++ e ++ &quot;. Please check your source and cabal files for the use of that language extension.&quot;))</span></span>
