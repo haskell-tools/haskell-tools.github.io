@@ -126,7 +126,7 @@ span.spaces    { background: white }
 <span class="lineno">  107 </span><span class="spaces">    </span><span class="istickedoff">mcs &lt;- gets (^. refSessMCs)</span>
 <span class="lineno">  108 </span><span class="spaces">    </span><span class="istickedoff">let existingFiles = concatMap @[] (map (^. sfkFileName) . Map.keys) (mcs ^? traversal &amp; filtered isRemoved &amp; mcModules)</span>
 <span class="lineno">  109 </span><span class="spaces">    </span><span class="istickedoff">lift $ forM_ existingFiles (\fs -&gt; removeTarget (TargetFile fs Nothing))</span>
-<span class="lineno">  110 </span><span class="spaces">    </span><span class="istickedoff">lift $ deregisterDirs (mcs ^? traversal &amp; filtered isRemoved &amp; mcSourceDirs &amp; traversal)</span>
+<span class="lineno">  110 </span><span class="spaces">    </span><span class="istickedoff">lift $ deregisterDirs <span class="nottickedoff">(mcs ^? traversal &amp; filtered isRemoved &amp; mcSourceDirs &amp; traversal)</span></span>
 <span class="lineno">  111 </span><span class="spaces">    </span><span class="istickedoff">modify' $ refSessMCs .- filter (not . isRemoved)</span>
 <span class="lineno">  112 </span><span class="spaces">    </span><span class="istickedoff">modifySession (\s -&gt; s { hsc_mod_graph = filter <span class="nottickedoff">((`notElem` existingFiles) . getModSumOrig)</span> (hsc_mod_graph s) })</span>
 <span class="lineno">  113 </span><span class="spaces">    </span><span class="istickedoff">mcs &lt;- gets (^. refSessMCs)</span>

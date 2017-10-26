@@ -130,7 +130,7 @@ span.spaces    { background: white }
 <span class="lineno">  111 </span>deregisterDirs :: [FilePath] -&gt; Ghc ()
 <span class="lineno">  112 </span><span class="decl"><span class="istickedoff">deregisterDirs workingDirs = do</span>
 <span class="lineno">  113 </span><span class="spaces">  </span><span class="istickedoff">dynflags &lt;- getSessionDynFlags</span>
-<span class="lineno">  114 </span><span class="spaces">  </span><span class="istickedoff">void $ setSessionDynFlags dynflags { importPaths = importPaths dynflags \\ workingDirs }</span></span>
+<span class="lineno">  114 </span><span class="spaces">  </span><span class="istickedoff">void $ setSessionDynFlags dynflags { importPaths = <span class="nottickedoff">importPaths dynflags \\ workingDirs</span> }</span></span>
 <span class="lineno">  115 </span>
 <span class="lineno">  116 </span>-- | Translates module name and working directory into the name of the file where the given module should be defined
 <span class="lineno">  117 </span>toFileName :: FilePath -&gt; String -&gt; FilePath
@@ -223,7 +223,7 @@ span.spaces    { background: white }
 <span class="lineno">  204 </span>forceCodeGen :: ModSummary -&gt; ModSummary
 <span class="lineno">  205 </span><span class="decl"><span class="istickedoff">forceCodeGen ms = ms { ms_hspp_opts = modOpts' }</span>
 <span class="lineno">  206 </span><span class="spaces">  </span><span class="istickedoff">where modOpts = (ms_hspp_opts ms) { hscTarget = HscInterpreted }</span>
-<span class="lineno">  207 </span><span class="spaces">        </span><span class="istickedoff">modOpts' = modOpts { ghcLink = LinkInMemory }</span></span>
+<span class="lineno">  207 </span><span class="spaces">        </span><span class="istickedoff">modOpts' = modOpts { ghcLink = <span class="nottickedoff">LinkInMemory</span> }</span></span>
 <span class="lineno">  208 </span>
 <span class="lineno">  209 </span>-- | Forces ASM code generation for a given module
 <span class="lineno">  210 </span>forceAsmGen :: ModSummary -&gt; ModSummary
