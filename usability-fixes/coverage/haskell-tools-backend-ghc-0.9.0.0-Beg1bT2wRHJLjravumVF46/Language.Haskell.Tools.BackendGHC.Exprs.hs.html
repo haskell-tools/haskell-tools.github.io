@@ -193,14 +193,14 @@ span.spaces    { background: white }
 <span class="lineno">  174 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">pragma = do pragLoc &lt;- tokensLoc [AnnOpen, AnnClose]</span></span>
 <span class="lineno">  175 </span><span class="spaces">                    </span><span class="istickedoff"><span class="nottickedoff">focusOn pragLoc $ annContNoSema (AST.UGeneratedPragma &lt;$&gt; (trfSourceRange source))</span></span>
 <span class="lineno">  176 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExplicitSum tag arity expr _)</span>
-<span class="lineno">  177 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do sepsBefore &lt;- focusBeforeLoc (srcSpanStart (getLoc expr)) (eachTokenLoc (AnnOpen : replicate (tag - 1) AnnVbar))</span></span>
-<span class="lineno">  178 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">sepsAfter &lt;- focusAfterLoc (srcSpanEnd (getLoc expr)) (eachTokenLoc (replicate (arity - tag) AnnVbar))</span></span>
-<span class="lineno">  179 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">let locsBefore = map srcSpanEnd $ init sepsBefore</span></span>
-<span class="lineno">  180 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">locsAfter = map srcSpanEnd sepsAfter</span></span>
-<span class="lineno">  181 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">AST.UUnboxedSum &lt;$&gt; makeList &quot; | &quot; (after AnnOpen) (mapM makePlaceholder locsBefore)</span></span>
-<span class="lineno">  182 </span><span class="spaces">                       </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfExpr expr</span></span>
-<span class="lineno">  183 </span><span class="spaces">                       </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; makeList &quot; | &quot; (before AnnClose) (mapM makePlaceholder locsAfter)</span></span>
-<span class="lineno">  184 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">makePlaceholder l = annLocNoSema (pure (srcLocSpan l)) (pure AST.UUnboxedSumPlaceHolder)</span></span>
+<span class="lineno">  177 </span><span class="spaces">  </span><span class="istickedoff">= do sepsBefore &lt;- focusBeforeLoc (srcSpanStart (getLoc expr)) (eachTokenLoc (AnnOpen : replicate (tag - 1) <span class="nottickedoff">AnnVbar</span>))</span>
+<span class="lineno">  178 </span><span class="spaces">       </span><span class="istickedoff">sepsAfter &lt;- focusAfterLoc (srcSpanEnd (getLoc expr)) (eachTokenLoc (replicate (arity - tag) AnnVbar))</span>
+<span class="lineno">  179 </span><span class="spaces">       </span><span class="istickedoff">let locsBefore = map srcSpanEnd $ init sepsBefore</span>
+<span class="lineno">  180 </span><span class="spaces">           </span><span class="istickedoff">locsAfter = map srcSpanEnd sepsAfter</span>
+<span class="lineno">  181 </span><span class="spaces">       </span><span class="istickedoff">AST.UUnboxedSum &lt;$&gt; makeList <span class="nottickedoff">&quot; | &quot;</span> (after AnnOpen) (mapM makePlaceholder locsBefore)</span>
+<span class="lineno">  182 </span><span class="spaces">                       </span><span class="istickedoff">&lt;*&gt; trfExpr expr</span>
+<span class="lineno">  183 </span><span class="spaces">                       </span><span class="istickedoff">&lt;*&gt; makeList <span class="nottickedoff">&quot; | &quot;</span> (before AnnClose) (mapM makePlaceholder locsAfter)</span>
+<span class="lineno">  184 </span><span class="spaces">  </span><span class="istickedoff">where makePlaceholder l = annLocNoSema (pure (srcLocSpan l)) (pure AST.UUnboxedSumPlaceHolder)</span>
 <span class="lineno">  185 </span><span class="spaces"></span><span class="istickedoff">trfExpr' t = <span class="nottickedoff">unhandledElement &quot;expression&quot; t</span></span></span>
 <span class="lineno">  186 </span>
 <span class="lineno">  187 </span>trfFieldInits :: TransformName n r =&gt; HsRecFields n (LHsExpr n) -&gt; Trf (AnnListG AST.UFieldUpdate (Dom r) RangeStage)

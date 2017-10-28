@@ -87,7 +87,7 @@ span.spaces    { background: white }
 <span class="lineno">   68 </span><span class="spaces">  </span><span class="istickedoff">trfType'' pt@(HsExplicitTupleTy {}) = <span class="nottickedoff">AST.UTyPromoted &lt;$&gt; annContNoSema (trfPromoted' trfType' pt)</span></span>
 <span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">trfType'' pt@(HsTyLit {}) = AST.UTyPromoted &lt;$&gt; annContNoSema (trfPromoted' <span class="nottickedoff">trfType'</span> pt)</span>
 <span class="lineno">   70 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsWildCardTy _) = pure AST.UTyWildcard -- TODO: named wildcards</span>
-<span class="lineno">   71 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsSumTy types) = <span class="nottickedoff">AST.UUnbSumType &lt;$&gt; trfAnnList &quot; | &quot; trfType' types</span></span>
+<span class="lineno">   71 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsSumTy types) = AST.UUnbSumType &lt;$&gt; trfAnnList <span class="nottickedoff">&quot; | &quot;</span> trfType' types</span>
 <span class="lineno">   72 </span><span class="spaces">  </span><span class="istickedoff">trfType'' t = <span class="nottickedoff">unhandledElement &quot;type&quot; t</span></span></span>
 <span class="lineno">   73 </span>
 <span class="lineno">   74 </span>trfBindings :: TransformName n r =&gt; [Located (HsTyVarBndr n)] -&gt; Trf (AnnListG AST.UTyVar (Dom r) RangeStage)

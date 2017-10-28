@@ -319,7 +319,7 @@ span.spaces    { background: white }
 <span class="lineno">  300 </span><span class="decl"><span class="istickedoff">focusAfterLoc loc = local (\s -&gt; s { contRange = mkSrcSpan loc (srcSpanEnd (contRange s)) })</span></span>
 <span class="lineno">  301 </span>
 <span class="lineno">  302 </span>focusBeforeLoc :: SrcLoc -&gt; Trf a -&gt; Trf a
-<span class="lineno">  303 </span><span class="decl"><span class="nottickedoff">focusBeforeLoc loc = local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) loc })</span></span>
+<span class="lineno">  303 </span><span class="decl"><span class="istickedoff">focusBeforeLoc loc = local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) loc })</span></span>
 <span class="lineno">  304 </span>
 <span class="lineno">  305 </span>-- | Focuses the transformation to go between tokens. The tokens must be found inside the current range.
 <span class="lineno">  306 </span>between :: AnnKeywordId -&gt; AnnKeywordId -&gt; Trf a -&gt; Trf a

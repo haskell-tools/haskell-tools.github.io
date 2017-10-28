@@ -85,14 +85,14 @@ span.spaces    { background: white }
 <span class="lineno">   66 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (NPlusKPat id (L l lit) _ _ _ _) = AST.UNPlusKPat &lt;$&gt; define (trfName id) &lt;*&gt; annLocNoSema (pure l) (trfOverloadedLit (ol_val lit))</span>
 <span class="lineno">   67 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (CoPat _ pat _) = <span class="nottickedoff">trfPattern' pat</span> -- coercion pattern introduced by GHC</span>
 <span class="lineno">   68 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (SumPat pat tag arity _)</span>
-<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do sepsBefore &lt;- focusBeforeLoc (srcSpanStart (getLoc pat)) (eachTokenLoc (AnnOpen : replicate (tag - 1) AnnVbar))</span></span>
-<span class="lineno">   70 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">sepsAfter &lt;- focusAfterLoc (srcSpanEnd (getLoc pat)) (eachTokenLoc (replicate (arity - tag) AnnVbar))</span></span>
-<span class="lineno">   71 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">let locsBefore = map srcSpanEnd $ init sepsBefore</span></span>
-<span class="lineno">   72 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">locsAfter = map srcSpanEnd sepsAfter</span></span>
-<span class="lineno">   73 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">AST.UUnboxedSumPat &lt;$&gt; makeList &quot; | &quot; (after AnnOpen) (mapM makePlaceholder locsBefore)</span></span>
-<span class="lineno">   74 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfPattern pat</span></span>
-<span class="lineno">   75 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; makeList &quot; | &quot; (before AnnClose) (mapM makePlaceholder locsAfter)</span></span>
-<span class="lineno">   76 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">makePlaceholder l = annLocNoSema (pure (srcLocSpan l)) (pure AST.UUnboxedSumPlaceHolder)</span></span>
+<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">= do sepsBefore &lt;- focusBeforeLoc (srcSpanStart (getLoc pat)) (eachTokenLoc (AnnOpen : replicate (tag - 1) <span class="nottickedoff">AnnVbar</span>))</span>
+<span class="lineno">   70 </span><span class="spaces">       </span><span class="istickedoff">sepsAfter &lt;- focusAfterLoc (srcSpanEnd (getLoc pat)) (eachTokenLoc (replicate (arity - tag) AnnVbar))</span>
+<span class="lineno">   71 </span><span class="spaces">       </span><span class="istickedoff">let locsBefore = map srcSpanEnd $ init sepsBefore</span>
+<span class="lineno">   72 </span><span class="spaces">           </span><span class="istickedoff">locsAfter = map srcSpanEnd sepsAfter</span>
+<span class="lineno">   73 </span><span class="spaces">       </span><span class="istickedoff">AST.UUnboxedSumPat &lt;$&gt; makeList <span class="nottickedoff">&quot; | &quot;</span> (after AnnOpen) (mapM makePlaceholder locsBefore)</span>
+<span class="lineno">   74 </span><span class="spaces">                          </span><span class="istickedoff">&lt;*&gt; trfPattern pat</span>
+<span class="lineno">   75 </span><span class="spaces">                          </span><span class="istickedoff">&lt;*&gt; makeList <span class="nottickedoff">&quot; | &quot;</span> (before AnnClose) (mapM makePlaceholder locsAfter)</span>
+<span class="lineno">   76 </span><span class="spaces">  </span><span class="istickedoff">where makePlaceholder l = annLocNoSema (pure (srcLocSpan l)) (pure AST.UUnboxedSumPlaceHolder)</span>
 <span class="lineno">   77 </span><span class="spaces"></span><span class="istickedoff">trfPattern' p = <span class="nottickedoff">unhandledElement &quot;pattern&quot; p</span></span></span>
 <span class="lineno">   78 </span>
 <span class="lineno">   79 </span>trfPatternField' :: TransformName n r =&gt; HsRecField n (LPat n) -&gt; Trf (AST.UPatternField (Dom r) RangeStage)
