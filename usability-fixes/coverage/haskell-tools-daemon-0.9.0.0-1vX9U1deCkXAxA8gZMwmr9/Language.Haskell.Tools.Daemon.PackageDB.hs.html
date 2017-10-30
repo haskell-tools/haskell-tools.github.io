@@ -32,13 +32,13 @@ span.spaces    { background: white }
 <span class="lineno">   13 </span>import Control.Monad
 <span class="lineno">   14 </span>import Data.Aeson (FromJSON(..))
 <span class="lineno">   15 </span>import Data.Char (isSpace)
-<span class="lineno">   16 </span>import Data.Maybe
-<span class="lineno">   17 </span>import Data.List
+<span class="lineno">   16 </span>import Data.List
+<span class="lineno">   17 </span>import Data.Maybe
 <span class="lineno">   18 </span>import GHC.Generics (Generic(..))
-<span class="lineno">   19 </span>import System.Exit
-<span class="lineno">   20 </span>import System.Directory
+<span class="lineno">   19 </span>import System.Directory
+<span class="lineno">   20 </span>import System.Exit (ExitCode(..))
 <span class="lineno">   21 </span>import System.FilePath (FilePath, (&lt;/&gt;))
-<span class="lineno">   22 </span>import System.Process
+<span class="lineno">   22 </span>import System.Process (shell, readCreateProcessWithExitCode)
 <span class="lineno">   23 </span>
 <span class="lineno">   24 </span>-- | Possible package database configurations.
 <span class="lineno">   25 </span>data PackageDB = AutoDB -- ^ Decide the package database automatically.

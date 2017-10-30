@@ -23,7 +23,7 @@ span.spaces    { background: white }
 <span class="lineno">    4 </span>module Language.Haskell.Tools.BackendGHC.Monad where
 <span class="lineno">    5 </span>
 <span class="lineno">    6 </span>import Control.Applicative ((&lt;|&gt;))
-<span class="lineno">    7 </span>import Control.Exception
+<span class="lineno">    7 </span>import Control.Exception (Exception, evaluate, throw)
 <span class="lineno">    8 </span>import Control.Monad.Reader
 <span class="lineno">    9 </span>import Control.Reference
 <span class="lineno">   10 </span>import Data.Function (on)

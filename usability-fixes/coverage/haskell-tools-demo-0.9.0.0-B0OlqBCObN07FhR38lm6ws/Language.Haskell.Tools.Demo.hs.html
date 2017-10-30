@@ -117,9 +117,9 @@ span.spaces    { background: white }
 <span class="lineno">   98 </span><span class="spaces">           </span><span class="istickedoff">if currState ^. isDisconnecting</span>
 <span class="lineno">   99 </span><span class="spaces">             </span><span class="istickedoff">then sendClose conn (&quot;&quot; :: ByteString)</span>
 <span class="lineno">  100 </span><span class="spaces">             </span><span class="istickedoff">else serverLoop sessId ghcSess state conn</span>
-<span class="lineno">  101 </span><span class="spaces">      </span><span class="istickedoff">`catch` \(_ :: ConnectionException) -&gt; do</span>
-<span class="lineno">  102 </span><span class="spaces">                 </span><span class="istickedoff">modifyMVar_ sessions (return . delete sessId)</span>
-<span class="lineno">  103 </span><span class="spaces">                 </span><span class="istickedoff">liftIO $ removeDirectoryIfPresent (userDir wd sessId)</span>
+<span class="lineno">  101 </span><span class="spaces">      </span><span class="istickedoff">`catch` <span class="nottickedoff">\(_ :: ConnectionException) -&gt; do</span></span>
+<span class="lineno">  102 </span><span class="spaces">                 </span><span class="istickedoff"><span class="nottickedoff">modifyMVar_ sessions (return . delete sessId)</span></span>
+<span class="lineno">  103 </span><span class="spaces">                 </span><span class="istickedoff"><span class="nottickedoff">liftIO $ removeDirectoryIfPresent (userDir wd sessId)</span></span>
 <span class="lineno">  104 </span><span class="spaces"></span><span class="istickedoff"></span>
 <span class="lineno">  105 </span><span class="spaces">    </span><span class="istickedoff">backupApp :: Application</span>
 <span class="lineno">  106 </span><span class="spaces">    </span><span class="istickedoff"><span class="nottickedoff">backupApp _ respond = respond $ responseLBS status400 [] &quot;Not a WebSocket request&quot;</span></span></span>
@@ -235,11 +235,11 @@ span.spaces    { background: white }
 <span class="lineno">  216 </span><span class="spaces">              </span><span class="istickedoff">then <span class="nottickedoff">do logToFile wd (show e) req</span></span>
 <span class="lineno">  217 </span><span class="spaces">                      </span><span class="istickedoff"><span class="nottickedoff">return $ ErrorMessage (&quot;The generated code cannot be compiled. The problem had been reported. Please restart the demo or correct the results manually.&quot;)</span></span>
 <span class="lineno">  218 </span><span class="spaces">              </span><span class="istickedoff">else return $ CompilationProblem (concatMap (\msg -&gt; showMsg msg ++ &quot;\n\n&quot;) $ bagToList $ srcErrorMessages se)</span>
-<span class="lineno">  219 </span><span class="spaces">          </span><span class="istickedoff">| Just (ae :: AsyncException) &lt;- fromException e = <span class="nottickedoff">throw ae</span></span>
-<span class="lineno">  220 </span><span class="spaces">          </span><span class="istickedoff">| Just (ge :: GhcException) &lt;- fromException e = <span class="nottickedoff">return $ ErrorMessage $ show ge</span></span>
-<span class="lineno">  221 </span><span class="spaces">          </span><span class="istickedoff">| Just (re :: RefactorException) &lt;- fromException e = <span class="nottickedoff">return $ ErrorMessage $ displayException re</span></span>
-<span class="lineno">  222 </span><span class="spaces">          </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = do logToFile wd (show e) req</span>
-<span class="lineno">  223 </span><span class="spaces">                           </span><span class="istickedoff">return $ <span class="nottickedoff">ErrorMessage (showInternalError e)</span></span>
+<span class="lineno">  219 </span><span class="spaces">          </span><span class="istickedoff">| Just (ae :: AsyncException) &lt;- <span class="nottickedoff">fromException e</span> = <span class="nottickedoff">throw ae</span></span>
+<span class="lineno">  220 </span><span class="spaces">          </span><span class="istickedoff">| Just (ge :: GhcException) &lt;- <span class="nottickedoff">fromException e</span> = <span class="nottickedoff">return $ ErrorMessage $ show ge</span></span>
+<span class="lineno">  221 </span><span class="spaces">          </span><span class="istickedoff">| Just (re :: RefactorException) &lt;- <span class="nottickedoff">fromException e</span> = <span class="nottickedoff">return $ ErrorMessage $ displayException re</span></span>
+<span class="lineno">  222 </span><span class="spaces">          </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">do logToFile wd (show e) req</span></span>
+<span class="lineno">  223 </span><span class="spaces">                           </span><span class="istickedoff"><span class="nottickedoff">return $ ErrorMessage (showInternalError e)</span></span>
 <span class="lineno">  224 </span><span class="spaces"></span><span class="istickedoff"></span>
 <span class="lineno">  225 </span><span class="spaces">        </span><span class="istickedoff">showMsg msg = showSpan (errMsgSpan msg) ++ &quot;\n&quot; ++ show msg</span>
 <span class="lineno">  226 </span><span class="spaces">        </span><span class="istickedoff">showSpan (RealSrcSpan sp) = showFileName (srcLocFile (realSrcSpanStart sp)) ++ &quot; &quot; ++ show (srcLocLine (realSrcSpanStart sp)) ++ &quot;:&quot; ++ show (srcLocCol (realSrcSpanStart sp))</span>
@@ -253,15 +253,15 @@ span.spaces    { background: white }
 <span class="lineno">  234 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">showInternalError e = &quot;An internal error happened. The report has been sent to the developers. &quot; ++ displayException e</span></span></span>
 <span class="lineno">  235 </span>
 <span class="lineno">  236 </span>logToFile :: FilePath -&gt; String -&gt; ClientMessage -&gt; IO ()
-<span class="lineno">  237 </span><span class="decl"><span class="istickedoff">logToFile wd err input = do</span>
-<span class="lineno">  238 </span><span class="spaces">  </span><span class="istickedoff">let msg = err ++ &quot;\n with input: &quot; ++ show input</span>
-<span class="lineno">  239 </span><span class="spaces">  </span><span class="istickedoff">withFile logFile AppendMode $ \handle -&gt; do</span>
-<span class="lineno">  240 </span><span class="spaces">      </span><span class="istickedoff">size &lt;- hFileSize handle</span>
-<span class="lineno">  241 </span><span class="spaces">      </span><span class="istickedoff">when (size &lt; logSizeLimit) $ hPutStrLn handle (&quot;\n### &quot; ++ msg)</span>
-<span class="lineno">  242 </span><span class="spaces">    </span><span class="istickedoff">`catch` <span class="nottickedoff">\e -&gt; print (&quot;The error message cannot be logged because: &quot;</span></span>
-<span class="lineno">  243 </span><span class="spaces">                             </span><span class="istickedoff"><span class="nottickedoff">++ show (e :: IOException) ++ &quot;\nHere is the message:\n&quot; ++ msg)</span></span>
-<span class="lineno">  244 </span><span class="spaces">  </span><span class="istickedoff">where logFile = wd &lt;/&gt; &quot;error-log.txt&quot;</span>
-<span class="lineno">  245 </span><span class="spaces">        </span><span class="istickedoff">logSizeLimit = 100 * 1024 * 1024</span></span> -- 100 MB
+<span class="lineno">  237 </span><span class="decl"><span class="nottickedoff">logToFile wd err input = do</span>
+<span class="lineno">  238 </span><span class="spaces">  </span><span class="nottickedoff">let msg = err ++ &quot;\n with input: &quot; ++ show input</span>
+<span class="lineno">  239 </span><span class="spaces">  </span><span class="nottickedoff">withFile logFile AppendMode $ \handle -&gt; do</span>
+<span class="lineno">  240 </span><span class="spaces">      </span><span class="nottickedoff">size &lt;- hFileSize handle</span>
+<span class="lineno">  241 </span><span class="spaces">      </span><span class="nottickedoff">when (size &lt; logSizeLimit) $ hPutStrLn handle (&quot;\n### &quot; ++ msg)</span>
+<span class="lineno">  242 </span><span class="spaces">    </span><span class="nottickedoff">`catch` \e -&gt; print (&quot;The error message cannot be logged because: &quot;</span>
+<span class="lineno">  243 </span><span class="spaces">                             </span><span class="nottickedoff">++ show (e :: IOException) ++ &quot;\nHere is the message:\n&quot; ++ msg)</span>
+<span class="lineno">  244 </span><span class="spaces">  </span><span class="nottickedoff">where logFile = wd &lt;/&gt; &quot;error-log.txt&quot;</span>
+<span class="lineno">  245 </span><span class="spaces">        </span><span class="nottickedoff">logSizeLimit = 100 * 1024 * 1024</span></span> -- 100 MB
 <span class="lineno">  246 </span>
 <span class="lineno">  247 </span>data ClientMessage
 <span class="lineno">  248 </span>  = KeepAlive
@@ -276,7 +276,7 @@ span.spaces    { background: white }
 <span class="lineno">  257 </span>                  }
 <span class="lineno">  258 </span>  | ModuleDeleted { moduleName :: String }
 <span class="lineno">  259 </span>  | Disconnect
-<span class="lineno">  260 </span>  deriving (<span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>, Generic)
+<span class="lineno">  260 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>, Generic)
 <span class="lineno">  261 </span>
 <span class="lineno">  262 </span>instance FromJSON ClientMessage
 <span class="lineno">  263 </span>
