@@ -311,7 +311,7 @@ span.spaces    { background: white }
 <span class="lineno">  292 </span><span class="decl"><span class="istickedoff">createUndo i (Both str _ : rest) = createUndo (i + length str) rest</span>
 <span class="lineno">  293 </span><span class="spaces"></span><span class="istickedoff">createUndo i (First rem : Second add : rest)</span>
 <span class="lineno">  294 </span><span class="spaces">  </span><span class="istickedoff">= (i, i + length add, rem) : createUndo <span class="nottickedoff">(i + length add)</span> rest</span>
-<span class="lineno">  295 </span><span class="spaces"></span><span class="istickedoff">createUndo i (First rem : rest) = <span class="nottickedoff">(i, i, rem) : createUndo i rest</span></span>
+<span class="lineno">  295 </span><span class="spaces"></span><span class="istickedoff">createUndo i (First rem : rest) = (i, i, rem) : createUndo <span class="nottickedoff">i</span> rest</span>
 <span class="lineno">  296 </span><span class="spaces"></span><span class="istickedoff">createUndo i (Second add : rest)</span>
 <span class="lineno">  297 </span><span class="spaces">  </span><span class="istickedoff">= (i, i + length add, []) : createUndo <span class="nottickedoff">(i + length add)</span> rest</span>
 <span class="lineno">  298 </span><span class="spaces"></span><span class="istickedoff">createUndo _ [] = []</span></span>

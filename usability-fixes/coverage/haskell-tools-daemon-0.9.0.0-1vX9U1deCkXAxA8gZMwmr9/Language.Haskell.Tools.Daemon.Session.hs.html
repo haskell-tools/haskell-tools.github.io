@@ -252,7 +252,7 @@ span.spaces    { background: white }
 <span class="lineno">  233 </span><span class="spaces">        </span><span class="istickedoff">parseTyped (if codeGen then forceCodeGen ms' else ms')</span>
 <span class="lineno">  234 </span><span class="spaces">      </span><span class="istickedoff">-- replace the module in the program database</span>
 <span class="lineno">  235 </span><span class="spaces">      </span><span class="istickedoff">modify' $ refSessMCs &amp; traversal &amp; filtered (\c -&gt; (c ^. mcId) == (mc ^. mcId)) &amp; mcModules</span>
-<span class="lineno">  236 </span><span class="spaces">                  </span><span class="istickedoff">.- Map.insert (keyFromMS ms) ((if <span class="tickonlyfalse">codeGen</span> then <span class="nottickedoff">ModuleCodeGenerated</span> else ModuleTypeChecked) newm ms)</span>
+<span class="lineno">  236 </span><span class="spaces">                  </span><span class="istickedoff">.- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)</span>
 <span class="lineno">  237 </span><span class="spaces">                       </span><span class="istickedoff">. Map.delete (SourceFileKey &quot;&quot; <span class="nottickedoff">modName</span>)</span>
 <span class="lineno">  238 </span><span class="spaces">      </span><span class="istickedoff">liftIO $ report ms</span></span>
 <span class="lineno">  239 </span>
@@ -271,14 +271,14 @@ span.spaces    { background: white }
 <span class="lineno">  252 </span><span class="spaces">    </span><span class="istickedoff"><span class="nottickedoff">catMaybes</span> &lt;$&gt; forM modsNeedCode (reloadIfNeeded mcs)</span>
 <span class="lineno">  253 </span><span class="spaces">  </span><span class="istickedoff">where reloadIfNeeded mcs ms</span>
 <span class="lineno">  254 </span><span class="spaces">          </span><span class="istickedoff">= let key = keyFromMS ms</span>
-<span class="lineno">  255 </span><span class="spaces">              </span><span class="istickedoff">in if <span class="tickonlytrue">not (hasGeneratedCode key mcs)</span></span>
+<span class="lineno">  255 </span><span class="spaces">              </span><span class="istickedoff">in if not (hasGeneratedCode key mcs)</span>
 <span class="lineno">  256 </span><span class="spaces">                   </span><span class="istickedoff">then do -- mark the module for code generation</span>
 <span class="lineno">  257 </span><span class="spaces">                           </span><span class="istickedoff">modify $ refSessMCs .- codeGeneratedFor key</span>
 <span class="lineno">  258 </span><span class="spaces">                           </span><span class="istickedoff">if (isAlreadyLoaded key mcs) then</span>
 <span class="lineno">  259 </span><span class="spaces">                               </span><span class="istickedoff">-- The module is already loaded but code is not generated. Need to reload.</span>
 <span class="lineno">  260 </span><span class="spaces">                               </span><span class="istickedoff"><span class="nottickedoff">Just</span> &lt;$&gt; lift (codeGenForModule report (codeGeneratedFor key mcs) ms)</span>
 <span class="lineno">  261 </span><span class="spaces">                             </span><span class="istickedoff">else return <span class="nottickedoff">Nothing</span></span>
-<span class="lineno">  262 </span><span class="spaces">                   </span><span class="istickedoff">else <span class="nottickedoff">return Nothing</span></span></span>
+<span class="lineno">  262 </span><span class="spaces">                   </span><span class="istickedoff">else return <span class="nottickedoff">Nothing</span></span></span>
 <span class="lineno">  263 </span>
 <span class="lineno">  264 </span>-- | Re-load the module with code generation enabled. Must be used when the module had already been loaded,
 <span class="lineno">  265 </span>-- but code generation were not enabled by then.

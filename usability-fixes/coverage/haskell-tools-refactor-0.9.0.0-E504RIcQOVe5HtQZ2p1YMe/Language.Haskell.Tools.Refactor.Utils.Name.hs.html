@@ -81,7 +81,7 @@ span.spaces    { background: white }
 <span class="lineno">   62 </span><span class="spaces"></span><span class="istickedoff">nameValid Variable _ = Just <span class="nottickedoff">&quot;The name of a value must start with lowercase, and only contain letters, digits, apostrhophe or underscore&quot;</span></span></span>
 <span class="lineno">   63 </span>
 <span class="lineno">   64 </span>isIdChar :: Char -&gt; Bool
-<span class="lineno">   65 </span><span class="decl"><span class="istickedoff">isIdChar c = isLetter c || isDigit c || <span class="nottickedoff">c == '\'' || c == '_'</span></span></span>
+<span class="lineno">   65 </span><span class="decl"><span class="istickedoff">isIdChar c = isLetter c || isDigit c || c == '\'' || <span class="nottickedoff">c == '_'</span></span></span>
 <span class="lineno">   66 </span>
 <span class="lineno">   67 </span>isOperatorChar :: Char -&gt; Bool
 <span class="lineno">   68 </span><span class="decl"><span class="istickedoff">isOperatorChar c = isPunctuation c || isSymbol c</span></span>
