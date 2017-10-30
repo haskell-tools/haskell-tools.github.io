@@ -109,7 +109,7 @@ span.spaces    { background: white }
 <span class="lineno">   90 </span>runCommandExpectOK :: String -&gt; IO (Maybe String)
 <span class="lineno">   91 </span><span class="decl"><span class="istickedoff">runCommandExpectOK cmd = do</span>
 <span class="lineno">   92 </span><span class="spaces">  </span><span class="istickedoff">(exitCode, res, errs) &lt;- readCreateProcessWithExitCode (shell cmd) &quot;&quot;</span>
-<span class="lineno">   93 </span><span class="spaces">  </span><span class="istickedoff">case exitCode of ExitSuccess -&gt; return (Just res)</span>
+<span class="lineno">   93 </span><span class="spaces">  </span><span class="istickedoff">case exitCode of ExitSuccess -&gt; return (Just $ trim res)</span>
 <span class="lineno">   94 </span><span class="spaces">                   </span><span class="istickedoff">ExitFailure code -&gt; <span class="nottickedoff">do putStrLn (&quot;The command '&quot; ++ cmd ++ &quot;' exited with &quot;</span></span>
 <span class="lineno">   95 </span><span class="spaces">                                                      </span><span class="istickedoff"><span class="nottickedoff">++ show code ++ &quot;:\n&quot; ++ errs)</span></span>
 <span class="lineno">   96 </span><span class="spaces">                                          </span><span class="istickedoff"><span class="nottickedoff">return Nothing</span></span></span>
