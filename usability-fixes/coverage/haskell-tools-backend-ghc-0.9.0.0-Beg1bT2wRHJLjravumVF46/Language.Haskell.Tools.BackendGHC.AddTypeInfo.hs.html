@@ -61,7 +61,7 @@ span.spaces    { background: white }
 <span class="lineno">   42 </span><span class="spaces">  </span><span class="istickedoff">ut &lt;- liftIO mkUnknownType</span>
 <span class="lineno">   43 </span><span class="spaces">  </span><span class="istickedoff">let getType = getType' <span class="nottickedoff">ut</span></span>
 <span class="lineno">   44 </span><span class="spaces">  </span><span class="istickedoff">fixities &lt;- getFixities</span>
-<span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">-- fixities to normal form before going on</span>
+<span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">-- evaluates fixities to normal form before going on, otherwise the reference to session would be kept</span>
 <span class="lineno">   46 </span><span class="spaces">  </span><span class="istickedoff">liftIO $ evaluate (forceElements fixities)</span>
 <span class="lineno">   47 </span><span class="spaces">  </span><span class="istickedoff">let createCName sc def id = mkCNameInfo sc def id fixity</span>
 <span class="lineno">   48 </span><span class="spaces">        </span><span class="istickedoff">where fixity = if any (any ((getOccName id ==) . getOccName . (^. _1))) (drop 1 sc)</span>

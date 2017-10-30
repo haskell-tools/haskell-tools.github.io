@@ -72,7 +72,7 @@ span.spaces    { background: white }
 <span class="lineno">   53 </span>import Language.Haskell.Tools.Refactor
 <span class="lineno">   54 </span>import Paths_haskell_tools_daemon (version)
 <span class="lineno">   55 </span>
-<span class="lineno">   56 </span>
+<span class="lineno">   56 </span>-- | Context for responding to a user request.
 <span class="lineno">   57 </span>data UpdateCtx = UpdateCtx { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">options</span></span></span> :: DaemonOptions
 <span class="lineno">   58 </span>                           , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">refactorings</span></span></span> :: [RefactoringChoice IdDom]
 <span class="lineno">   59 </span>                           , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">response</span></span></span> :: ResponseMsg -&gt; IO ()
