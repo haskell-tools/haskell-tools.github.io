@@ -29,76 +29,88 @@ span.spaces    { background: white }
 <span class="lineno">   10 </span>import Data.List
 <span class="lineno">   11 </span>import qualified Data.Map as Map
 <span class="lineno">   12 </span>import Data.Maybe
-<span class="lineno">   13 </span>
-<span class="lineno">   14 </span>import Language.Haskell.Tools.Daemon.Representation
-<span class="lineno">   15 </span>import Language.Haskell.Tools.Refactor (SourceFileKey(..), sfkFileName, sfkModuleName)
-<span class="lineno">   16 </span>
-<span class="lineno">   17 </span>-- | Get the name of a module collection from its Id.
-<span class="lineno">   18 </span>moduleCollectionPkgId :: ModuleCollectionId -&gt; Maybe String
-<span class="lineno">   19 </span><span class="decl"><span class="istickedoff">moduleCollectionPkgId (DirectoryMC _) = Nothing</span>
-<span class="lineno">   20 </span><span class="spaces"></span><span class="istickedoff">moduleCollectionPkgId (LibraryMC id) = <span class="nottickedoff">Just id</span></span>
-<span class="lineno">   21 </span><span class="spaces"></span><span class="istickedoff">moduleCollectionPkgId (ExecutableMC id _) = <span class="nottickedoff">Just id</span></span>
-<span class="lineno">   22 </span><span class="spaces"></span><span class="istickedoff">moduleCollectionPkgId (TestSuiteMC id _) = <span class="nottickedoff">Just id</span></span>
-<span class="lineno">   23 </span><span class="spaces"></span><span class="istickedoff">moduleCollectionPkgId (BenchmarkMC id _) = <span class="nottickedoff">Just id</span></span></span>
-<span class="lineno">   24 </span>
-<span class="lineno">   25 </span>-- TODO: check that these are all needed and they are used right.
-<span class="lineno">   26 </span>
-<span class="lineno">   27 </span>-- | Find the module collection where the given module is contained. Based on module name.
-<span class="lineno">   28 </span>lookupModuleColl :: String -&gt; [ModuleCollection SourceFileKey] -&gt; Maybe (ModuleCollection SourceFileKey)
-<span class="lineno">   29 </span><span class="decl"><span class="istickedoff">lookupModuleColl moduleName = find (any ((moduleName ==) . (^. sfkModuleName)) . Map.keys . (^. mcModules))</span></span>
-<span class="lineno">   30 </span>
-<span class="lineno">   31 </span>-- | Find the module collection where the given module is contained. Based on source file name.
-<span class="lineno">   32 </span>lookupSourceFileColl :: FilePath -&gt; [ModuleCollection SourceFileKey] -&gt; Maybe (ModuleCollection SourceFileKey)
-<span class="lineno">   33 </span><span class="decl"><span class="istickedoff">lookupSourceFileColl fp = find (any ((fp ==) . (^. sfkFileName)) . Map.keys . (^. mcModules))</span></span>
-<span class="lineno">   34 </span>
-<span class="lineno">   35 </span>-- | Find the module with the given name. Based on module name.
-<span class="lineno">   36 </span>lookupModuleInSCs :: String -&gt; [ModuleCollection SourceFileKey] -&gt; Maybe (SourceFileKey, ModuleRecord)
-<span class="lineno">   37 </span><span class="decl"><span class="istickedoff">lookupModuleInSCs moduleName = find ((moduleName ==) . (^. sfkModuleName) . fst) . concatMap (Map.assocs . (^. mcModules))</span></span>
-<span class="lineno">   38 </span>
-<span class="lineno">   39 </span>-- | Find the module with the given name. Based on source file name.
-<span class="lineno">   40 </span>lookupModInSCs :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Maybe (SourceFileKey, ModuleRecord)
-<span class="lineno">   41 </span><span class="decl"><span class="istickedoff">lookupModInSCs key = find (((key ^. sfkFileName) ==) . (^. sfkFileName) . fst) . concatMap (Map.assocs . (^. mcModules))</span></span>
-<span class="lineno">   42 </span>
-<span class="lineno">   43 </span>-- | Get the module with the given name and source file key.
-<span class="lineno">   44 </span>lookupSFKInSCs :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Maybe ModuleRecord
-<span class="lineno">   45 </span><span class="decl"><span class="istickedoff">lookupSFKInSCs key = listToMaybe . catMaybes . map (Map.lookup key . (^. mcModules))</span></span>
-<span class="lineno">   46 </span>
-<span class="lineno">   47 </span>-- | Remove a module with the given name. Based on module name.
-<span class="lineno">   48 </span>removeModule :: String -&gt; [ModuleCollection SourceFileKey] -&gt; [ModuleCollection SourceFileKey]
-<span class="lineno">   49 </span><span class="decl"><span class="istickedoff">removeModule moduleName = map (mcModules .- Map.filterWithKey (\k _ -&gt; moduleName /= (k ^. sfkModuleName)))</span></span>
-<span class="lineno">   50 </span>
-<span class="lineno">   51 </span>-- | Check if we already generated code for the given module. Based on both module name and source
-<span class="lineno">   52 </span>-- file name.
-<span class="lineno">   53 </span>hasGeneratedCode :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Bool
-<span class="lineno">   54 </span><span class="decl"><span class="istickedoff">hasGeneratedCode key = maybe <span class="nottickedoff">False</span> (\case ModuleCodeGenerated {} -&gt; True; _ -&gt; False)</span>
-<span class="lineno">   55 </span><span class="spaces">                         </span><span class="istickedoff">. lookupSFKInSCs key</span></span>
-<span class="lineno">   56 </span>
-<span class="lineno">   57 </span>-- | Check if the given module needs code generation. Finds the module if no source file name is
-<span class="lineno">   58 </span>-- present and module names check or if both module names and source file names check.
-<span class="lineno">   59 </span>needsGeneratedCode :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Bool
-<span class="lineno">   60 </span><span class="decl"><span class="istickedoff">needsGeneratedCode key mcs = maybe <span class="nottickedoff">False</span> (\case ModuleCodeGenerated {} -&gt; True; ModuleNotLoaded True _ -&gt; True; _ -&gt; False)</span>
-<span class="lineno">   61 </span><span class="spaces">                              </span><span class="istickedoff">$ lookupSFKInSCs key mcs &lt;|&gt; <span class="nottickedoff">lookupSFKInSCs (sfkFileName .= &quot;&quot; $ key) mcs</span></span></span>
-<span class="lineno">   62 </span>
-<span class="lineno">   63 </span>-- | Marks the given module for code generation. Finds the module if no source file name is
-<span class="lineno">   64 </span>-- present and module names check or if both module names and source file names check.
-<span class="lineno">   65 </span>codeGeneratedFor :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; [ModuleCollection SourceFileKey]
-<span class="lineno">   66 </span><span class="decl"><span class="istickedoff">codeGeneratedFor key = map (mcModules .- Map.adjust <span class="nottickedoff">setCodeGen</span> (sfkFileName .= &quot;&quot; $ key) . Map.adjust setCodeGen key)</span>
-<span class="lineno">   67 </span><span class="spaces">  </span><span class="istickedoff">where setCodeGen (ModuleTypeChecked mod ms) = <span class="nottickedoff">ModuleCodeGenerated mod ms</span></span>
-<span class="lineno">   68 </span><span class="spaces">        </span><span class="istickedoff">setCodeGen (ModuleNotLoaded _ exp) = ModuleNotLoaded True <span class="nottickedoff">exp</span></span>
-<span class="lineno">   69 </span><span class="spaces">        </span><span class="istickedoff">setCodeGen m = <span class="nottickedoff">m</span></span></span>
-<span class="lineno">   70 </span>
-<span class="lineno">   71 </span>-- | Check if the given module has been already loaded. Based on both module name and source
-<span class="lineno">   72 </span>-- file name.
-<span class="lineno">   73 </span>isAlreadyLoaded :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Bool
-<span class="lineno">   74 </span><span class="decl"><span class="istickedoff">isAlreadyLoaded key = maybe <span class="nottickedoff">False</span> (\case (_, ModuleNotLoaded {}) -&gt; False; _ -&gt; True)</span>
-<span class="lineno">   75 </span><span class="spaces">                         </span><span class="istickedoff">. find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))</span></span>
-<span class="lineno">   76 </span>
-<span class="lineno">   77 </span>-- | Insert a module with a source file key to our database if it wasn't there already
-<span class="lineno">   78 </span>insertIfMissing :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; [ModuleCollection SourceFileKey]
-<span class="lineno">   79 </span><span class="decl"><span class="istickedoff">insertIfMissing sfk mods</span>
-<span class="lineno">   80 </span><span class="spaces">  </span><span class="istickedoff">= case lookupSFKInSCs sfk mods of</span>
-<span class="lineno">   81 </span><span class="spaces">      </span><span class="istickedoff">Just x -&gt; mods</span>
-<span class="lineno">   82 </span><span class="spaces">      </span><span class="istickedoff">Nothing -&gt; element 0 &amp; mcModules .- Map.insert sfk (ModuleNotLoaded False <span class="nottickedoff">False</span>) $ mods</span></span>
+<span class="lineno">   13 </span>import GHC (ModSummary(..))
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>import Language.Haskell.Tools.Daemon.Representation
+<span class="lineno">   16 </span>import Language.Haskell.Tools.Refactor
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>-- | Get the name of a module collection from its Id.
+<span class="lineno">   19 </span>moduleCollectionPkgId :: ModuleCollectionId -&gt; Maybe String
+<span class="lineno">   20 </span><span class="decl"><span class="istickedoff">moduleCollectionPkgId (DirectoryMC _) = Nothing</span>
+<span class="lineno">   21 </span><span class="spaces"></span><span class="istickedoff">moduleCollectionPkgId (LibraryMC id) = <span class="nottickedoff">Just id</span></span>
+<span class="lineno">   22 </span><span class="spaces"></span><span class="istickedoff">moduleCollectionPkgId (ExecutableMC id _) = <span class="nottickedoff">Just id</span></span>
+<span class="lineno">   23 </span><span class="spaces"></span><span class="istickedoff">moduleCollectionPkgId (TestSuiteMC id _) = <span class="nottickedoff">Just id</span></span>
+<span class="lineno">   24 </span><span class="spaces"></span><span class="istickedoff">moduleCollectionPkgId (BenchmarkMC id _) = <span class="nottickedoff">Just id</span></span></span>
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>-- TODO: check that these are all needed and they are used right.
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>-- | Find the module collection where the given module is contained. Based on module name.
+<span class="lineno">   29 </span>lookupModuleColl :: String -&gt; [ModuleCollection SourceFileKey] -&gt; Maybe (ModuleCollection SourceFileKey)
+<span class="lineno">   30 </span><span class="decl"><span class="istickedoff">lookupModuleColl moduleName = find (any ((moduleName ==) . (^. sfkModuleName)) . Map.keys . (^. mcModules))</span></span>
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>-- | Find the module collection where the given module is contained. Based on source file name.
+<span class="lineno">   33 </span>lookupSourceFileColl :: FilePath -&gt; [ModuleCollection SourceFileKey] -&gt; Maybe (ModuleCollection SourceFileKey)
+<span class="lineno">   34 </span><span class="decl"><span class="istickedoff">lookupSourceFileColl fp = find (any ((fp ==) . (^. sfkFileName)) . Map.keys . (^. mcModules))</span></span>
+<span class="lineno">   35 </span>
+<span class="lineno">   36 </span>-- | Find the module collection where the given module is contained. Based on source file name and module name.
+<span class="lineno">   37 </span>lookupModuleCollection :: ModSummary -&gt; [ModuleCollection SourceFileKey] -&gt; Maybe (ModuleCollection SourceFileKey)
+<span class="lineno">   38 </span><span class="decl"><span class="istickedoff">lookupModuleCollection ms mcs = lookupSourceFileColl (getModSumOrig ms) mcs &lt;|&gt; <span class="nottickedoff">lookupModuleColl (getModSumName ms) mcs</span></span></span>
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>-- | Find the module with the given name. Based on module name.
+<span class="lineno">   41 </span>lookupModuleInSCs :: String -&gt; [ModuleCollection SourceFileKey] -&gt; Maybe (SourceFileKey, ModuleRecord)
+<span class="lineno">   42 </span><span class="decl"><span class="istickedoff">lookupModuleInSCs moduleName = find ((moduleName ==) . (^. sfkModuleName) . fst) . concatMap (Map.assocs . (^. mcModules))</span></span>
+<span class="lineno">   43 </span>
+<span class="lineno">   44 </span>-- | Find the module with the given name. Based on source file name.
+<span class="lineno">   45 </span>lookupModInSCs :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Maybe (SourceFileKey, ModuleRecord)
+<span class="lineno">   46 </span><span class="decl"><span class="istickedoff">lookupModInSCs key = find (((key ^. sfkFileName) ==) . (^. sfkFileName) . fst) . concatMap (Map.assocs . (^. mcModules))</span></span>
+<span class="lineno">   47 </span>
+<span class="lineno">   48 </span>-- | Get the module with the given name and source file key.
+<span class="lineno">   49 </span>lookupSFKInSCs :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Maybe ModuleRecord
+<span class="lineno">   50 </span><span class="decl"><span class="istickedoff">lookupSFKInSCs key = listToMaybe . catMaybes . map (Map.lookup key . (^. mcModules))</span></span>
+<span class="lineno">   51 </span>
+<span class="lineno">   52 </span>-- | Remove a module with the given name. Based on module name.
+<span class="lineno">   53 </span>removeModule :: String -&gt; [ModuleCollection SourceFileKey] -&gt; [ModuleCollection SourceFileKey]
+<span class="lineno">   54 </span><span class="decl"><span class="istickedoff">removeModule moduleName = map (mcModules .- Map.filterWithKey (\k _ -&gt; moduleName /= (k ^. sfkModuleName)))</span></span>
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>-- | Remove a module with the given name from a module collection. Based on module name and file path.
+<span class="lineno">   57 </span>removeModuleMS :: ModSummary -&gt; Map.Map SourceFileKey ModuleRecord -&gt; Map.Map SourceFileKey ModuleRecord
+<span class="lineno">   58 </span><span class="decl"><span class="istickedoff">removeModuleMS ms = Map.filterWithKey (\k _ -&gt; stay k)</span>
+<span class="lineno">   59 </span><span class="spaces">  </span><span class="istickedoff">where stay k = getModSumName ms /= (k ^. sfkModuleName) || (fn /= getModSumOrig ms &amp;&amp; fn /= &quot;&quot;)</span>
+<span class="lineno">   60 </span><span class="spaces">          </span><span class="istickedoff">where fn = k ^. sfkFileName</span></span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>-- | Check if we already generated code for the given module. Based on both module name and source
+<span class="lineno">   63 </span>-- file name.
+<span class="lineno">   64 </span>hasGeneratedCode :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Bool
+<span class="lineno">   65 </span><span class="decl"><span class="nottickedoff">hasGeneratedCode key = maybe False (\case ModuleCodeGenerated {} -&gt; True; _ -&gt; False)</span>
+<span class="lineno">   66 </span><span class="spaces">                         </span><span class="nottickedoff">. lookupSFKInSCs key</span></span>
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>-- | Check if the given module needs code generation. Finds the module if no source file name is
+<span class="lineno">   69 </span>-- present and module names check or if both module names and source file names check.
+<span class="lineno">   70 </span>needsGeneratedCode :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Bool
+<span class="lineno">   71 </span><span class="decl"><span class="istickedoff">needsGeneratedCode key mcs = maybe <span class="nottickedoff">False</span> (\case ModuleCodeGenerated {} -&gt; True; ModuleNotLoaded True _ -&gt; True; _ -&gt; False)</span>
+<span class="lineno">   72 </span><span class="spaces">                              </span><span class="istickedoff">$ lookupSFKInSCs key mcs &lt;|&gt; <span class="nottickedoff">lookupSFKInSCs (sfkFileName .= &quot;&quot; $ key) mcs</span></span></span>
+<span class="lineno">   73 </span>
+<span class="lineno">   74 </span>-- | Marks the given module for code generation. Finds the module if no source file name is
+<span class="lineno">   75 </span>-- present and module names check or if both module names and source file names check.
+<span class="lineno">   76 </span>-- Idempotent operation.
+<span class="lineno">   77 </span>codeGeneratedFor :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; [ModuleCollection SourceFileKey]
+<span class="lineno">   78 </span><span class="decl"><span class="istickedoff">codeGeneratedFor key = map (mcModules .- Map.adjust <span class="nottickedoff">setCodeGen</span> (sfkFileName .= &quot;&quot; $ key) . Map.adjust setCodeGen key)</span>
+<span class="lineno">   79 </span><span class="spaces">  </span><span class="istickedoff">where setCodeGen (ModuleTypeChecked mod ms) = <span class="nottickedoff">ModuleCodeGenerated mod ms</span></span>
+<span class="lineno">   80 </span><span class="spaces">        </span><span class="istickedoff">setCodeGen (ModuleNotLoaded _ exp) = ModuleNotLoaded True <span class="nottickedoff">exp</span></span>
+<span class="lineno">   81 </span><span class="spaces">        </span><span class="istickedoff">setCodeGen m = m</span></span>
+<span class="lineno">   82 </span>
+<span class="lineno">   83 </span>-- | Check if the given module has been already loaded. Based on both module name and source
+<span class="lineno">   84 </span>-- file name.
+<span class="lineno">   85 </span>isAlreadyLoaded :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Bool
+<span class="lineno">   86 </span><span class="decl"><span class="istickedoff">isAlreadyLoaded key = maybe <span class="nottickedoff">False</span> (\case (_, ModuleNotLoaded {}) -&gt; False; _ -&gt; True)</span>
+<span class="lineno">   87 </span><span class="spaces">                         </span><span class="istickedoff">. find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))</span></span>
+<span class="lineno">   88 </span>
+<span class="lineno">   89 </span>-- | Insert a module with a source file key to our database if it wasn't there already
+<span class="lineno">   90 </span>insertIfMissing :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; [ModuleCollection SourceFileKey]
+<span class="lineno">   91 </span><span class="decl"><span class="istickedoff">insertIfMissing sfk mods</span>
+<span class="lineno">   92 </span><span class="spaces">  </span><span class="istickedoff">= case lookupSFKInSCs sfk mods of</span>
+<span class="lineno">   93 </span><span class="spaces">      </span><span class="istickedoff">Just _ -&gt; mods</span>
+<span class="lineno">   94 </span><span class="spaces">      </span><span class="istickedoff">Nothing -&gt; element 0 &amp; mcModules .- Map.insert sfk (ModuleNotLoaded False <span class="nottickedoff">False</span>) $ mods</span></span>
 
 </pre>
 </body>
