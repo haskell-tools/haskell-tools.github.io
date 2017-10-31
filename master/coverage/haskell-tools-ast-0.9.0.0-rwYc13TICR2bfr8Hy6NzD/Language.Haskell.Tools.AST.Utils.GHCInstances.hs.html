@@ -23,10 +23,10 @@ span.spaces    { background: white }
 <span class="lineno">    4 </span>import Data.Data
 <span class="lineno">    5 </span>import SrcLoc
 <span class="lineno">    6 </span>
-<span class="lineno">    7 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff">deriving instance Data SrcLoc</span></span></span></span></span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">    7 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">deriving instance Data SrcLoc</span></span></span></span></span></span></span></span></span></span></span></span></span></span>
 <span class="lineno">    8 </span>  
 <span class="lineno">    9 </span>instance Data RealSrcLoc where
-<span class="lineno">   10 </span>    <span class="decl"><span class="istickedoff">gfoldl k z rsl = z <span class="nottickedoff">mkRealSrcLoc</span> `k` <span class="nottickedoff">srcLocFile rsl</span> `k` <span class="nottickedoff">srcLocLine rsl</span> `k` <span class="nottickedoff">srcLocCol rsl</span></span></span>
+<span class="lineno">   10 </span>    <span class="decl"><span class="nottickedoff">gfoldl k z rsl = z mkRealSrcLoc `k` srcLocFile rsl `k` srcLocLine rsl `k` srcLocCol rsl</span></span>
 <span class="lineno">   11 </span>
 <span class="lineno">   12 </span>    <span class="decl"><span class="nottickedoff">gunfold k z c = case constrIndex c of</span>
 <span class="lineno">   13 </span><span class="spaces">                        </span><span class="nottickedoff">1 -&gt; k (k (k (z mkRealSrcLoc)))</span>

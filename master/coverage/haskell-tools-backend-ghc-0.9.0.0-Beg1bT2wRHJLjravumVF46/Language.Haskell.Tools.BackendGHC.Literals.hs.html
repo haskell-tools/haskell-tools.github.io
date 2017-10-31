@@ -33,7 +33,7 @@ span.spaces    { background: white }
 <span class="lineno">   14 </span>trfLiteral' :: HsLit -&gt; Trf (AST.ULiteral (Dom r) RangeStage)
 <span class="lineno">   15 </span><span class="decl"><span class="istickedoff">trfLiteral' (HsChar _ ch) = pure $ AST.UCharLit <span class="nottickedoff">ch</span></span>
 <span class="lineno">   16 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsCharPrim _ ch) = <span class="nottickedoff">pure $ AST.UPrimCharLit ch</span></span>
-<span class="lineno">   17 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsString _ str) = pure $ AST.UStringLit (unpackFS str)</span>
+<span class="lineno">   17 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsString _ str) = pure $ AST.UStringLit <span class="nottickedoff">(unpackFS str)</span></span>
 <span class="lineno">   18 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsStringPrim _ str) = <span class="nottickedoff">pure $ AST.UPrimStringLit (BS.foldr (:) &quot;&quot; str)</span></span>
 <span class="lineno">   19 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsInt _ i) = <span class="nottickedoff">pure $ AST.UIntLit i</span></span>
 <span class="lineno">   20 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsIntPrim _ i) = pure $ AST.UPrimIntLit <span class="nottickedoff">i</span></span>
@@ -47,7 +47,7 @@ span.spaces    { background: white }
 <span class="lineno">   28 </span>
 <span class="lineno">   29 </span>trfOverloadedLit :: OverLitVal -&gt; Trf (AST.ULiteral (Dom r) RangeStage)
 <span class="lineno">   30 </span><span class="decl"><span class="istickedoff">trfOverloadedLit (HsIntegral _ i) = pure $ AST.UIntLit <span class="nottickedoff">i</span></span>
-<span class="lineno">   31 </span><span class="spaces"></span><span class="istickedoff">trfOverloadedLit (HsFractional frac) = pure $ AST.UFracLit (fl_value frac)</span>
+<span class="lineno">   31 </span><span class="spaces"></span><span class="istickedoff">trfOverloadedLit (HsFractional frac) = pure $ AST.UFracLit <span class="nottickedoff">(fl_value frac)</span></span>
 <span class="lineno">   32 </span><span class="spaces"></span><span class="istickedoff">trfOverloadedLit (HsIsString _ str) = <span class="nottickedoff">pure $ AST.UStringLit (unpackFS str)</span></span></span>
 
 </pre>

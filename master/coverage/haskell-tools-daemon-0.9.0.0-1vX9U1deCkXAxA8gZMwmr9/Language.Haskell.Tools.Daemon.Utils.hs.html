@@ -70,13 +70,13 @@ span.spaces    { background: white }
 <span class="lineno">   51 </span>-- | Check if we already generated code for the given module. Based on both module name and source
 <span class="lineno">   52 </span>-- file name.
 <span class="lineno">   53 </span>hasGeneratedCode :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Bool
-<span class="lineno">   54 </span><span class="decl"><span class="istickedoff">hasGeneratedCode key = maybe <span class="nottickedoff">False</span> (\case ModuleCodeGenerated {} -&gt; <span class="nottickedoff">True</span>; _ -&gt; False)</span>
+<span class="lineno">   54 </span><span class="decl"><span class="istickedoff">hasGeneratedCode key = maybe <span class="nottickedoff">False</span> (\case ModuleCodeGenerated {} -&gt; True; _ -&gt; False)</span>
 <span class="lineno">   55 </span><span class="spaces">                         </span><span class="istickedoff">. lookupSFKInSCs key</span></span>
 <span class="lineno">   56 </span>
 <span class="lineno">   57 </span>-- | Check if the given module needs code generation. Finds the module if no source file name is
 <span class="lineno">   58 </span>-- present and module names check or if both module names and source file names check.
 <span class="lineno">   59 </span>needsGeneratedCode :: SourceFileKey -&gt; [ModuleCollection SourceFileKey] -&gt; Bool
-<span class="lineno">   60 </span><span class="decl"><span class="istickedoff">needsGeneratedCode key mcs = maybe <span class="nottickedoff">False</span> (\case ModuleCodeGenerated {} -&gt; <span class="nottickedoff">True</span>; ModuleNotLoaded True _ -&gt; True; _ -&gt; False)</span>
+<span class="lineno">   60 </span><span class="decl"><span class="istickedoff">needsGeneratedCode key mcs = maybe <span class="nottickedoff">False</span> (\case ModuleCodeGenerated {} -&gt; True; ModuleNotLoaded True _ -&gt; True; _ -&gt; False)</span>
 <span class="lineno">   61 </span><span class="spaces">                              </span><span class="istickedoff">$ lookupSFKInSCs key mcs &lt;|&gt; <span class="nottickedoff">lookupSFKInSCs (sfkFileName .= &quot;&quot; $ key) mcs</span></span></span>
 <span class="lineno">   62 </span>
 <span class="lineno">   63 </span>-- | Marks the given module for code generation. Finds the module if no source file name is

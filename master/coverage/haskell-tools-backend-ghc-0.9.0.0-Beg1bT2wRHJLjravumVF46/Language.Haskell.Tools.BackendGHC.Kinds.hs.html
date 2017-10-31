@@ -40,7 +40,7 @@ span.spaces    { background: white }
 <span class="lineno">   21 </span>
 <span class="lineno">   22 </span>
 <span class="lineno">   23 </span>trfKindSig :: TransformName n r =&gt; Maybe (LHsKind n) -&gt; Trf (AnnMaybeG AST.UKindConstraint (Dom r) RangeStage)
-<span class="lineno">   24 </span><span class="decl"><span class="istickedoff">trfKindSig = trfMaybe &quot;&quot; &quot;&quot; trfKindSig'</span></span>
+<span class="lineno">   24 </span><span class="decl"><span class="istickedoff">trfKindSig = trfMaybe <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">&quot;&quot;</span> trfKindSig'</span></span>
 <span class="lineno">   25 </span>
 <span class="lineno">   26 </span>trfKindSig' :: TransformName n r =&gt; Located (HsKind n) -&gt; Trf (Ann AST.UKindConstraint (Dom r) RangeStage)
 <span class="lineno">   27 </span><span class="decl"><span class="istickedoff">trfKindSig' k = annLocNoSema (combineSrcSpans (getLoc k) &lt;$&gt; (tokenBefore (srcSpanStart (getLoc k)) AnnDcolon))</span>
@@ -75,7 +75,7 @@ span.spaces    { background: white }
 <span class="lineno">   56 </span><span class="decl"><span class="istickedoff">trfPromoted' _ (HsTyLit (HsNumTy _ int)) = pure $ AST.UPromotedInt <span class="nottickedoff">int</span></span>
 <span class="lineno">   57 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ (HsTyLit (HsStrTy _ str)) = <span class="nottickedoff">pure $ AST.UPromotedString (unpackFS str)</span></span>
 <span class="lineno">   58 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ (HsTyVar _ name) = <span class="nottickedoff">AST.UPromotedCon &lt;$&gt; trfName name</span></span>
-<span class="lineno">   59 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' f (HsExplicitListTy _ _ elems) = AST.UPromotedList &lt;$&gt; between AnnOpenS AnnCloseS (trfAnnList &quot;, &quot; f elems)</span>
+<span class="lineno">   59 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' f (HsExplicitListTy _ _ elems) = AST.UPromotedList &lt;$&gt; between AnnOpenS AnnCloseS (trfAnnList <span class="nottickedoff">&quot;, &quot;</span> f elems)</span>
 <span class="lineno">   60 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' f (HsExplicitTupleTy _ elems) = <span class="nottickedoff">AST.UPromotedTuple &lt;$&gt; between AnnOpenP AnnCloseP (trfAnnList &quot;, &quot; f elems)</span></span>
 <span class="lineno">   61 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ t = <span class="nottickedoff">unhandledElement &quot;promoted type/kind&quot; t</span></span></span>
 

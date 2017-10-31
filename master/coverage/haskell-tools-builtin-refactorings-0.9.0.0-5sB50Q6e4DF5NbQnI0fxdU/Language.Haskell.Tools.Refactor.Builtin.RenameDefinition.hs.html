@@ -37,7 +37,7 @@ span.spaces    { background: white }
 <span class="lineno">   18 </span>import Name (OccName(..), NamedThing(..), occNameString)
 <span class="lineno">   19 </span>import SrcLoc (RealSrcSpan)
 <span class="lineno">   20 </span>import TyCon (tyConDataCons)
-<span class="lineno">   21 </span>import Type (TyThing(..), funResultTy, eqType)
+<span class="lineno">   21 </span>import Type (funResultTy, eqType)
 <span class="lineno">   22 </span>
 <span class="lineno">   23 </span>import Control.Monad.State
 <span class="lineno">   24 </span>import Control.Reference as Ref
@@ -122,7 +122,7 @@ span.spaces    { background: white }
 <span class="lineno">  103 </span><span class="spaces">          </span><span class="istickedoff">&amp;&amp; semanticsDefining name == False</span>
 <span class="lineno">  104 </span><span class="spaces">          </span><span class="istickedoff">&amp;&amp; any @[] (\n -&gt; str == occNameString (getOccName n) &amp;&amp; not (mergeableFields origId n))</span>
 <span class="lineno">  105 </span><span class="spaces">                     </span><span class="istickedoff">(scopeUpToDef (map (map (^. _1)) $ semanticsScope name) ^? traversal &amp; traversal &amp; filtered (sameNamespace toChangeOrig))</span>
-<span class="lineno">  106 </span><span class="spaces">      </span><span class="istickedoff">= refactError $ <span class="nottickedoff">&quot;The definition clashes with an existing one at: &quot; ++ shortShowSpan (getRange name)</span> -- name clash with an external definition</span>
+<span class="lineno">  106 </span><span class="spaces">      </span><span class="istickedoff">= refactError $ <span class="nottickedoff">&quot;The definition clashes with an existing one at: &quot; ++ shortShowSpanWithFile (getRange name)</span> -- name clash with an external definition</span>
 <span class="lineno">  107 </span><span class="spaces">      </span><span class="istickedoff">| maybe <span class="nottickedoff">False</span> (`elem` toChange) actualName</span>
 <span class="lineno">  108 </span><span class="spaces">      </span><span class="istickedoff">= do put True -- state that something is changed in the local state</span>
 <span class="lineno">  109 </span><span class="spaces">           </span><span class="istickedoff">when (actualName == Just toChangeOrig)</span>
@@ -135,7 +135,7 @@ span.spaces    { background: white }
 <span class="lineno">  116 </span><span class="spaces">                                              </span><span class="istickedoff">&amp;&amp; conflicts toChangeOrig exprName namesInScope</span>
 <span class="lineno">  117 </span><span class="spaces">                                              </span><span class="istickedoff">&amp;&amp; not (mergeableFields origId exprName)</span>
 <span class="lineno">  118 </span><span class="spaces">              </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">False</span> -- ambiguous names</span>
-<span class="lineno">  119 </span><span class="spaces">      </span><span class="istickedoff">= refactError $ <span class="nottickedoff">&quot;The definition clashes with an existing one: &quot; ++ shortShowSpan (getRange name)</span> -- local name clash</span>
+<span class="lineno">  119 </span><span class="spaces">      </span><span class="istickedoff">= refactError $ <span class="nottickedoff">&quot;The definition clashes with an existing one: &quot; ++ shortShowSpanWithFile (getRange name)</span> -- local name clash</span>
 <span class="lineno">  120 </span><span class="spaces">      </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = return name -- not the changed name, leave as before</span>
 <span class="lineno">  121 </span><span class="spaces">      </span><span class="istickedoff">where toChange = toChangeOrig : toChangeWith</span>
 <span class="lineno">  122 </span><span class="spaces">            </span><span class="istickedoff">actualName = fmap getName (semanticsName name)</span>

@@ -74,14 +74,14 @@ span.spaces    { background: white }
 <span class="lineno">   55 </span><span class="spaces"></span><span class="istickedoff">nameValid ValueOperator (c : nameRest) | isOperatorChar c &amp;&amp; c /= ':' &amp;&amp; all isOperatorChar nameRest = Nothing</span>
 <span class="lineno">   56 </span><span class="spaces"></span><span class="istickedoff">nameValid ValueOperator _ = Just <span class="nottickedoff">&quot;An operator that is a value must only contain operator characters and cannot start with ':'&quot;</span></span>
 <span class="lineno">   57 </span><span class="spaces"></span><span class="istickedoff">-- Data and type constructors (start with uppercase)</span>
-<span class="lineno">   58 </span><span class="spaces"></span><span class="istickedoff">nameValid Ctor (c : nameRest) | isUpper c &amp;&amp; isIdStartChar c &amp;&amp; all (\c -&gt; isIdStartChar c || isDigit c) nameRest = Nothing</span>
+<span class="lineno">   58 </span><span class="spaces"></span><span class="istickedoff">nameValid Ctor (c : nameRest) | isUpper c &amp;&amp; isLetter c &amp;&amp; all isIdChar nameRest = Nothing</span>
 <span class="lineno">   59 </span><span class="spaces"></span><span class="istickedoff">nameValid Ctor _ = Just <span class="nottickedoff">&quot;A constructor or module name must start with an uppercase letter, and only contain letters, digits, apostrhophe or underscore&quot;</span></span>
 <span class="lineno">   60 </span><span class="spaces"></span><span class="istickedoff">-- Variables and type variables (start with lowercase)</span>
-<span class="lineno">   61 </span><span class="spaces"></span><span class="istickedoff">nameValid Variable (c : nameRest) | isLower c &amp;&amp; isIdStartChar c &amp;&amp; all (\c -&gt; isIdStartChar c || isDigit c) nameRest = Nothing</span>
+<span class="lineno">   61 </span><span class="spaces"></span><span class="istickedoff">nameValid Variable (c : nameRest) | ((isLower c  &amp;&amp; isLetter c) || c == '\'' || c == '_') &amp;&amp; all isIdChar nameRest = Nothing</span>
 <span class="lineno">   62 </span><span class="spaces"></span><span class="istickedoff">nameValid Variable _ = Just <span class="nottickedoff">&quot;The name of a value must start with lowercase, and only contain letters, digits, apostrhophe or underscore&quot;</span></span></span>
 <span class="lineno">   63 </span>
-<span class="lineno">   64 </span>isIdStartChar :: Char -&gt; Bool
-<span class="lineno">   65 </span><span class="decl"><span class="istickedoff">isIdStartChar c = isLetter c || c == '\'' || c == '_'</span></span>
+<span class="lineno">   64 </span>isIdChar :: Char -&gt; Bool
+<span class="lineno">   65 </span><span class="decl"><span class="istickedoff">isIdChar c = isLetter c || isDigit c || c == '\'' || <span class="nottickedoff">c == '_'</span></span></span>
 <span class="lineno">   66 </span>
 <span class="lineno">   67 </span>isOperatorChar :: Char -&gt; Bool
 <span class="lineno">   68 </span><span class="decl"><span class="istickedoff">isOperatorChar c = isPunctuation c || isSymbol c</span></span>
