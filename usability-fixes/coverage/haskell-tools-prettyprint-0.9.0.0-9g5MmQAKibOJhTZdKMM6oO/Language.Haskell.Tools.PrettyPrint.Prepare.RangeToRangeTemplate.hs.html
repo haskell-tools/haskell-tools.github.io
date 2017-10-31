@@ -79,7 +79,7 @@ span.spaces    { background: white }
 <span class="lineno">   60 </span>                                     }
 <span class="lineno">   61 </span>
 <span class="lineno">   62 </span>instance Show BreakUpProblem where
-<span class="lineno">   63 </span> <span class="decl"><span class="nottickedoff">show (BreakUpProblem outer (RealSrcSpan inner) _)</span>
+<span class="lineno">   63 </span> <span class="decl"><span class="nottickedoff">show (BreakUpProblem _ (RealSrcSpan inner) _)</span>
 <span class="lineno">   64 </span><span class="spaces">   </span><span class="nottickedoff">= unpackFS (srcSpanFile inner) ++ &quot;: didn't find correct place for AST element at &quot; ++ shortShowSpan (RealSrcSpan inner)</span>
 <span class="lineno">   65 </span><span class="spaces"> </span><span class="nottickedoff">show (BreakUpProblem outer _ _)</span>
 <span class="lineno">   66 </span><span class="spaces">   </span><span class="nottickedoff">= unpackFS (srcSpanFile outer) ++ &quot;: didn't find correct place for AST element in &quot; ++ shortShowSpan (RealSrcSpan outer)</span></span>
