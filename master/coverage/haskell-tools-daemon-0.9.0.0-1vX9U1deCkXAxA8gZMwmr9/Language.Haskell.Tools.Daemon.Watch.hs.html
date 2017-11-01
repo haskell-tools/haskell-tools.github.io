@@ -41,7 +41,7 @@ span.spaces    { background: white }
 <span class="lineno">   22 </span>import Language.Haskell.Tools.Daemon.ErrorHandling (userExceptionHandlers, exceptionHandlers)
 <span class="lineno">   23 </span>import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg(..))
 <span class="lineno">   24 </span>import Language.Haskell.Tools.Daemon.State (DaemonSessionState)
-<span class="lineno">   25 </span>import Language.Haskell.Tools.Daemon.Update (reloadModules)
+<span class="lineno">   25 </span>import Language.Haskell.Tools.Daemon.Update (updateForFileChanges)
 <span class="lineno">   26 </span>
 <span class="lineno">   27 </span>-- | Starts the watch process and a thread that receives notifications from it. The notification
 <span class="lineno">   28 </span>-- thread will invoke updates on the daemon state to re-load files.
@@ -59,7 +59,7 @@ span.spaces    { background: white }
 <span class="lineno">   40 </span><span class="spaces">        </span><span class="nottickedoff">let changedFiles = catMaybes $ map getModifiedFile changes</span>
 <span class="lineno">   41 </span><span class="spaces">            </span><span class="nottickedoff">addedFiles = catMaybes $ map getAddedFile changes</span>
 <span class="lineno">   42 </span><span class="spaces">            </span><span class="nottickedoff">removedFiles = catMaybes $ map getRemovedFile changes</span>
-<span class="lineno">   43 </span><span class="spaces">            </span><span class="nottickedoff">reloadAction = reloadModules upClient addedFiles changedFiles removedFiles</span>
+<span class="lineno">   43 </span><span class="spaces">            </span><span class="nottickedoff">reloadAction = updateForFileChanges upClient addedFiles changedFiles removedFiles</span>
 <span class="lineno">   44 </span><span class="spaces">            </span><span class="nottickedoff">handlers = userExceptionHandlers</span>
 <span class="lineno">   45 </span><span class="spaces">                           </span><span class="nottickedoff">(upClient . ErrorMessage)</span>
 <span class="lineno">   46 </span><span class="spaces">                           </span><span class="nottickedoff">(\err hint -&gt; upClient (CompilationProblem err hint))</span>
@@ -78,7 +78,7 @@ span.spaces    { background: white }
 <span class="lineno">   59 </span><span class="spaces">    </span><span class="nottickedoff">getRemovedFile (Rem file) | takeExtension file `elem` sourceExtensions = Just file</span>
 <span class="lineno">   60 </span><span class="spaces">    </span><span class="nottickedoff">getRemovedFile _ = Nothing</span>
 <span class="lineno">   61 </span><span class="spaces"></span><span class="nottickedoff"></span>
-<span class="lineno">   62 </span><span class="spaces">    </span><span class="nottickedoff">sourceExtensions = [ &quot;.hs&quot;, &quot;.hs-boot&quot; ]</span>
+<span class="lineno">   62 </span><span class="spaces">    </span><span class="nottickedoff">sourceExtensions = [ &quot;.hs&quot;, &quot;.hs-boot&quot;, &quot;.cabal&quot; ]</span>
 <span class="lineno">   63 </span><span class="spaces"></span><span class="nottickedoff"></span>
 <span class="lineno">   64 </span><span class="spaces">    </span><span class="nottickedoff">guessExePath = do exePath &lt;- getExecutablePath</span>
 <span class="lineno">   65 </span><span class="spaces">                      </span><span class="nottickedoff">return $ takeDirectory exePath &lt;/&gt; &quot;hfswatch&quot;</span></span>
