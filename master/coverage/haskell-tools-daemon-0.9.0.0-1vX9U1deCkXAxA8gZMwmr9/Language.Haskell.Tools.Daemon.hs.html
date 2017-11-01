@@ -54,7 +54,7 @@ span.spaces    { background: white }
 <span class="lineno">   35 </span>import Language.Haskell.Tools.Daemon.ErrorHandling
 <span class="lineno">   36 </span>import Language.Haskell.Tools.Daemon.GetModules
 <span class="lineno">   37 </span>import Language.Haskell.Tools.Daemon.Mode
-<span class="lineno">   38 </span>import Language.Haskell.Tools.Daemon.Options
+<span class="lineno">   38 </span>import Language.Haskell.Tools.Daemon.Options as Options
 <span class="lineno">   39 </span>import Language.Haskell.Tools.Daemon.Protocol
 <span class="lineno">   40 </span>import Language.Haskell.Tools.Daemon.Representation
 <span class="lineno">   41 </span>import Language.Haskell.Tools.Daemon.State
@@ -85,42 +85,49 @@ span.spaces    { background: white }
 <span class="lineno">   66 </span><span class="spaces">       </span><span class="istickedoff">when (not silentMode) $ <span class="nottickedoff">putStrLn $ &quot;Connection established&quot;</span></span>
 <span class="lineno">   67 </span><span class="spaces">       </span><span class="istickedoff">ghcSess &lt;- initGhcSession (generateCode sharedOptions)</span>
 <span class="lineno">   68 </span><span class="spaces">       </span><span class="istickedoff">state &lt;- newMVar initSession</span>
-<span class="lineno">   69 </span><span class="spaces">       </span><span class="istickedoff">(wp,th) &lt;- if <span class="tickonlytrue">noWatch sharedOptions</span></span>
-<span class="lineno">   70 </span><span class="spaces">                    </span><span class="istickedoff">then return (Nothing, <span class="nottickedoff">[]</span>)</span>
-<span class="lineno">   71 </span><span class="spaces">                    </span><span class="istickedoff">else <span class="nottickedoff">createWatchProcess'</span></span>
-<span class="lineno">   72 </span><span class="spaces">                           </span><span class="istickedoff"><span class="nottickedoff">(watchExe sharedOptions) ghcSess state (daemonSend mode conn)</span></span>
-<span class="lineno">   73 </span><span class="spaces">       </span><span class="istickedoff">modifyMVarMasked_ state ( \s -&gt; return s { _watchProc = wp, _watchThreads = <span class="nottickedoff">th</span> })</span>
-<span class="lineno">   74 </span><span class="spaces">       </span><span class="istickedoff">serverLoop refactorings mode conn config ghcSess state</span>
-<span class="lineno">   75 </span><span class="spaces">       </span><span class="istickedoff">case wp of Just watchProcess -&gt; <span class="nottickedoff">stopWatch watchProcess th</span></span>
-<span class="lineno">   76 </span><span class="spaces">                  </span><span class="istickedoff">Nothing -&gt; return <span class="nottickedoff">()</span></span>
-<span class="lineno">   77 </span><span class="spaces">       </span><span class="istickedoff">daemonDisconnect mode conn</span></span>
-<span class="lineno">   78 </span>
-<span class="lineno">   79 </span>-- | Starts the server loop, receiving requests from the client and updated the server state
-<span class="lineno">   80 </span>-- according to these.
-<span class="lineno">   81 </span>serverLoop :: [RefactoringChoice IdDom] -&gt; WorkingMode a -&gt; a -&gt; DaemonOptions -&gt; Session
-<span class="lineno">   82 </span>                -&gt; MVar DaemonSessionState -&gt; IO ()
-<span class="lineno">   83 </span><span class="decl"><span class="istickedoff">serverLoop refactorings mode conn options ghcSess state =</span>
-<span class="lineno">   84 </span><span class="spaces">  </span><span class="istickedoff">do msgs &lt;- daemonReceive mode conn</span>
-<span class="lineno">   85 </span><span class="spaces">     </span><span class="istickedoff">continue &lt;- mapM respondToMsg msgs</span>
-<span class="lineno">   86 </span><span class="spaces">     </span><span class="istickedoff">sessionData &lt;- readMVar state</span>
-<span class="lineno">   87 </span><span class="spaces">     </span><span class="istickedoff">when (not (sessionData ^. exiting) &amp;&amp; all (== True) continue)</span>
-<span class="lineno">   88 </span><span class="spaces">       </span><span class="istickedoff">$ serverLoop refactorings mode conn options ghcSess state</span>
-<span class="lineno">   89 </span><span class="spaces">   </span><span class="istickedoff">`catches` <span class="nottickedoff">exceptionHandlers (serverLoop refactorings mode conn options ghcSess state)</span></span>
-<span class="lineno">   90 </span><span class="spaces">                               </span><span class="istickedoff"><span class="nottickedoff">(daemonSend mode conn . ErrorMessage)</span></span>
-<span class="lineno">   91 </span><span class="spaces">  </span><span class="istickedoff">where respondToMsg (Right req)</span>
-<span class="lineno">   92 </span><span class="spaces">          </span><span class="istickedoff">= do when (not (silentMode options)) $ <span class="nottickedoff">putStrLn $ &quot;Message received: &quot; ++ show req</span></span>
-<span class="lineno">   93 </span><span class="spaces">               </span><span class="istickedoff">respondTo options refactorings ghcSess state (daemonSend mode conn) req</span>
-<span class="lineno">   94 </span><span class="spaces">           </span><span class="istickedoff">`catches` userExceptionHandlers</span>
-<span class="lineno">   95 </span><span class="spaces">                        </span><span class="istickedoff"><span class="nottickedoff">(\s -&gt; daemonSend mode conn (ErrorMessage s) &gt;&gt; return True)</span></span>
-<span class="lineno">   96 </span><span class="spaces">                        </span><span class="istickedoff">(\err hint -&gt; daemonSend mode conn (CompilationProblem err hint) &gt;&gt; return True)</span>
-<span class="lineno">   97 </span><span class="spaces">        </span><span class="istickedoff">respondToMsg (Left msg) = <span class="nottickedoff">do daemonSend mode conn $ ErrorMessage $ &quot;MALFORMED MESSAGE: &quot; ++ msg</span></span>
-<span class="lineno">   98 </span><span class="spaces">                                     </span><span class="istickedoff"><span class="nottickedoff">return True</span></span></span>
-<span class="lineno">   99 </span>
-<span class="lineno">  100 </span>-- | Responds to a client request by modifying the daemon and GHC state accordingly.
-<span class="lineno">  101 </span>respondTo :: DaemonOptions -&gt; [RefactoringChoice IdDom] -&gt; Session -&gt; MVar DaemonSessionState
-<span class="lineno">  102 </span>               -&gt; (ResponseMsg -&gt; IO ()) -&gt; ClientMessage -&gt; IO Bool
-<span class="lineno">  103 </span><span class="decl"><span class="istickedoff">respondTo options refactorings ghcSess state next req</span>
-<span class="lineno">  104 </span><span class="spaces">  </span><span class="istickedoff">= modifyMVar state (\st -&gt; swap &lt;$&gt; reflectGhc (runStateT (updateClient options refactorings next req) st) ghcSess)</span></span>
+<span class="lineno">   69 </span><span class="spaces">       </span><span class="istickedoff">-- set the ghc flags given by command line</span>
+<span class="lineno">   70 </span><span class="spaces">       </span><span class="istickedoff">case Options.ghcFlags sharedOptions of</span>
+<span class="lineno">   71 </span><span class="spaces">         </span><span class="istickedoff">Just flags -&gt; <span class="nottickedoff">void $ respondTo config refactorings ghcSess state (daemonSend mode conn) (SetGHCFlags flags)</span></span>
+<span class="lineno">   72 </span><span class="spaces">         </span><span class="istickedoff">Nothing -&gt; return <span class="nottickedoff">()</span></span>
+<span class="lineno">   73 </span><span class="spaces">       </span><span class="istickedoff">-- set up the file watch</span>
+<span class="lineno">   74 </span><span class="spaces">       </span><span class="istickedoff">(wp,th) &lt;- if <span class="tickonlytrue">noWatch sharedOptions</span></span>
+<span class="lineno">   75 </span><span class="spaces">                    </span><span class="istickedoff">then return (Nothing, <span class="nottickedoff">[]</span>)</span>
+<span class="lineno">   76 </span><span class="spaces">                    </span><span class="istickedoff">else <span class="nottickedoff">createWatchProcess'</span></span>
+<span class="lineno">   77 </span><span class="spaces">                           </span><span class="istickedoff"><span class="nottickedoff">(watchExe sharedOptions) ghcSess state (daemonSend mode conn)</span></span>
+<span class="lineno">   78 </span><span class="spaces">       </span><span class="istickedoff">modifyMVarMasked_ state ( \s -&gt; return s { _watchProc = wp, _watchThreads = <span class="nottickedoff">th</span> })</span>
+<span class="lineno">   79 </span><span class="spaces">       </span><span class="istickedoff">-- start the server loop</span>
+<span class="lineno">   80 </span><span class="spaces">       </span><span class="istickedoff">serverLoop refactorings mode conn config ghcSess state</span>
+<span class="lineno">   81 </span><span class="spaces">       </span><span class="istickedoff">-- free allocated resources</span>
+<span class="lineno">   82 </span><span class="spaces">       </span><span class="istickedoff">case wp of Just watchProcess -&gt; <span class="nottickedoff">stopWatch watchProcess th</span></span>
+<span class="lineno">   83 </span><span class="spaces">                  </span><span class="istickedoff">Nothing -&gt; return <span class="nottickedoff">()</span></span>
+<span class="lineno">   84 </span><span class="spaces">       </span><span class="istickedoff">daemonDisconnect mode conn</span></span>
+<span class="lineno">   85 </span>
+<span class="lineno">   86 </span>-- | Starts the server loop, receiving requests from the client and updated the server state
+<span class="lineno">   87 </span>-- according to these.
+<span class="lineno">   88 </span>serverLoop :: [RefactoringChoice IdDom] -&gt; WorkingMode a -&gt; a -&gt; DaemonOptions -&gt; Session
+<span class="lineno">   89 </span>                -&gt; MVar DaemonSessionState -&gt; IO ()
+<span class="lineno">   90 </span><span class="decl"><span class="istickedoff">serverLoop refactorings mode conn options ghcSess state =</span>
+<span class="lineno">   91 </span><span class="spaces">  </span><span class="istickedoff">do msgs &lt;- daemonReceive mode conn</span>
+<span class="lineno">   92 </span><span class="spaces">     </span><span class="istickedoff">continue &lt;- mapM respondToMsg msgs</span>
+<span class="lineno">   93 </span><span class="spaces">     </span><span class="istickedoff">sessionData &lt;- readMVar state</span>
+<span class="lineno">   94 </span><span class="spaces">     </span><span class="istickedoff">when (not (sessionData ^. exiting) &amp;&amp; all (== True) continue)</span>
+<span class="lineno">   95 </span><span class="spaces">       </span><span class="istickedoff">$ serverLoop refactorings mode conn options ghcSess state</span>
+<span class="lineno">   96 </span><span class="spaces">   </span><span class="istickedoff">`catches` <span class="nottickedoff">exceptionHandlers (serverLoop refactorings mode conn options ghcSess state)</span></span>
+<span class="lineno">   97 </span><span class="spaces">                               </span><span class="istickedoff"><span class="nottickedoff">(daemonSend mode conn . ErrorMessage)</span></span>
+<span class="lineno">   98 </span><span class="spaces">  </span><span class="istickedoff">where respondToMsg (Right req)</span>
+<span class="lineno">   99 </span><span class="spaces">          </span><span class="istickedoff">= do when (not (silentMode options)) $ <span class="nottickedoff">putStrLn $ &quot;Message received: &quot; ++ show req</span></span>
+<span class="lineno">  100 </span><span class="spaces">               </span><span class="istickedoff">respondTo options refactorings ghcSess state (daemonSend mode conn) req</span>
+<span class="lineno">  101 </span><span class="spaces">           </span><span class="istickedoff">`catches` userExceptionHandlers</span>
+<span class="lineno">  102 </span><span class="spaces">                        </span><span class="istickedoff"><span class="nottickedoff">(\s -&gt; daemonSend mode conn (ErrorMessage s) &gt;&gt; return True)</span></span>
+<span class="lineno">  103 </span><span class="spaces">                        </span><span class="istickedoff">(\err hint -&gt; daemonSend mode conn (CompilationProblem err hint) &gt;&gt; return True)</span>
+<span class="lineno">  104 </span><span class="spaces">        </span><span class="istickedoff">respondToMsg (Left msg) = <span class="nottickedoff">do daemonSend mode conn $ ErrorMessage $ &quot;MALFORMED MESSAGE: &quot; ++ msg</span></span>
+<span class="lineno">  105 </span><span class="spaces">                                     </span><span class="istickedoff"><span class="nottickedoff">return True</span></span></span>
+<span class="lineno">  106 </span>
+<span class="lineno">  107 </span>-- | Responds to a client request by modifying the daemon and GHC state accordingly.
+<span class="lineno">  108 </span>respondTo :: DaemonOptions -&gt; [RefactoringChoice IdDom] -&gt; Session -&gt; MVar DaemonSessionState
+<span class="lineno">  109 </span>               -&gt; (ResponseMsg -&gt; IO ()) -&gt; ClientMessage -&gt; IO Bool
+<span class="lineno">  110 </span><span class="decl"><span class="istickedoff">respondTo options refactorings ghcSess state next req</span>
+<span class="lineno">  111 </span><span class="spaces">  </span><span class="istickedoff">= modifyMVar state (\st -&gt; swap &lt;$&gt; reflectGhc (runStateT (updateClient options refactorings next req) st) ghcSess)</span></span>
 
 </pre>
 </body>
