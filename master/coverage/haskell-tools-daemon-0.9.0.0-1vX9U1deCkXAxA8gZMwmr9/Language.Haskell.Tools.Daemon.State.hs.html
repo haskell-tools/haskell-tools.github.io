@@ -59,16 +59,18 @@ span.spaces    { background: white }
 <span class="lineno">   40 </span>                           -- ^ Extra threads started for handling the
 <span class="lineno">   41 </span>                           -- information from the watch process.
 <span class="lineno">   42 </span>                       , <span class="istickedoff"><span class="decl"><span class="istickedoff">_touchedFiles</span></span></span> :: Set FilePath
-<span class="lineno">   43 </span>                       }
-<span class="lineno">   44 </span>
-<span class="lineno">   45 </span>-- | An initial state of a daemon session.
-<span class="lineno">   46 </span>initSession :: DaemonSessionState
-<span class="lineno">   47 </span><span class="decl"><span class="istickedoff">initSession = DaemonSessionState [] AutoDB id id False <span class="nottickedoff">[]</span> False [] <span class="nottickedoff">Nothing</span> <span class="nottickedoff">[]</span> empty</span></span>
-<span class="lineno">   48 </span>
-<span class="lineno">   49 </span>resetSession :: DaemonSessionState -&gt; DaemonSessionState
-<span class="lineno">   50 </span><span class="decl"><span class="nottickedoff">resetSession DaemonSessionState{..} = initSession { _packageDB, _ghcFlagsSet }</span></span>
-<span class="lineno">   51 </span>
-<span class="lineno">   52 </span><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="istickedoff"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff">makeReferences ''DaemonSessionState</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">   43 </span>                           -- ^ Marks files as being modified by this process
+<span class="lineno">   44 </span>                           -- Changes detected on marked files will not invalidate refactoring history.
+<span class="lineno">   45 </span>                       }
+<span class="lineno">   46 </span>
+<span class="lineno">   47 </span>-- | An initial state of a daemon session.
+<span class="lineno">   48 </span>initSession :: DaemonSessionState
+<span class="lineno">   49 </span><span class="decl"><span class="istickedoff">initSession = DaemonSessionState [] AutoDB id id False <span class="nottickedoff">[]</span> False [] <span class="nottickedoff">Nothing</span> <span class="nottickedoff">[]</span> empty</span></span>
+<span class="lineno">   50 </span>
+<span class="lineno">   51 </span>resetSession :: DaemonSessionState -&gt; DaemonSessionState
+<span class="lineno">   52 </span><span class="decl"><span class="nottickedoff">resetSession DaemonSessionState{..} = initSession { _packageDB, _ghcFlagsSet }</span></span>
+<span class="lineno">   53 </span>
+<span class="lineno">   54 </span><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="istickedoff"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff">makeReferences ''DaemonSessionState</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span>
 
 </pre>
 </body>

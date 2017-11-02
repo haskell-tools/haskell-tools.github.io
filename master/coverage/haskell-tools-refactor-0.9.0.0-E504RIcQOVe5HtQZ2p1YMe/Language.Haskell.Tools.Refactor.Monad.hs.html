@@ -116,7 +116,7 @@ span.spaces    { background: white }
 <span class="lineno">   97 </span>  <span class="decl"><span class="istickedoff">setSession env = lift (setSession env)</span></span>
 <span class="lineno">   98 </span>
 <span class="lineno">   99 </span>instance (ExceptionMonad m) =&gt; ExceptionMonad (StateT s m) where
-<span class="lineno">  100 </span>  <span class="decl"><span class="nottickedoff">gcatch r c = StateT (\ctx -&gt; runStateT r ctx `gcatch` (flip runStateT ctx . c))</span></span>
+<span class="lineno">  100 </span>  <span class="decl"><span class="istickedoff">gcatch r c = StateT (\ctx -&gt; runStateT r ctx `gcatch` (flip runStateT ctx . c))</span></span>
 <span class="lineno">  101 </span>  <span class="decl"><span class="nottickedoff">gmask m = StateT $ \ctx -&gt; gmask (\f -&gt; runStateT (m (\a -&gt; StateT $ \ctx' -&gt; f (runStateT a ctx'))) ctx)</span></span>
 <span class="lineno">  102 </span>
 <span class="lineno">  103 </span>instance (Monad m, HasDynFlags m) =&gt; HasDynFlags (LazySt.StateT s m) where
