@@ -1,0 +1,281 @@
+
+
+Still running (1 of 20): stack --no-terminal bench haskell-tools-cliStill running (2 of 20): stack --no-terminal bench haskell-tools-cliStill running (3 of 20): stack --no-terminal bench haskell-tools-cli
+[31;1mThe command stack --no-terminal bench haskell-tools-cli exited with 1.[0m
+
+[32;1mLog:[0m
+
+haskell-tools-cli-0.9.0.0: configure (lib + exe + bench)
+Configuring haskell-tools-cli-0.9.0.0...
+haskell-tools-cli-0.9.0.0: build (lib + exe + bench)
+Preprocessing library for haskell-tools-cli-0.9.0.0..
+Building library for haskell-tools-cli-0.9.0.0..
+[1 of 2] Compiling Paths_haskell_tools_cli ( .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/autogen/Paths_haskell_tools_cli.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/Paths_haskell_tools_cli.o )
+[2 of 2] Compiling Language.Haskell.Tools.Refactor.CLI ( Language/Haskell/Tools/Refactor/CLI.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/Language/Haskell/Tools/Refactor/CLI.o )
+Preprocessing executable 'ht-refact' for haskell-tools-cli-0.9.0.0..
+Building executable 'ht-refact' for haskell-tools-cli-0.9.0.0..
+[1 of 1] Compiling Main             ( exe/Main.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/ht-refact/ht-refact-tmp/Main.o ) [Language.Haskell.Tools.Refactor.CLI changed]
+
+/home/travis/build/haskell-tools/haskell-tools/src/cli/exe/Main.hs:3:1: warning: [-Wunused-imports]
+    The import of ‘Monad’ from module ‘Control.Monad’ is redundant
+  |
+3 | import Control.Monad (Monad(..), (=<<))
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/travis/build/haskell-tools/haskell-tools/src/cli/exe/Main.hs:4:1: warning: [-Wunused-imports]
+    The import of ‘Control.Monad.Reader’ is redundant
+      except perhaps to import instances from ‘Control.Monad.Reader’
+    To import instances alone, use: import Control.Monad.Reader()
+  |
+4 | import Control.Monad.Reader (MonadReader(..))
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/travis/build/haskell-tools/haskell-tools/src/cli/exe/Main.hs:5:1: warning: [-Wunused-imports]
+    The import of ‘Data.List’ is redundant
+      except perhaps to import instances from ‘Data.List’
+    To import instances alone, use: import Data.List()
+  |
+5 | import Data.List (init)
+  | ^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/travis/build/haskell-tools/haskell-tools/src/cli/exe/Main.hs:8:1: warning: [-Wunused-imports]
+    The import of ‘ReadM’
+    from module ‘Options.Applicative.Types’ is redundant
+  |
+8 | import Options.Applicative.Types (Parser, ReadM(..))
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Linking .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/ht-refact/ht-refact ...
+Preprocessing executable 'ht-test-stackage' for haskell-tools-cli-0.9.0.0..
+Building executable 'ht-test-stackage' for haskell-tools-cli-0.9.0.0..
+Preprocessing benchmark 'cli-benchmark' for haskell-tools-cli-0.9.0.0..
+Building benchmark 'cli-benchmark' for haskell-tools-cli-0.9.0.0..
+[1 of 1] Compiling Main             ( benchmark/Main.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/cli-benchmark/cli-benchmark-tmp/Main.o )
+Linking .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/cli-benchmark/cli-benchmark ...
+Preprocessing benchmark 'self-test' for haskell-tools-cli-0.9.0.0..
+Building benchmark 'self-test' for haskell-tools-cli-0.9.0.0..
+[1 of 1] Compiling Main             ( self-test/Main.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/self-test/self-test-tmp/Main.o ) [Language.Haskell.Tools.Refactor.CLI changed]
+
+/home/travis/build/haskell-tools/haskell-tools/src/cli/self-test/Main.hs:3:1: warning: [-Wunused-imports]
+    The import of ‘Control.Exception’ is redundant
+      except perhaps to import instances from ‘Control.Exception’
+    To import instances alone, use: import Control.Exception()
+  |
+3 | import Control.Exception (finally, catch, SomeException)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/travis/build/haskell-tools/haskell-tools/src/cli/self-test/Main.hs:7:1: warning: [-Wunused-imports]
+    The import of ‘Data.Knob’ is redundant
+      except perhaps to import instances from ‘Data.Knob’
+    To import instances alone, use: import Data.Knob()
+  |
+7 | import Data.Knob (newKnob, newFileHandle)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/travis/build/haskell-tools/haskell-tools/src/cli/self-test/Main.hs:8:1: warning: [-Wunused-imports]
+    The qualified import of ‘Data.ByteString.Char8’ is redundant
+      except perhaps to import instances from ‘Data.ByteString.Char8’
+    To import instances alone, use: import Data.ByteString.Char8()
+  |
+8 | import qualified Data.ByteString.Char8 as BS (pack)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/travis/build/haskell-tools/haskell-tools/src/cli/self-test/Main.hs:9:1: warning: [-Wunused-imports]
+    The import of ‘System.Environment’ is redundant
+      except perhaps to import instances from ‘System.Environment’
+    To import instances alone, use: import System.Environment()
+  |
+9 | import System.Environment (getArgs)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/travis/build/haskell-tools/haskell-tools/src/cli/self-test/Main.hs:52:9: warning: [-Wunused-local-binds]
+    Defined but not used: ‘ast’
+   |
+52 |    Just ast = find ("ast" `isSuffixOf`) roots
+   |         ^^^
+
+/home/travis/build/haskell-tools/haskell-tools/src/cli/self-test/Main.hs:55:18: warning: [-Wunused-matches]
+    Defined but not used: ‘name’
+   |
+55 | makeCliTest dirs name rfs
+   |                  ^^^^
+Linking .stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/self-test/self-test ...
+haskell-tools-cli-0.9.0.0: copy/register
+Installing library in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/nightly-2017-09-28/8.2.1/lib/x86_64-linux-ghc-8.2.1/haskell-tools-cli-0.9.0.0-HvYg3sfEueu1UhTW4m3oQW
+Installing executable ht-refact in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/nightly-2017-09-28/8.2.1/bin
+Installing executable ht-test-stackage in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/nightly-2017-09-28/8.2.1/bin
+Registering library for haskell-tools-cli-0.9.0.0..
+haskell-tools-cli-0.9.0.0: benchmarks
+Running 2 benchmarks...
+Benchmark cli-benchmark: RUNNING...
+cli-benchmark: examples/CppHs: removeDirectoryRecursive:getDirectoryType:getSymbolicLinkStatus: does not exist (No such file or directory)
+Benchmark cli-benchmark: ERROR
+Benchmark self-test: RUNNING...
+Starting Haskell Tools daemon
+Connection established
+Message received: SetWorkingDir {newWorkingDir = "/home/travis/build/haskell-tools/haskell-tools/src/cli"}
+Message received: AddPackages {addedPathes = ["/home/travis/build/haskell-tools/haskell-tools/demo_copy","/home/travis/build/haskell-tools/haskell-tools/src/ast_copy","/home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy","/home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy","/home/travis/build/haskell-tools/haskell-tools/src/cli_copy","/home/travis/build/haskell-tools/haskell-tools/src/daemon_copy","/home/travis/build/haskell-tools/haskell-tools/src/debug_copy","/home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy","/home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy","/home/travis/build/haskell-tools/haskell-tools/src/refactor_copy","/home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy"]}
+Found modules: /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Binds.hs-boot, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Exprs.hs-boot, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Literals.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Modules.hs-boot, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Names.hs-boot, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/TH.hs-boot, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Types.hs-boot, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/SemaInfoTypes.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Utils/GHCInstances.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Ann.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/TH/SourceInfoTraversal.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/TH/SemanticTraversal.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Names.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Kinds.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Types.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Patterns.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Stmts.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Exprs.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Binds.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Decls.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/TH.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Modules.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/SemaInfoClasses.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/SourceInfoTraversal.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/SemanticTraversal.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/MakeASTReferences.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/References.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/Show.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/Generic.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/Eq.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/Data.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Helpers.hs, /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST.hs, /home/travis/build/haskell-tools/haskell-tools/demo_copy/src/Language/Haskell/Tools/ASTDebug.hs, /home/travis/build/haskell-tools/haskell-tools/demo_copy/src/Language/Haskell/Tools/ASTDebug/Instances.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/GHCUtils.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/SourceMap.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Monad.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Literals.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Utils.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Names.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Types.hs-boot, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/TH.hs-boot, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Exprs.hs-boot, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Binds.hs-boot, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Kinds.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Types.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Patterns.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Stmts.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Exprs.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Binds.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Decls.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/TH.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Modules.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/AddTypeInfo.hs, /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/MapExtensions.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Options.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/PackageDB.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Protocol.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Mode.hs, /home/travis/build/haskell-tools/haskell-tools/src/debug_copy/Language/Haskell/Tools/Debug/DebugGhcAST.hs, /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/PlaceComments.hs, /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/RangeTemplate.hs, /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/RangeToRangeTemplate.hs, /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/SourceTemplate.hs, /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/RangeTemplateToSourceTemplate.hs, /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/SourceTemplateHelpers.hs, /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare.hs, /home/travis/build/haskell-tools/haskell-tools/src/debug_copy/Language/Haskell/Tools/Debug/RangeDebug.hs, /home/travis/build/haskell-tools/haskell-tools/src/debug_copy/Language/Haskell/Tools/Debug/RangeDebugInstances.hs, /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/RoseTree.hs, /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Representation.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Monad.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/AST.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/Indentation.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/Name.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/ElementTypes.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Utils.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/TH.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Stmts.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Patterns.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Names.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Modules.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Literals.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Kinds.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Types.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Exprs.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Decls.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Binds.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Binds.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Decls.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Kinds.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Literals.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Modules.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Names.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Patterns.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Stmts.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Exprs.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/TH.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Types.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/Monadic.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Prepare.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Refactoring.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/Lists.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/Helpers.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/BindingElem.hs, /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor.hs, /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/RenameDefinition.hs, /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/OrganizeImports.hs, /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/InlineBinding.hs, /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/IfToGuards.hs, /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/HelloRefactor.hs, /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/GenerateTypeSignature.hs, /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/GenerateExports.hs, /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/FloatOut.hs, /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/ExtractBinding.hs, /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/DollarApp3.hs, /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/DollarApp2.hs, /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/DollarApp1.hs, /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/DollarApp.hs, /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/DataToNewtype.hs, /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin.hs, /home/travis/build/haskell-tools/haskell-tools/demo_copy/src/Language/Haskell/Tools/Demo.hs, /home/travis/build/haskell-tools/haskell-tools/src/debug_copy/Language/Haskell/Tools/Debug.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Representation.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Utils.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/State.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/GetModules.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/ModuleGraph.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Session.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/ErrorHandling.hs, /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/test/Main.hs, /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/test/Main.hs, /home/travis/build/haskell-tools/haskell-tools/src/debug_copy/exe/Main.hs, /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/test-stackage/Main.hs, /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/test/Main.hs, /home/travis/build/haskell-tools/haskell-tools/demo_copy/test/Main.hs, /home/travis/build/haskell-tools/haskell-tools/demo_copy/exe/Main.hs, /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/.stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/autogen/Paths_haskell_tools_cli.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/.stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/autogen/Paths_haskell_tools_daemon.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Update.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Watch.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/exe/Main.hs, /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/test/Main.hs, /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/Language/Haskell/Tools/Refactor/CLI.hs, /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/benchmark/Main.hs, /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/exe/Main.hs, /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/self-test/Main.hs, /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/test/Main.hs
+Loaded module: Language.Haskell.Tools.AST.Representation.Binds( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Binds.hs-boot) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Exprs( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Exprs.hs-boot) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Literals( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Literals.hs) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Modules( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Modules.hs-boot) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Names( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Names.hs-boot) 
+Loaded module: Language.Haskell.Tools.AST.Representation.TH( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/TH.hs-boot) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Types( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Types.hs-boot) 
+Loaded module: Language.Haskell.Tools.AST.SemaInfoTypes( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/SemaInfoTypes.hs) 
+Loaded module: Language.Haskell.Tools.AST.Utils.GHCInstances( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Utils/GHCInstances.hs) 
+Loaded module: Language.Haskell.Tools.AST.Ann( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Ann.hs) 
+Loaded module: Language.Haskell.Tools.AST.TH.SourceInfoTraversal( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/TH/SourceInfoTraversal.hs) 
+Loaded module: Language.Haskell.Tools.AST.TH.SemanticTraversal( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/TH/SemanticTraversal.hs) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Names( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Names.hs) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Kinds( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Kinds.hs) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Types( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Types.hs) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Patterns( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Patterns.hs) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Stmts( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Stmts.hs) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Exprs( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Exprs.hs) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Binds( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Binds.hs) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Decls( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Decls.hs) 
+Loaded module: Language.Haskell.Tools.AST.Representation.TH( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/TH.hs) 
+Loaded module: Language.Haskell.Tools.AST.Representation.Modules( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Representation/Modules.hs) 
+Loaded module: Language.Haskell.Tools.AST.SemaInfoClasses( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/SemaInfoClasses.hs) 
+Loaded module: Language.Haskell.Tools.AST.Instances.SourceInfoTraversal( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/SourceInfoTraversal.hs) 
+Loaded module: Language.Haskell.Tools.AST.Instances.SemanticTraversal( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/SemanticTraversal.hs) 
+Loaded module: Language.Haskell.Tools.AST.MakeASTReferences( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/MakeASTReferences.hs) 
+Loaded module: Language.Haskell.Tools.AST.References( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/References.hs) 
+Loaded module: Language.Haskell.Tools.AST.Instances.Show( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/Show.hs) 
+Loaded module: Language.Haskell.Tools.AST.Instances.Generic( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/Generic.hs) 
+Loaded module: Language.Haskell.Tools.AST.Instances.Eq( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/Eq.hs) 
+Loaded module: Language.Haskell.Tools.AST.Instances.Data( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances/Data.hs) 
+Loaded module: Language.Haskell.Tools.AST.Instances( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Instances.hs) 
+Loaded module: Language.Haskell.Tools.AST.Helpers( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST/Helpers.hs) 
+Loaded module: Language.Haskell.Tools.AST( /home/travis/build/haskell-tools/haskell-tools/src/ast_copy/Language/Haskell/Tools/AST.hs) 
+Loaded module: Language.Haskell.Tools.ASTDebug( /home/travis/build/haskell-tools/haskell-tools/demo_copy/src/Language/Haskell/Tools/ASTDebug.hs) 
+Loaded module: Language.Haskell.Tools.ASTDebug.Instances( /home/travis/build/haskell-tools/haskell-tools/demo_copy/src/Language/Haskell/Tools/ASTDebug/Instances.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.GHCUtils( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/GHCUtils.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.SourceMap( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/SourceMap.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Monad( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Monad.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Literals( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Literals.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Utils( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Utils.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Names( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Names.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Types( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Types.hs-boot) 
+Loaded module: Language.Haskell.Tools.BackendGHC.TH( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/TH.hs-boot) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Exprs( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Exprs.hs-boot) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Binds( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Binds.hs-boot) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Kinds( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Kinds.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Types( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Types.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Patterns( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Patterns.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Stmts( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Stmts.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Exprs( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Exprs.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Binds( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Binds.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Decls( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Decls.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.TH( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/TH.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.Modules( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/Modules.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC.AddTypeInfo( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC/AddTypeInfo.hs) 
+Loaded module: Language.Haskell.Tools.BackendGHC( /home/travis/build/haskell-tools/haskell-tools/src/backend-ghc_copy/Language/Haskell/Tools/BackendGHC.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.MapExtensions( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/MapExtensions.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.Options( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Options.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.PackageDB( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/PackageDB.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.Protocol( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Protocol.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.Mode( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Mode.hs) 
+Loaded module: Language.Haskell.Tools.Debug.DebugGhcAST( /home/travis/build/haskell-tools/haskell-tools/src/debug_copy/Language/Haskell/Tools/Debug/DebugGhcAST.hs) 
+Loaded module: Language.Haskell.Tools.PrettyPrint.Prepare.PlaceComments( /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/PlaceComments.hs) 
+Loaded module: Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplate( /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/RangeTemplate.hs) 
+Loaded module: Language.Haskell.Tools.PrettyPrint.Prepare.RangeToRangeTemplate( /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/RangeToRangeTemplate.hs) 
+Loaded module: Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate( /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/SourceTemplate.hs) 
+Loaded module: Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplateToSourceTemplate( /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/RangeTemplateToSourceTemplate.hs) 
+Loaded module: Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplateHelpers( /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare/SourceTemplateHelpers.hs) 
+Loaded module: Language.Haskell.Tools.PrettyPrint.Prepare( /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/Prepare.hs) 
+Loaded module: Language.Haskell.Tools.Debug.RangeDebug( /home/travis/build/haskell-tools/haskell-tools/src/debug_copy/Language/Haskell/Tools/Debug/RangeDebug.hs) 
+Loaded module: Language.Haskell.Tools.Debug.RangeDebugInstances( /home/travis/build/haskell-tools/haskell-tools/src/debug_copy/Language/Haskell/Tools/Debug/RangeDebugInstances.hs) 
+Loaded module: Language.Haskell.Tools.PrettyPrint.RoseTree( /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint/RoseTree.hs) 
+Loaded module: Language.Haskell.Tools.PrettyPrint( /home/travis/build/haskell-tools/haskell-tools/src/prettyprint_copy/Language/Haskell/Tools/PrettyPrint.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Representation( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Representation.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Monad( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Monad.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Utils.AST( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/AST.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Utils.Indentation( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/Indentation.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Utils.Name( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/Name.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.ElementTypes( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/ElementTypes.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.Utils( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Utils.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.TH( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/TH.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.Stmts( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Stmts.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.Patterns( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Patterns.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.Names( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Names.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.Modules( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Modules.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.Literals( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Literals.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.Kinds( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Kinds.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.Types( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Types.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.Exprs( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Exprs.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.Decls( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Decls.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create.Binds( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create/Binds.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Create( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Create.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match.Binds( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Binds.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match.Decls( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Decls.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match.Kinds( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Kinds.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match.Literals( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Literals.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match.Modules( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Modules.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match.Names( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Names.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match.Patterns( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Patterns.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match.Stmts( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Stmts.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match.Exprs( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Exprs.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match.TH( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/TH.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match.Types( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match/Types.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite.Match( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite/Match.hs) 
+Loaded module: Language.Haskell.Tools.Rewrite( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/Language/Haskell/Tools/Rewrite.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Utils.Monadic( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/Monadic.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Prepare( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Prepare.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Refactoring( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Refactoring.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Utils.Lists( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/Lists.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Utils.Helpers( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/Helpers.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Utils.BindingElem( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor/Utils/BindingElem.hs) 
+Loaded module: Language.Haskell.Tools.Refactor( /home/travis/build/haskell-tools/haskell-tools/src/refactor_copy/Language/Haskell/Tools/Refactor.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.RenameDefinition( /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/RenameDefinition.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.OrganizeImports( /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/OrganizeImports.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.InlineBinding( /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/InlineBinding.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.IfToGuards( /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/IfToGuards.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.HelloRefactor( /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/HelloRefactor.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.GenerateTypeSignature( /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/GenerateTypeSignature.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.GenerateExports( /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/GenerateExports.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.FloatOut( /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/FloatOut.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.ExtractBinding( /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/ExtractBinding.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.DollarApp3( /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/DollarApp3.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.DollarApp2( /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/DollarApp2.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.DollarApp1( /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/DollarApp1.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.DollarApp( /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/DollarApp.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin.DataToNewtype( /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin/DataToNewtype.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.Builtin( /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/Language/Haskell/Tools/Refactor/Builtin.hs) 
+Loaded module: Language.Haskell.Tools.Demo( /home/travis/build/haskell-tools/haskell-tools/demo_copy/src/Language/Haskell/Tools/Demo.hs) 
+Loaded module: Language.Haskell.Tools.Debug( /home/travis/build/haskell-tools/haskell-tools/src/debug_copy/Language/Haskell/Tools/Debug.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.Representation( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Representation.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.Utils( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Utils.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.State( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/State.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.GetModules( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/GetModules.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.ModuleGraph( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/ModuleGraph.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.Session( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Session.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.ErrorHandling( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/ErrorHandling.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/src/rewrite_copy/test/Main.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/src/experimental-refactorings_copy/test/Main.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/src/debug_copy/exe/Main.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/test-stackage/Main.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/src/builtin-refactorings_copy/test/Main.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/demo_copy/test/Main.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/demo_copy/exe/Main.hs) 
+Loaded module: Paths_haskell_tools_cli( /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/.stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/autogen/Paths_haskell_tools_cli.hs) 
+Loaded module: Paths_haskell_tools_daemon( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/.stack-work/dist/x86_64-linux/Cabal-2.0.0.2/build/autogen/Paths_haskell_tools_daemon.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.Update( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Update.hs) 
+Loaded module: Language.Haskell.Tools.Daemon.Watch( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon/Watch.hs) 
+Loaded module: Language.Haskell.Tools.Daemon( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/Language/Haskell/Tools/Daemon.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/exe/Main.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/src/daemon_copy/test/Main.hs) 
+Loaded module: Language.Haskell.Tools.Refactor.CLI( /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/Language/Haskell/Tools/Refactor/CLI.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/benchmark/Main.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/exe/Main.hs) 
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/self-test/Main.hs) 
+Message received: Disconnect
+Loaded module: Main( /home/travis/build/haskell-tools/haskell-tools/src/cli_copy/test/Main.hs) 
+Benchmark self-test: FINISH
+Completed 2 action(s).
+
+--  While building package haskell-tools-cli-0.9.0.0 using:
+      /home/travis/.stack/setup-exe-cache/x86_64-linux/Cabal-simple_mPHDZzAJ_2.0.0.2_ghc-8.2.1 --builddir=.stack-work/dist/x86_64-linux/Cabal-2.0.0.2 bench cli-benchmark self-test
+    Process exited with code: ExitFailure 1
+/home/travis/.travis/job_stages: line 169: 23330 Terminated              travis_jigger $! $timeout $cmd
