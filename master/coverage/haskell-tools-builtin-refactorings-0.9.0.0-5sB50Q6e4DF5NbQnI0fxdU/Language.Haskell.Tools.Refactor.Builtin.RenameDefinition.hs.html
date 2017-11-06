@@ -120,44 +120,46 @@ span.spaces    { background: white }
 <span class="lineno">  101 </span><span class="spaces">    </span><span class="istickedoff">changeName toChangeOrig origId toChangeWith str name</span>
 <span class="lineno">  102 </span><span class="spaces">      </span><span class="istickedoff">| maybe <span class="nottickedoff">False</span> (`elem` toChange) actualName</span>
 <span class="lineno">  103 </span><span class="spaces">          </span><span class="istickedoff">&amp;&amp; semanticsDefining name == False</span>
-<span class="lineno">  104 </span><span class="spaces">          </span><span class="istickedoff">&amp;&amp; any @[] (\n -&gt; str == occNameString (getOccName n) &amp;&amp; not (mergeableFields origId n))</span>
-<span class="lineno">  105 </span><span class="spaces">                     </span><span class="istickedoff">(scopeUpToDef (map (map (^. _1)) $ semanticsScope name) ^? traversal &amp; traversal &amp; filtered (sameNamespace toChangeOrig))</span>
-<span class="lineno">  106 </span><span class="spaces">      </span><span class="istickedoff">= refactError $ <span class="nottickedoff">&quot;The definition clashes with an existing one at: &quot; ++ shortShowSpanWithFile (getRange name)</span> -- name clash with an external definition</span>
-<span class="lineno">  107 </span><span class="spaces">      </span><span class="istickedoff">| maybe <span class="nottickedoff">False</span> (`elem` toChange) actualName</span>
-<span class="lineno">  108 </span><span class="spaces">      </span><span class="istickedoff">= do put True -- state that something is changed in the local state</span>
-<span class="lineno">  109 </span><span class="spaces">           </span><span class="istickedoff">when (actualName == Just toChangeOrig)</span>
-<span class="lineno">  110 </span><span class="spaces">             </span><span class="istickedoff">$ lift $ modify (|| semanticsDefining name) -- state that the definition is renamed in the global state</span>
-<span class="lineno">  111 </span><span class="spaces">           </span><span class="istickedoff">return $ unqualifiedName .= mkNamePart str $ name -- found the changed name (or a name that have to be changed too)</span>
-<span class="lineno">  112 </span><span class="spaces">      </span><span class="istickedoff">| let namesInScope = map (map (^. _1)) $ semanticsScope name</span>
-<span class="lineno">  113 </span><span class="spaces">         </span><span class="istickedoff">in case semanticsName name of</span>
-<span class="lineno">  114 </span><span class="spaces">              </span><span class="istickedoff">Just (getName -&gt; exprName) -&gt; str == occNameString (getOccName exprName)</span>
-<span class="lineno">  115 </span><span class="spaces">                                              </span><span class="istickedoff">&amp;&amp; sameNamespace toChangeOrig exprName</span>
-<span class="lineno">  116 </span><span class="spaces">                                              </span><span class="istickedoff">&amp;&amp; conflicts toChangeOrig exprName namesInScope</span>
-<span class="lineno">  117 </span><span class="spaces">                                              </span><span class="istickedoff">&amp;&amp; not (mergeableFields origId exprName)</span>
-<span class="lineno">  118 </span><span class="spaces">              </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">False</span> -- ambiguous names</span>
-<span class="lineno">  119 </span><span class="spaces">      </span><span class="istickedoff">= refactError $ <span class="nottickedoff">&quot;The definition clashes with an existing one: &quot; ++ shortShowSpanWithFile (getRange name)</span> -- local name clash</span>
-<span class="lineno">  120 </span><span class="spaces">      </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = return name -- not the changed name, leave as before</span>
-<span class="lineno">  121 </span><span class="spaces">      </span><span class="istickedoff">where toChange = toChangeOrig : toChangeWith</span>
-<span class="lineno">  122 </span><span class="spaces">            </span><span class="istickedoff">actualName = fmap getName (semanticsName name)</span>
-<span class="lineno">  123 </span><span class="spaces">            </span><span class="istickedoff">scopeUpToDef sc = let (inside, outside) = span (null . (toChange `intersect`)) sc</span>
-<span class="lineno">  124 </span><span class="spaces">                               </span><span class="istickedoff">in inside ++ take 1 outside</span>
-<span class="lineno">  125 </span><span class="spaces">            </span><span class="istickedoff">mergeableFields (Just orig) conflict</span>
-<span class="lineno">  126 </span><span class="spaces">              </span><span class="istickedoff">| isRecordSelector orig</span>
-<span class="lineno">  127 </span><span class="spaces">              </span><span class="istickedoff">, RecSelData tc &lt;- recordSelectorTyCon orig</span>
-<span class="lineno">  128 </span><span class="spaces">              </span><span class="istickedoff">= let selectorsWithTypes = concatMap (\dc -&gt; map (\fld -&gt; (flSelector fld, dataConFieldType dc (flLabel fld))) (dataConFieldLabels dc))</span>
-<span class="lineno">  129 </span><span class="spaces">                                                   </span><span class="istickedoff">(filter (\dc -&gt; toChangeOrig `notElem` map flSelector (dataConFieldLabels dc)) (tyConDataCons tc))</span>
-<span class="lineno">  130 </span><span class="spaces">                 </span><span class="istickedoff">in maybe False (`eqType` funResultTy (idType orig)) (lookup conflict selectorsWithTypes)</span>
-<span class="lineno">  131 </span><span class="spaces">            </span><span class="istickedoff">mergeableFields _ _ = False</span></span>
-<span class="lineno">  132 </span>
-<span class="lineno">  133 </span>conflicts :: GHC.Name -&gt; GHC.Name -&gt; [[GHC.Name]] -&gt; Bool
-<span class="lineno">  134 </span><span class="decl"><span class="istickedoff">conflicts overwrites overwritten (scopeBlock : scope)</span>
-<span class="lineno">  135 </span><span class="spaces">  </span><span class="istickedoff">| overwritten `elem` scopeBlock &amp;&amp; overwrites `notElem` scopeBlock = False</span>
-<span class="lineno">  136 </span><span class="spaces">  </span><span class="istickedoff">| overwrites `elem` scopeBlock = True</span>
-<span class="lineno">  137 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = conflicts overwrites overwritten scope</span>
-<span class="lineno">  138 </span><span class="spaces"></span><span class="istickedoff">conflicts _ _ [] = <span class="nottickedoff">False</span></span></span>
-<span class="lineno">  139 </span>
-<span class="lineno">  140 </span>sameNamespace :: GHC.Name -&gt; GHC.Name -&gt; Bool
-<span class="lineno">  141 </span><span class="decl"><span class="istickedoff">sameNamespace n1 n2 = occNameSpace (getOccName n1) == occNameSpace (getOccName n2)</span></span>
+<span class="lineno">  104 </span><span class="spaces">          </span><span class="istickedoff">&amp;&amp; any @[] (\n -&gt; str == occNameString (getOccName (n ^. _1)) &amp;&amp; not (mergeableFields origId (n ^. _1))</span>
+<span class="lineno">  105 </span><span class="spaces">                              </span><span class="istickedoff">&amp;&amp; notQualified (n ^. _2))</span>
+<span class="lineno">  106 </span><span class="spaces">                     </span><span class="istickedoff">(scopeUpToDef (semanticsScope name) ^? traversal &amp; traversal &amp; filtered (sameNamespace toChangeOrig . (^. _1)))</span>
+<span class="lineno">  107 </span><span class="spaces">      </span><span class="istickedoff">= refactError $ <span class="nottickedoff">&quot;The definition clashes with an existing one at: &quot; ++ shortShowSpanWithFile (getRange name)</span> -- name clash with an external definition</span>
+<span class="lineno">  108 </span><span class="spaces">      </span><span class="istickedoff">| maybe <span class="nottickedoff">False</span> (`elem` toChange) actualName</span>
+<span class="lineno">  109 </span><span class="spaces">      </span><span class="istickedoff">= do put True -- state that something is changed in the local state</span>
+<span class="lineno">  110 </span><span class="spaces">           </span><span class="istickedoff">when (actualName == Just toChangeOrig)</span>
+<span class="lineno">  111 </span><span class="spaces">             </span><span class="istickedoff">$ lift $ modify (|| semanticsDefining name) -- state that the definition is renamed in the global state</span>
+<span class="lineno">  112 </span><span class="spaces">           </span><span class="istickedoff">return $ unqualifiedName .= mkNamePart str $ name -- found the changed name (or a name that have to be changed too)</span>
+<span class="lineno">  113 </span><span class="spaces">      </span><span class="istickedoff">| let namesInScope = map (map (^. _1)) $ semanticsScope name</span>
+<span class="lineno">  114 </span><span class="spaces">         </span><span class="istickedoff">in case semanticsName name of</span>
+<span class="lineno">  115 </span><span class="spaces">              </span><span class="istickedoff">Just (getName -&gt; exprName) -&gt; str == occNameString (getOccName exprName)</span>
+<span class="lineno">  116 </span><span class="spaces">                                              </span><span class="istickedoff">&amp;&amp; sameNamespace toChangeOrig exprName</span>
+<span class="lineno">  117 </span><span class="spaces">                                              </span><span class="istickedoff">&amp;&amp; conflicts toChangeOrig exprName namesInScope</span>
+<span class="lineno">  118 </span><span class="spaces">                                              </span><span class="istickedoff">&amp;&amp; not (mergeableFields origId exprName)</span>
+<span class="lineno">  119 </span><span class="spaces">              </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">False</span> -- ambiguous names</span>
+<span class="lineno">  120 </span><span class="spaces">      </span><span class="istickedoff">= refactError $ <span class="nottickedoff">&quot;The definition clashes with an existing one: &quot; ++ shortShowSpanWithFile (getRange name)</span> -- local name clash</span>
+<span class="lineno">  121 </span><span class="spaces">      </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = return name -- not the changed name, leave as before</span>
+<span class="lineno">  122 </span><span class="spaces">      </span><span class="istickedoff">where toChange = toChangeOrig : toChangeWith</span>
+<span class="lineno">  123 </span><span class="spaces">            </span><span class="istickedoff">actualName = fmap getName (semanticsName name)</span>
+<span class="lineno">  124 </span><span class="spaces">            </span><span class="istickedoff">scopeUpToDef sc = let (inside, outside) = span (null . (toChange `intersect`) . map (^. _1)) sc</span>
+<span class="lineno">  125 </span><span class="spaces">                               </span><span class="istickedoff">in inside ++ take 1 outside</span>
+<span class="lineno">  126 </span><span class="spaces">            </span><span class="istickedoff">mergeableFields (Just orig) conflict</span>
+<span class="lineno">  127 </span><span class="spaces">              </span><span class="istickedoff">| isRecordSelector orig</span>
+<span class="lineno">  128 </span><span class="spaces">              </span><span class="istickedoff">, RecSelData tc &lt;- recordSelectorTyCon orig</span>
+<span class="lineno">  129 </span><span class="spaces">              </span><span class="istickedoff">= let selectorsWithTypes = concatMap (\dc -&gt; map (\fld -&gt; (flSelector fld, dataConFieldType dc (flLabel fld))) (dataConFieldLabels dc))</span>
+<span class="lineno">  130 </span><span class="spaces">                                                   </span><span class="istickedoff">(filter (\dc -&gt; toChangeOrig `notElem` map flSelector (dataConFieldLabels dc)) (tyConDataCons tc))</span>
+<span class="lineno">  131 </span><span class="spaces">                 </span><span class="istickedoff">in maybe False (`eqType` funResultTy (idType orig)) (lookup conflict selectorsWithTypes)</span>
+<span class="lineno">  132 </span><span class="spaces">            </span><span class="istickedoff">mergeableFields _ _ = False</span>
+<span class="lineno">  133 </span><span class="spaces">            </span><span class="istickedoff">notQualified usage = isNothing usage || any @[] (not . usageQualified) (usage ^? just &amp; traversal)</span></span>
+<span class="lineno">  134 </span>
+<span class="lineno">  135 </span>conflicts :: GHC.Name -&gt; GHC.Name -&gt; [[GHC.Name]] -&gt; Bool
+<span class="lineno">  136 </span><span class="decl"><span class="istickedoff">conflicts overwrites overwritten (scopeBlock : scope)</span>
+<span class="lineno">  137 </span><span class="spaces">  </span><span class="istickedoff">| overwritten `elem` scopeBlock &amp;&amp; overwrites `notElem` scopeBlock = False</span>
+<span class="lineno">  138 </span><span class="spaces">  </span><span class="istickedoff">| overwrites `elem` scopeBlock = True</span>
+<span class="lineno">  139 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = conflicts overwrites overwritten scope</span>
+<span class="lineno">  140 </span><span class="spaces"></span><span class="istickedoff">conflicts _ _ [] = False</span></span>
+<span class="lineno">  141 </span>
+<span class="lineno">  142 </span>sameNamespace :: GHC.Name -&gt; GHC.Name -&gt; Bool
+<span class="lineno">  143 </span><span class="decl"><span class="istickedoff">sameNamespace n1 n2 = occNameSpace (getOccName n1) == occNameSpace (getOccName n2)</span></span>
 
 </pre>
 </body>
