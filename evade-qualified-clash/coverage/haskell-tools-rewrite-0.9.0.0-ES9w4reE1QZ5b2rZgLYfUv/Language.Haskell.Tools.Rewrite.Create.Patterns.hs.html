@@ -1,0 +1,119 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | Generation of pattern-level AST fragments for refactorings.
+<span class="lineno">    2 </span>-- The bindings defined here create a the annotated version of the AST constructor with the same name.
+<span class="lineno">    3 </span>-- For example, @mkVarPat@ creates the annotated version of the @VarPat@ AST constructor.
+<span class="lineno">    4 </span>{-# LANGUAGE OverloadedStrings 
+<span class="lineno">    5 </span>           , TypeFamilies
+<span class="lineno">    6 </span>           #-}
+<span class="lineno">    7 </span>module Language.Haskell.Tools.Rewrite.Create.Patterns where
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>import Language.Haskell.Tools.AST (UFieldWildcard(..), UPatternField(..), UPattern(..))
+<span class="lineno">   10 </span>import Language.Haskell.Tools.PrettyPrint.Prepare
+<span class="lineno">   11 </span>import Language.Haskell.Tools.Rewrite.Create.Utils (mkAnn, mkAnnList)
+<span class="lineno">   12 </span>import Language.Haskell.Tools.Rewrite.ElementTypes
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>-- | Pattern name binding
+<span class="lineno">   15 </span>mkVarPat :: Name dom -&gt; Pattern dom
+<span class="lineno">   16 </span><span class="decl"><span class="istickedoff">mkVarPat = mkAnn child . UVarPat</span></span>
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>-- | Literal pattern
+<span class="lineno">   19 </span>mkLitPat :: Literal dom -&gt; Pattern dom
+<span class="lineno">   20 </span><span class="decl"><span class="istickedoff">mkLitPat = mkAnn child . ULitPat</span></span>
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>-- | Infix constructor application pattern (@ a :+: b @)
+<span class="lineno">   23 </span>mkInfixAppPat :: Pattern dom -&gt; Operator dom -&gt; Pattern dom -&gt; Pattern dom
+<span class="lineno">   24 </span><span class="decl"><span class="nottickedoff">mkInfixAppPat lhs op rhs = mkAnn (child &lt;&gt; &quot; &quot; &lt;&gt; child &lt;&gt; &quot; &quot; &lt;&gt; child) $ UInfixAppPat lhs op rhs</span></span>
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>-- | Constructor application pattern (@ Point x y @)
+<span class="lineno">   27 </span>mkAppPat :: Name dom -&gt; [Pattern dom] -&gt; Pattern dom
+<span class="lineno">   28 </span><span class="decl"><span class="istickedoff">mkAppPat n pat = mkAnn (child &lt;&gt; child) $ UAppPat n (mkAnnList (after &quot; &quot; $ separatedBy <span class="nottickedoff">&quot; &quot;</span> list) pat)</span></span>
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>-- | Tuple pattern (@ (x,y) @)
+<span class="lineno">   31 </span>mkTuplePat :: [Pattern dom] -&gt; Pattern dom
+<span class="lineno">   32 </span><span class="decl"><span class="istickedoff">mkTuplePat pats = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) $ UTuplePat (mkAnnList (separatedBy &quot;, &quot; list) pats)</span></span>
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>-- | Unboxed tuple pattern (@ (\# x, y \#) @)
+<span class="lineno">   35 </span>mkUnboxTuplePat :: [Pattern dom] -&gt; Pattern dom
+<span class="lineno">   36 </span><span class="decl"><span class="nottickedoff">mkUnboxTuplePat pats = mkAnn (&quot;(# &quot; &lt;&gt; child &lt;&gt; &quot; #)&quot;) $ UUnboxTuplePat (mkAnnList (separatedBy &quot;, &quot; list) pats)</span></span>
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>-- | List pattern (@ [1,2,a,x] @)
+<span class="lineno">   39 </span>mkListPat :: [Pattern dom] -&gt; Pattern dom
+<span class="lineno">   40 </span><span class="decl"><span class="istickedoff">mkListPat pats = mkAnn (&quot;[&quot; &lt;&gt; child &lt;&gt; &quot;]&quot;) $ UListPat (mkAnnList (separatedBy &quot;, &quot; list) pats)</span></span>
+<span class="lineno">   41 </span>
+<span class="lineno">   42 </span>-- | Parallel array pattern (@ [:1,2,a,x:] @)
+<span class="lineno">   43 </span>mkParArrayPat :: [Pattern dom] -&gt; Pattern dom
+<span class="lineno">   44 </span><span class="decl"><span class="nottickedoff">mkParArrayPat pats = mkAnn (&quot;[:&quot; &lt;&gt; child &lt;&gt; &quot;:]&quot;) $ UParArrPat (mkAnnList (separatedBy &quot;, &quot; list) pats)</span></span>
+<span class="lineno">   45 </span>
+<span class="lineno">   46 </span>-- | Parenthesised patterns
+<span class="lineno">   47 </span>mkParenPat :: Pattern dom -&gt; Pattern dom
+<span class="lineno">   48 </span><span class="decl"><span class="istickedoff">mkParenPat = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) . UParenPat</span></span>
+<span class="lineno">   49 </span>
+<span class="lineno">   50 </span>-- | Record pattern (@ Point { x = 3, y } @)
+<span class="lineno">   51 </span>mkRecPat :: Name dom -&gt; [PatternField dom] -&gt; Pattern dom
+<span class="lineno">   52 </span><span class="decl"><span class="istickedoff">mkRecPat name flds = mkAnn (child &lt;&gt; &quot;{ &quot; &lt;&gt; child &lt;&gt; &quot; }&quot;) $ URecPat name (mkAnnList (separatedBy <span class="nottickedoff">&quot;, &quot;</span> list) flds)</span></span>
+<span class="lineno">   53 </span>
+<span class="lineno">   54 </span>-- | As-pattern (explicit name binding) (@ ls\@(hd:_) @)
+<span class="lineno">   55 </span>mkAsPat :: Name dom -&gt; Pattern dom -&gt; Pattern dom
+<span class="lineno">   56 </span><span class="decl"><span class="istickedoff">mkAsPat name pat = mkAnn (child &lt;&gt; &quot;@&quot; &lt;&gt; child) $ UAsPat name pat</span></span>
+<span class="lineno">   57 </span>
+<span class="lineno">   58 </span>-- | Wildcard pattern: (@ _ @)
+<span class="lineno">   59 </span>mkWildPat :: Pattern dom
+<span class="lineno">   60 </span><span class="decl"><span class="istickedoff">mkWildPat = mkAnn &quot;_&quot; UWildPat</span></span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>-- | Irrefutable pattern (@ ~(x:_) @)
+<span class="lineno">   63 </span>mkIrrefutablePat :: Pattern dom -&gt; Pattern dom
+<span class="lineno">   64 </span><span class="decl"><span class="istickedoff">mkIrrefutablePat = mkAnn (&quot;~&quot; &lt;&gt; child) . UIrrefutablePat</span></span>
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>-- | Bang pattern (@ !x @)
+<span class="lineno">   67 </span>mkBangPat :: Pattern dom -&gt; Pattern dom
+<span class="lineno">   68 </span><span class="decl"><span class="istickedoff">mkBangPat = mkAnn (&quot;!&quot; &lt;&gt; child) . UBangPat</span></span>
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>-- | Pattern with explicit type signature (@ x :: Int @)
+<span class="lineno">   71 </span>mkTypeSigPat :: Pattern dom -&gt; Type dom -&gt; Pattern dom
+<span class="lineno">   72 </span><span class="decl"><span class="nottickedoff">mkTypeSigPat pat typ = mkAnn (child &lt;&gt; &quot; :: &quot; &lt;&gt; child) $ UTypeSigPat pat typ</span></span>
+<span class="lineno">   73 </span>
+<span class="lineno">   74 </span>-- | View pattern (@ f -&gt; Just 1 @)
+<span class="lineno">   75 </span>mkViewPat :: Expr dom -&gt; Pattern dom -&gt; Pattern dom
+<span class="lineno">   76 </span><span class="decl"><span class="istickedoff">mkViewPat name pat = mkAnn (child &lt;&gt; &quot; -&gt; &quot; &lt;&gt; child) $ UViewPat name pat</span></span>
+<span class="lineno">   77 </span>
+<span class="lineno">   78 </span>-- | Splice patterns: @$(generateX inp)@
+<span class="lineno">   79 </span>mkSplicePat :: Splice dom -&gt; Pattern dom
+<span class="lineno">   80 </span><span class="decl"><span class="nottickedoff">mkSplicePat = mkAnn child . USplicePat</span></span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>-- | Quasi-quoted patterns: @[| 1 + 2 |]@
+<span class="lineno">   83 </span>mkQuasiQuotePat :: QuasiQuote dom -&gt; Pattern dom
+<span class="lineno">   84 </span><span class="decl"><span class="nottickedoff">mkQuasiQuotePat = mkAnn child . UQuasiQuotePat</span></span>
+<span class="lineno">   85 </span>
+<span class="lineno">   86 </span>-- | Named field pattern (@ p = Point 3 2 @)
+<span class="lineno">   87 </span>mkPatternField :: Name dom -&gt; Pattern dom -&gt; PatternField dom
+<span class="lineno">   88 </span><span class="decl"><span class="istickedoff">mkPatternField name pat = mkAnn (child &lt;&gt; &quot; = &quot; &lt;&gt; child) $ UNormalFieldPattern name pat</span></span>
+<span class="lineno">   89 </span>
+<span class="lineno">   90 </span>-- | Named field pun (@ p @)
+<span class="lineno">   91 </span>mkFieldPunPattern :: Name dom -&gt; PatternField dom
+<span class="lineno">   92 </span><span class="decl"><span class="nottickedoff">mkFieldPunPattern name = mkAnn child $ UFieldPunPattern name</span></span>
+<span class="lineno">   93 </span>
+<span class="lineno">   94 </span>-- | Wildcard field pattern (@ .. @)
+<span class="lineno">   95 </span>mkFieldWildcardPattern :: PatternField dom
+<span class="lineno">   96 </span><span class="decl"><span class="nottickedoff">mkFieldWildcardPattern = mkAnn child $ UFieldWildcardPattern $ mkAnn &quot;..&quot; FldWildcard</span></span>
+
+</pre>
+</body>
+</html>
