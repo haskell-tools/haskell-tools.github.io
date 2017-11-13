@@ -1,0 +1,63 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | Representation of Template Haskell AST elements
+<span class="lineno">    2 </span>module Language.Haskell.Tools.AST.Representation.TH where
+<span class="lineno">    3 </span>              
+<span class="lineno">    4 </span>import Language.Haskell.Tools.AST.Ann (Ann, AnnListG)
+<span class="lineno">    5 </span>import Language.Haskell.Tools.AST.Representation.Decls (UDecl)
+<span class="lineno">    6 </span>import Language.Haskell.Tools.AST.Representation.Exprs (UExpr)
+<span class="lineno">    7 </span>import Language.Haskell.Tools.AST.Representation.Names (UName)
+<span class="lineno">    8 </span>import Language.Haskell.Tools.AST.Representation.Patterns (UPattern)
+<span class="lineno">    9 </span>import Language.Haskell.Tools.AST.Representation.Types (UType)
+<span class="lineno">   10 </span>              
+<span class="lineno">   11 </span>-- | A template haskell splice          
+<span class="lineno">   12 </span>data USplice dom stage
+<span class="lineno">   13 </span>  = UIdSplice    { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_spliceId</span></span></span> :: Ann UName dom stage
+<span class="lineno">   14 </span>                 } -- ^ A simple name splice: @$generateX@
+<span class="lineno">   15 </span>  | UParenSplice { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_spliceExpr</span></span></span> :: Ann UExpr dom stage
+<span class="lineno">   16 </span>                 } -- ^ A splice with parentheses: @$(generate input)@
+<span class="lineno">   17 </span>  
+<span class="lineno">   18 </span>-- | Template haskell quasi-quotation: @[quoter|str]@  
+<span class="lineno">   19 </span>data UQuasiQuote dom stage
+<span class="lineno">   20 </span>  = UQuasiQuote { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_qqExprName</span></span></span> :: Ann UName dom stage
+<span class="lineno">   21 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_qqExprBody</span></span></span> :: Ann QQString dom stage
+<span class="lineno">   22 </span>                } 
+<span class="lineno">   23 </span>        
+<span class="lineno">   24 </span>-- | Template Haskell Quasi-quotation content
+<span class="lineno">   25 </span>data QQString dom stage
+<span class="lineno">   26 </span>  = QQString { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_qqString</span></span></span> :: String 
+<span class="lineno">   27 </span>             } 
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>          
+<span class="lineno">   30 </span>-- | Template Haskell bracket expressions
+<span class="lineno">   31 </span>data UBracket dom stage
+<span class="lineno">   32 </span>  = UExprBracket    { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_bracketExpr</span></span></span> :: Ann UExpr dom stage
+<span class="lineno">   33 </span>                    } -- ^ Expression bracket (@ [| x + y |] @)
+<span class="lineno">   34 </span>  | UPatternBracket { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_bracketPattern</span></span></span> :: Ann UPattern dom stage
+<span class="lineno">   35 </span>                    } -- ^ Pattern bracket (@ [p| Point x y |] @)
+<span class="lineno">   36 </span>  | UTypeBracket    { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_bracketType</span></span></span> :: Ann UType dom stage
+<span class="lineno">   37 </span>                    } -- ^ Type bracket (@ [t| (Int,Int) |] @)
+<span class="lineno">   38 </span>  | UDeclsBracket   { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_bracketDecl</span></span></span> :: AnnListG UDecl dom stage
+<span class="lineno">   39 </span>                    } -- ^ Declaration bracket (@ [d| f :: Int -&gt; Int; f x = x*x |] @)
+<span class="lineno">   40 </span>            
+
+</pre>
+</body>
+</html>
