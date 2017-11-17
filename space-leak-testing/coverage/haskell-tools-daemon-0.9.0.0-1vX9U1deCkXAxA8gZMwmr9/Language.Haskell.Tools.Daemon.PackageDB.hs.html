@@ -1,0 +1,131 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE DeriveGeneric
+<span class="lineno">    2 </span>           , ScopedTypeVariables
+<span class="lineno">    3 </span>           , MultiWayIf
+<span class="lineno">    4 </span>           #-}
+<span class="lineno">    5 </span>-- | Setting the package database to use when compiling modules. The daemon must have one single
+<span class="lineno">    6 </span>-- package database that cannot be changed after a package is loaded using that package database.
+<span class="lineno">    7 </span>-- Available package databases are the cabal global, the cabal sandbox, the stack or one that had
+<span class="lineno">    8 </span>-- been explicitely set by a file path.
+<span class="lineno">    9 </span>module Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..), packageDBLoc, detectAutogen) where
+<span class="lineno">   10 </span>
+<span class="lineno">   11 </span>import Control.Applicative (Applicative(..), (&lt;$&gt;), Alternative(..))
+<span class="lineno">   12 </span>import Control.Exception (SomeException, try)
+<span class="lineno">   13 </span>import Control.Monad
+<span class="lineno">   14 </span>import Data.Aeson (FromJSON(..))
+<span class="lineno">   15 </span>import Data.Char (isSpace)
+<span class="lineno">   16 </span>import Data.Maybe
+<span class="lineno">   17 </span>import Data.List
+<span class="lineno">   18 </span>import GHC.Generics (Generic(..))
+<span class="lineno">   19 </span>import System.Exit
+<span class="lineno">   20 </span>import System.Directory
+<span class="lineno">   21 </span>import System.FilePath (FilePath, (&lt;/&gt;))
+<span class="lineno">   22 </span>import System.Process
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>-- | Possible package database configurations.
+<span class="lineno">   25 </span>data PackageDB = AutoDB -- ^ Decide the package database automatically.
+<span class="lineno">   26 </span>               | DefaultDB -- ^ Use the global cabal package database (like when using ghc).
+<span class="lineno">   27 </span>               | CabalSandboxDB -- ^ Use the sandboxed cabal package database.
+<span class="lineno">   28 </span>               | StackDB -- ^ Use the stack package databases (local and snapshot).
+<span class="lineno">   29 </span>               | ExplicitDB { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">packageDBPath</span></span></span> :: FilePath } -- ^ Set the package database explicitely.
+<span class="lineno">   30 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>, Generic)
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>instance FromJSON PackageDB
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>-- | Finds the location of the package database based on the configuration.
+<span class="lineno">   35 </span>packageDBLoc :: PackageDB -&gt; FilePath -&gt; IO [FilePath]
+<span class="lineno">   36 </span><span class="decl"><span class="istickedoff">packageDBLoc AutoDB path = concat &lt;$&gt; sequence [ packageDBLoc StackDB path</span>
+<span class="lineno">   37 </span><span class="spaces">                                               </span><span class="istickedoff">, packageDBLoc CabalSandboxDB path</span>
+<span class="lineno">   38 </span><span class="spaces">                                               </span><span class="istickedoff">, packageDBLoc DefaultDB <span class="nottickedoff">path</span></span>
+<span class="lineno">   39 </span><span class="spaces">                                               </span><span class="istickedoff">]</span>
+<span class="lineno">   40 </span><span class="spaces"></span><span class="istickedoff">packageDBLoc DefaultDB _ = do</span>
+<span class="lineno">   41 </span><span class="spaces">  </span><span class="istickedoff">dbs &lt;- runCommandExpectOK &quot;ghc-pkg list base&quot;</span>
+<span class="lineno">   42 </span><span class="spaces">  </span><span class="istickedoff">return $ maybe <span class="nottickedoff">[]</span> (filter (\l -&gt; not (null l) &amp;&amp; not (&quot; &quot; `isPrefixOf` l)) . lines) dbs</span>
+<span class="lineno">   43 </span><span class="spaces"></span><span class="istickedoff">packageDBLoc CabalSandboxDB path = do</span>
+<span class="lineno">   44 </span><span class="spaces">  </span><span class="istickedoff">hasConfigFile &lt;- doesFileExist (path &lt;/&gt; &quot;cabal.config&quot;)</span>
+<span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">hasSandboxFile &lt;- doesFileExist (path &lt;/&gt; &quot;cabal.sandbox.config&quot;)</span>
+<span class="lineno">   46 </span><span class="spaces">  </span><span class="istickedoff">config &lt;- if <span class="tickonlyfalse">hasConfigFile</span> then <span class="nottickedoff">readFile (path &lt;/&gt; &quot;cabal.config&quot;)</span></span>
+<span class="lineno">   47 </span><span class="spaces">              </span><span class="istickedoff">else if hasSandboxFile then readFile (path &lt;/&gt; &quot;cabal.sandbox.config&quot;)</span>
+<span class="lineno">   48 </span><span class="spaces">                                     </span><span class="istickedoff">else return &quot;&quot;</span>
+<span class="lineno">   49 </span><span class="spaces">  </span><span class="istickedoff">return $ map (drop (length &quot;package-db: &quot;)) $ filter (&quot;package-db: &quot; `isPrefixOf`) $ lines config</span>
+<span class="lineno">   50 </span><span class="spaces"></span><span class="istickedoff">packageDBLoc StackDB path = withCurrentDirectory path $ (fmap $ either <span class="nottickedoff">(\(_ :: SomeException) -&gt; [])</span> id) $ try $ do</span>
+<span class="lineno">   51 </span><span class="spaces">     </span><span class="istickedoff">projRoot &lt;- runCommandExpectOK &quot;stack path --allow-different-user --project-root&quot;</span>
+<span class="lineno">   52 </span><span class="spaces">     </span><span class="istickedoff">-- we only accept stack projects where the packages are (direct or indirect) subdirectories of the project root</span>
+<span class="lineno">   53 </span><span class="spaces">     </span><span class="istickedoff">if <span class="tickonlyfalse">maybe <span class="nottickedoff">False</span> (`isPrefixOf` path) projRoot</span> then <span class="nottickedoff">do</span></span>
+<span class="lineno">   54 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">globalDB &lt;- runCommandExpectOK &quot;stack path --allow-different-user --global-pkg-db&quot;</span></span>
+<span class="lineno">   55 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">snapshotDB &lt;- runCommandExpectOK &quot;stack path --allow-different-user --snapshot-pkg-db&quot;</span></span>
+<span class="lineno">   56 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">localDB &lt;- runCommandExpectOK &quot;stack path --allow-different-user --local-pkg-db&quot;</span></span>
+<span class="lineno">   57 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">return $ maybeToList localDB ++ maybeToList snapshotDB ++ maybeToList globalDB</span></span>
+<span class="lineno">   58 </span><span class="spaces">     </span><span class="istickedoff">else return []</span>
+<span class="lineno">   59 </span><span class="spaces"></span><span class="istickedoff">packageDBLoc (ExplicitDB dir) path = <span class="nottickedoff">do</span></span>
+<span class="lineno">   60 </span><span class="spaces">  </span><span class="istickedoff"><span class="nottickedoff">hasDir &lt;- doesDirectoryExist (path &lt;/&gt; dir)</span></span>
+<span class="lineno">   61 </span><span class="spaces">  </span><span class="istickedoff"><span class="nottickedoff">if hasDir then return [path &lt;/&gt; dir]</span></span>
+<span class="lineno">   62 </span><span class="spaces">            </span><span class="istickedoff"><span class="nottickedoff">else return []</span></span></span>
+<span class="lineno">   63 </span>
+<span class="lineno">   64 </span>-- | Gets the (probable) location of autogen folder depending on which type of
+<span class="lineno">   65 </span>-- build we are using.
+<span class="lineno">   66 </span>detectAutogen :: FilePath -&gt; PackageDB -&gt; IO (Maybe FilePath)
+<span class="lineno">   67 </span><span class="decl"><span class="istickedoff">detectAutogen root AutoDB = do</span>
+<span class="lineno">   68 </span><span class="spaces">  </span><span class="istickedoff">defDB &lt;- detectAutogen root DefaultDB</span>
+<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">sandboxDB &lt;- detectAutogen root CabalSandboxDB</span>
+<span class="lineno">   70 </span><span class="spaces">  </span><span class="istickedoff">stackDB &lt;- detectAutogen root StackDB</span>
+<span class="lineno">   71 </span><span class="spaces">  </span><span class="istickedoff">return $ choose [ defDB, sandboxDB, stackDB ]</span>
+<span class="lineno">   72 </span><span class="spaces"></span><span class="istickedoff">detectAutogen root DefaultDB = ifExists (root &lt;/&gt; &quot;dist&quot; &lt;/&gt; &quot;build&quot; &lt;/&gt; &quot;autogen&quot;)</span>
+<span class="lineno">   73 </span><span class="spaces"></span><span class="istickedoff">detectAutogen root (ExplicitDB _) = <span class="nottickedoff">ifExists (root &lt;/&gt; &quot;dist&quot; &lt;/&gt; &quot;build&quot; &lt;/&gt; &quot;autogen&quot;)</span></span>
+<span class="lineno">   74 </span><span class="spaces"></span><span class="istickedoff">detectAutogen root CabalSandboxDB = ifExists (root &lt;/&gt; &quot;dist&quot; &lt;/&gt; &quot;build&quot; &lt;/&gt; &quot;autogen&quot;)</span>
+<span class="lineno">   75 </span><span class="spaces"></span><span class="istickedoff">detectAutogen root StackDB = (fmap $ either <span class="nottickedoff">(\(_ :: SomeException) -&gt; Nothing)</span> id) $ try $ do</span>
+<span class="lineno">   76 </span><span class="spaces">  </span><span class="istickedoff">dir &lt;- withCurrentDirectory root $ do</span>
+<span class="lineno">   77 </span><span class="spaces">    </span><span class="istickedoff">distDir &lt;- runCommandExpectOK &quot;stack path --allow-different-user --dist-dir&quot;</span>
+<span class="lineno">   78 </span><span class="spaces">    </span><span class="istickedoff">return $ trim (fromMaybe <span class="nottickedoff">&quot;&quot;</span> distDir)</span>
+<span class="lineno">   79 </span><span class="spaces">  </span><span class="istickedoff">genExists &lt;- doesDirectoryExist (root &lt;/&gt; dir &lt;/&gt; &quot;build&quot; &lt;/&gt; &quot;autogen&quot;)</span>
+<span class="lineno">   80 </span><span class="spaces">  </span><span class="istickedoff">buildExists &lt;- doesDirectoryExist (root &lt;/&gt; dir &lt;/&gt; &quot;build&quot;)</span>
+<span class="lineno">   81 </span><span class="spaces">  </span><span class="istickedoff">if | <span class="tickonlyfalse">genExists</span> -&gt; <span class="nottickedoff">return $ Just (root &lt;/&gt; dir &lt;/&gt; &quot;build&quot; &lt;/&gt; &quot;autogen&quot;)</span></span>
+<span class="lineno">   82 </span><span class="spaces">     </span><span class="istickedoff">| <span class="tickonlyfalse">buildExists</span> -&gt; <span class="nottickedoff">do -- for some packages, the autogen folder is inside a folder named after the package</span></span>
+<span class="lineno">   83 </span><span class="spaces">                         </span><span class="istickedoff"><span class="nottickedoff">cont &lt;- filterM doesDirectoryExist . map ((root &lt;/&gt; dir &lt;/&gt; &quot;build&quot;) &lt;/&gt;)</span></span>
+<span class="lineno">   84 </span><span class="spaces">                                   </span><span class="istickedoff"><span class="nottickedoff">=&lt;&lt; listDirectory (root &lt;/&gt; dir &lt;/&gt; &quot;build&quot;)</span></span>
+<span class="lineno">   85 </span><span class="spaces">                         </span><span class="istickedoff"><span class="nottickedoff">existing &lt;- mapM ifExists (map (&lt;/&gt; &quot;autogen&quot;) cont)</span></span>
+<span class="lineno">   86 </span><span class="spaces">                         </span><span class="istickedoff"><span class="nottickedoff">return $ choose existing</span></span>
+<span class="lineno">   87 </span><span class="spaces">     </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> -&gt; return Nothing</span></span>
+<span class="lineno">   88 </span>
+<span class="lineno">   89 </span>-- | Run a command and return its result if successful display an error message otherwise.
+<span class="lineno">   90 </span>runCommandExpectOK :: String -&gt; IO (Maybe String)
+<span class="lineno">   91 </span><span class="decl"><span class="istickedoff">runCommandExpectOK cmd = do</span>
+<span class="lineno">   92 </span><span class="spaces">  </span><span class="istickedoff">(exitCode, res, errs) &lt;- readCreateProcessWithExitCode (shell cmd) &quot;&quot;</span>
+<span class="lineno">   93 </span><span class="spaces">  </span><span class="istickedoff">case exitCode of ExitSuccess -&gt; return (Just res)</span>
+<span class="lineno">   94 </span><span class="spaces">                   </span><span class="istickedoff">ExitFailure code -&gt; <span class="nottickedoff">do putStrLn (&quot;The command '&quot; ++ cmd ++ &quot;' exited with &quot;</span></span>
+<span class="lineno">   95 </span><span class="spaces">                                                      </span><span class="istickedoff"><span class="nottickedoff">++ show code ++ &quot;:\n&quot; ++ errs)</span></span>
+<span class="lineno">   96 </span><span class="spaces">                                          </span><span class="istickedoff"><span class="nottickedoff">return Nothing</span></span></span>
+<span class="lineno">   97 </span>
+<span class="lineno">   98 </span>trim :: String -&gt; String
+<span class="lineno">   99 </span><span class="decl"><span class="istickedoff">trim = f . f</span>
+<span class="lineno">  100 </span><span class="spaces">   </span><span class="istickedoff">where f = reverse . dropWhile isSpace</span></span>
+<span class="lineno">  101 </span>
+<span class="lineno">  102 </span>choose :: Alternative f =&gt; [f a] -&gt; f a
+<span class="lineno">  103 </span><span class="decl"><span class="istickedoff">choose = foldl (&lt;|&gt;) empty</span></span>
+<span class="lineno">  104 </span>
+<span class="lineno">  105 </span>ifExists :: FilePath -&gt; IO (Maybe FilePath)
+<span class="lineno">  106 </span><span class="decl"><span class="istickedoff">ifExists fp = do exists &lt;- doesDirectoryExist fp</span>
+<span class="lineno">  107 </span><span class="spaces">                 </span><span class="istickedoff">if exists then return (Just fp)</span>
+<span class="lineno">  108 </span><span class="spaces">                           </span><span class="istickedoff">else return Nothing</span></span>
+
+</pre>
+</body>
+</html>
