@@ -1,0 +1,107 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE OverloadedStrings
+<span class="lineno">    2 </span>           , FlexibleContexts
+<span class="lineno">    3 </span>           , FlexibleInstances
+<span class="lineno">    4 </span>           #-}
+<span class="lineno">    5 </span>-- | Helper functions for working with source templates
+<span class="lineno">    6 </span>module Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplateHelpers where
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>import Control.Reference ((.=))
+<span class="lineno">    9 </span>import Data.String (IsString(..), String)
+<span class="lineno">   10 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   11 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate
+<span class="lineno">   12 </span>import SrcLoc (noSrcSpan, combineSrcSpans)
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>type ASTElement node dom = Ann node dom SrcTemplateStage
+<span class="lineno">   15 </span>type ASTOptional node dom = AnnMaybeG node dom SrcTemplateStage
+<span class="lineno">   16 </span>type ASTMulti node dom = AnnListG node dom SrcTemplateStage
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>instance IsString (SpanInfo SrcTemplateStage) where
+<span class="lineno">   19 </span>  <span class="decl"><span class="istickedoff">fromString s = SourceTemplateNode noSrcSpan [TextElem [NormalText s] noSrcSpan] <span class="nottickedoff">0</span> <span class="nottickedoff">Nothing</span></span></span>
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>-- * Basic elements
+<span class="lineno">   22 </span>child :: SpanInfo SrcTemplateStage
+<span class="lineno">   23 </span><span class="decl"><span class="istickedoff">child = SourceTemplateNode noSrcSpan [ChildElem] <span class="nottickedoff">0</span> <span class="nottickedoff">Nothing</span></span></span>
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>opt :: OptionalInfo SrcTemplateStage
+<span class="lineno">   26 </span><span class="decl"><span class="istickedoff">opt = SourceTemplateOpt noSrcSpan &quot;&quot; &quot;&quot; 0 <span class="nottickedoff">Nothing</span></span></span>
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>list :: ListInfo SrcTemplateStage
+<span class="lineno">   29 </span><span class="decl"><span class="istickedoff">list = SourceTemplateList noSrcSpan &quot;&quot; &quot;&quot; <span class="nottickedoff">&quot;&quot;</span> Nothing [] 0 Nothing</span></span>
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span>-- * Modifiers
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>class AfterBefore i where
+<span class="lineno">   34 </span>  -- | Put the given string before the element if it is not empty
+<span class="lineno">   35 </span>  after :: String -&gt; i -&gt; i
+<span class="lineno">   36 </span>  -- | The given string should follow the element if it is not empty
+<span class="lineno">   37 </span>  followedBy :: String -&gt; i -&gt; i
+<span class="lineno">   38 </span>
+<span class="lineno">   39 </span>instance AfterBefore (ListInfo SrcTemplateStage) where
+<span class="lineno">   40 </span>  <span class="decl"><span class="istickedoff">after str = srcTmpListBefore .= str</span></span>
+<span class="lineno">   41 </span>  <span class="decl"><span class="istickedoff">followedBy str = srcTmpListAfter .= <span class="nottickedoff">str</span></span></span>
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>instance AfterBefore (OptionalInfo SrcTemplateStage) where
+<span class="lineno">   44 </span>  <span class="decl"><span class="istickedoff">after str = srcTmpOptBefore .= str</span></span>
+<span class="lineno">   45 </span>  <span class="decl"><span class="istickedoff">followedBy str = srcTmpOptAfter .= str</span></span>
+<span class="lineno">   46 </span>
+<span class="lineno">   47 </span>class RelativeIndent i where
+<span class="lineno">   48 </span>  -- | The element should be indented relatively to its parent
+<span class="lineno">   49 </span>  relativeIndented :: Int -&gt; i -&gt; i
+<span class="lineno">   50 </span>
+<span class="lineno">   51 </span>instance RelativeIndent (SpanInfo SrcTemplateStage) where
+<span class="lineno">   52 </span>  <span class="decl"><span class="nottickedoff">relativeIndented i = srcTmpRelPos .= Just i</span></span>
+<span class="lineno">   53 </span>
+<span class="lineno">   54 </span>instance RelativeIndent (ListInfo SrcTemplateStage) where
+<span class="lineno">   55 </span>  <span class="decl"><span class="nottickedoff">relativeIndented i = srcTmpListRelPos .= Just i</span></span>
+<span class="lineno">   56 </span>
+<span class="lineno">   57 </span>instance RelativeIndent (OptionalInfo SrcTemplateStage) where
+<span class="lineno">   58 </span>  <span class="decl"><span class="istickedoff">relativeIndented i = srcTmpOptRelPos .= Just i</span></span>
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>
+<span class="lineno">   61 </span>class MinimumIndent i where
+<span class="lineno">   62 </span>  -- | The elements should be indented at least to the given number of spaces
+<span class="lineno">   63 </span>  minimumIndented :: Int -&gt; i -&gt; i
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>instance MinimumIndent (SpanInfo SrcTemplateStage) where
+<span class="lineno">   66 </span>  <span class="decl"><span class="nottickedoff">minimumIndented i = sourceTemplateMinimalIndent .= i</span></span>
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>instance MinimumIndent (ListInfo SrcTemplateStage) where
+<span class="lineno">   69 </span>  <span class="decl"><span class="nottickedoff">minimumIndented i = srcTmpListMinimalIndent .= i</span></span>
+<span class="lineno">   70 </span>
+<span class="lineno">   71 </span>instance MinimumIndent (OptionalInfo SrcTemplateStage) where
+<span class="lineno">   72 </span>  <span class="decl"><span class="nottickedoff">minimumIndented i = srcTmpOptMinimalIndent .= i</span></span>
+<span class="lineno">   73 </span>
+<span class="lineno">   74 </span>-- | The elements of the list should be separated by the given string by default (might be overridden)
+<span class="lineno">   75 </span>separatedBy :: String -&gt; ListInfo SrcTemplateStage -&gt; ListInfo SrcTemplateStage
+<span class="lineno">   76 </span><span class="decl"><span class="istickedoff">separatedBy sep = srcTmpDefaultSeparator .= sep</span></span>
+<span class="lineno">   77 </span>
+<span class="lineno">   78 </span>-- | The elements of the list should be indented on the same column
+<span class="lineno">   79 </span>indented :: ListInfo SrcTemplateStage -&gt; ListInfo SrcTemplateStage
+<span class="lineno">   80 </span><span class="decl"><span class="istickedoff">indented = (srcTmpIndented .= Just []) . (srcTmpDefaultSeparator .= &quot;\n&quot;)</span></span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>-- | Concatenates two source templates to produce a new template with all child elements.
+<span class="lineno">   83 </span>(&lt;&gt;) :: SpanInfo SrcTemplateStage -&gt; SpanInfo SrcTemplateStage -&gt; SpanInfo SrcTemplateStage
+<span class="lineno">   84 </span><span class="decl"><span class="istickedoff">SourceTemplateNode sp1 el1 _ _ &lt;&gt; SourceTemplateNode sp2 el2 _ _ = SourceTemplateNode (combineSrcSpans sp1 sp2) (el1 ++ el2) <span class="nottickedoff">0</span> <span class="nottickedoff">Nothing</span></span></span>
+
+</pre>
+</body>
+</html>
