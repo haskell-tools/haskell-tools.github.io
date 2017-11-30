@@ -1,0 +1,151 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE TypeSynonymInstances
+<span class="lineno">    2 </span>           , FlexibleInstances
+<span class="lineno">    3 </span>           , DeriveFunctor
+<span class="lineno">    4 </span>           , GeneralizedNewtypeDeriving
+<span class="lineno">    5 </span>           #-}
+<span class="lineno">    6 </span>-- | Types and instances for monadic refactorings. The refactoring monad provides automatic
+<span class="lineno">    7 </span>-- importing, keeping important source fragments (such as preprocessor pragmas), and providing
+<span class="lineno">    8 </span>-- contextual information for refactorings.
+<span class="lineno">    9 </span>module Language.Haskell.Tools.Refactor.Monad where
+<span class="lineno">   10 </span>
+<span class="lineno">   11 </span>import Control.Monad.Reader
+<span class="lineno">   12 </span>import qualified Control.Monad.State.Lazy as LazySt
+<span class="lineno">   13 </span>import Control.Monad.State.Strict
+<span class="lineno">   14 </span>import Control.Monad.Trans (MonadTrans(..), MonadIO)
+<span class="lineno">   15 </span>import Control.Monad.Trans.Except (ExceptT(..), throwE, runExceptT)
+<span class="lineno">   16 </span>import Control.Monad.Trans.Reader (ReaderT(..))
+<span class="lineno">   17 </span>import Control.Monad.Trans.Writer (WriterT(..))
+<span class="lineno">   18 </span>import Control.Monad.Writer
+<span class="lineno">   19 </span>import DynFlags (HasDynFlags(..))
+<span class="lineno">   20 </span>import Exception (ExceptionMonad(..))
+<span class="lineno">   21 </span>import GHC hiding (mkModuleName, moduleNameString)
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   24 </span>import Language.Haskell.Tools.Refactor.Representation (RefactorChange, ModuleDom, UnnamedModule)
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>-- | A monad that can be used to refactor
+<span class="lineno">   27 </span>class Monad m =&gt; RefactorMonad m where
+<span class="lineno">   28 </span>  refactError :: String -&gt; m a
+<span class="lineno">   29 </span>  liftGhc :: Ghc a -&gt; m a
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span>-- | A refactoring that only affects one module
+<span class="lineno">   32 </span>type LocalRefactoring dom = UnnamedModule dom -&gt; LocalRefactor dom (UnnamedModule dom)
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>-- | The type of a refactoring
+<span class="lineno">   35 </span>type Refactoring dom = ModuleDom dom -&gt; [ModuleDom dom] -&gt; Refactor [RefactorChange dom]
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>-- | The type of a refactoring that affects the whole project.
+<span class="lineno">   38 </span>type ProjectRefactoring dom = [ModuleDom dom] -&gt; Refactor [RefactorChange dom]
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>-- | The refactoring monad for a given module
+<span class="lineno">   41 </span>type LocalRefactor dom = LocalRefactorT dom Refactor
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>-- | The refactoring monad for the whole project
+<span class="lineno">   44 </span>type Refactor = ExceptT String Ghc
+<span class="lineno">   45 </span>
+<span class="lineno">   46 </span>-- | Input and output information for the refactoring
+<span class="lineno">   47 </span>-- TODO: use multiple states instead of Either
+<span class="lineno">   48 </span>newtype LocalRefactorT dom m a
+<span class="lineno">   49 </span>  = LocalRefactorT { <span class="istickedoff"><span class="decl"><span class="istickedoff">fromRefactorT</span></span></span> :: WriterT [Either GHC.Name (SrcSpan, String, String)]
+<span class="lineno">   50 </span>                                              (ReaderT (RefactorCtx dom) m) a
+<span class="lineno">   51 </span>                   }
+<span class="lineno">   52 </span>  deriving ( <span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff">Functor</span></span></span></span>, <span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Applicative</span></span></span></span></span></span></span></span></span></span>, <span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">Monad</span></span></span></span></span></span></span></span>, <span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">MonadReader (RefactorCtx dom)</span></span></span></span></span></span>
+<span class="lineno">   53 </span>           , <span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">MonadWriter [Either GHC.Name (SrcSpan, String, String)]</span></span></span></span></span></span></span></span>
+<span class="lineno">   54 </span>           , <span class="decl"><span class="istickedoff">MonadIO</span></span>, <span class="decl"><span class="nottickedoff">HasDynFlags</span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">ExceptionMonad</span></span></span></span></span></span></span></span>, <span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">GhcMonad</span></span></span></span> )
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>-- | The information a refactoring can use
+<span class="lineno">   57 </span>data RefactorCtx dom
+<span class="lineno">   58 </span>  = RefactorCtx { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">refModuleName</span></span></span> :: GHC.Module -- ^ The name of the module being refactored. Used for accessing implicit imports.
+<span class="lineno">   59 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">refCtxRoot</span></span></span> :: Ann UModule dom SrcTemplateStage
+<span class="lineno">   60 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">refCtxImports</span></span></span> :: [Ann UImportDecl dom SrcTemplateStage]
+<span class="lineno">   61 </span>                }
+<span class="lineno">   62 </span>
+<span class="lineno">   63 </span>instance MonadTrans (LocalRefactorT dom) where
+<span class="lineno">   64 </span>  <span class="decl"><span class="istickedoff">lift = LocalRefactorT . lift . lift</span></span>
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>instance RefactorMonad Refactor where
+<span class="lineno">   67 </span>  <span class="decl"><span class="istickedoff">refactError = throwE</span></span>
+<span class="lineno">   68 </span>  <span class="decl"><span class="istickedoff">liftGhc = lift</span></span>
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>instance RefactorMonad (LocalRefactor dom) where
+<span class="lineno">   71 </span>  <span class="decl"><span class="istickedoff">refactError = lift . refactError</span></span>
+<span class="lineno">   72 </span>  <span class="decl"><span class="nottickedoff">liftGhc = lift . liftGhc</span></span>
+<span class="lineno">   73 </span>
+<span class="lineno">   74 </span>instance RefactorMonad m =&gt; RefactorMonad (StateT s m) where
+<span class="lineno">   75 </span>  <span class="decl"><span class="nottickedoff">refactError = lift . refactError</span></span>
+<span class="lineno">   76 </span>  <span class="decl"><span class="nottickedoff">liftGhc = lift . liftGhc</span></span>
+<span class="lineno">   77 </span>
+<span class="lineno">   78 </span>instance RefactorMonad m =&gt; RefactorMonad (LazySt.StateT s m) where
+<span class="lineno">   79 </span>  <span class="decl"><span class="istickedoff">refactError = lift . refactError</span></span>
+<span class="lineno">   80 </span>  <span class="decl"><span class="nottickedoff">liftGhc = lift . liftGhc</span></span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>-- * Some instances missing from GHC
+<span class="lineno">   83 </span>
+<span class="lineno">   84 </span>instance (GhcMonad m, Monoid s) =&gt; GhcMonad (WriterT s m) where
+<span class="lineno">   85 </span>  <span class="decl"><span class="istickedoff">getSession = lift getSession</span></span>
+<span class="lineno">   86 </span>  <span class="decl"><span class="nottickedoff">setSession env = lift (setSession env)</span></span>
+<span class="lineno">   87 </span>
+<span class="lineno">   88 </span>instance (ExceptionMonad m, Monoid s) =&gt; ExceptionMonad (WriterT s m) where
+<span class="lineno">   89 </span>  <span class="decl"><span class="nottickedoff">gcatch w c = WriterT (runWriterT w `gcatch` (runWriterT . c))</span></span>
+<span class="lineno">   90 </span>  <span class="decl"><span class="nottickedoff">gmask m = WriterT $ gmask (\f -&gt; runWriterT $ m (WriterT . f . runWriterT))</span></span>
+<span class="lineno">   91 </span>
+<span class="lineno">   92 </span>instance (Monad m, HasDynFlags m) =&gt; HasDynFlags (StateT s m) where
+<span class="lineno">   93 </span>  <span class="decl"><span class="nottickedoff">getDynFlags = lift getDynFlags</span></span>
+<span class="lineno">   94 </span>
+<span class="lineno">   95 </span>instance (GhcMonad m) =&gt; GhcMonad (StateT s m) where
+<span class="lineno">   96 </span>  <span class="decl"><span class="istickedoff">getSession = lift getSession</span></span>
+<span class="lineno">   97 </span>  <span class="decl"><span class="istickedoff">setSession env = lift (setSession env)</span></span>
+<span class="lineno">   98 </span>
+<span class="lineno">   99 </span>instance (ExceptionMonad m) =&gt; ExceptionMonad (StateT s m) where
+<span class="lineno">  100 </span>  <span class="decl"><span class="istickedoff">gcatch r c = StateT (\ctx -&gt; runStateT r ctx `gcatch` (flip runStateT ctx . c))</span></span>
+<span class="lineno">  101 </span>  <span class="decl"><span class="nottickedoff">gmask m = StateT $ \ctx -&gt; gmask (\f -&gt; runStateT (m (\a -&gt; StateT $ \ctx' -&gt; f (runStateT a ctx'))) ctx)</span></span>
+<span class="lineno">  102 </span>
+<span class="lineno">  103 </span>instance (Monad m, HasDynFlags m) =&gt; HasDynFlags (LazySt.StateT s m) where
+<span class="lineno">  104 </span>  <span class="decl"><span class="nottickedoff">getDynFlags = lift getDynFlags</span></span>
+<span class="lineno">  105 </span>
+<span class="lineno">  106 </span>instance (GhcMonad m) =&gt; GhcMonad (LazySt.StateT s m) where
+<span class="lineno">  107 </span>  <span class="decl"><span class="istickedoff">getSession = lift getSession</span></span>
+<span class="lineno">  108 </span>  <span class="decl"><span class="nottickedoff">setSession env = lift (setSession env)</span></span>
+<span class="lineno">  109 </span>
+<span class="lineno">  110 </span>instance (ExceptionMonad m) =&gt; ExceptionMonad (LazySt.StateT s m) where
+<span class="lineno">  111 </span>  <span class="decl"><span class="nottickedoff">gcatch r c = LazySt.StateT (\ctx -&gt; LazySt.runStateT r ctx `gcatch` (flip LazySt.runStateT ctx . c))</span></span>
+<span class="lineno">  112 </span>  <span class="decl"><span class="nottickedoff">gmask m = LazySt.StateT $ \ctx -&gt; gmask (\f -&gt; LazySt.runStateT (m (\a -&gt; LazySt.StateT $ \ctx' -&gt; f (LazySt.runStateT a ctx'))) ctx)</span></span>
+<span class="lineno">  113 </span>
+<span class="lineno">  114 </span>instance GhcMonad m =&gt; GhcMonad (ReaderT s m) where
+<span class="lineno">  115 </span>  <span class="decl"><span class="istickedoff">getSession = lift getSession</span></span>
+<span class="lineno">  116 </span>  <span class="decl"><span class="nottickedoff">setSession env = lift (setSession env)</span></span>
+<span class="lineno">  117 </span>
+<span class="lineno">  118 </span>instance ExceptionMonad m =&gt; ExceptionMonad (ReaderT s m) where
+<span class="lineno">  119 </span>  <span class="decl"><span class="nottickedoff">gcatch r c = ReaderT (\ctx -&gt; runReaderT r ctx `gcatch` (flip runReaderT ctx . c))</span></span>
+<span class="lineno">  120 </span>  <span class="decl"><span class="nottickedoff">gmask m = ReaderT $ \ctx -&gt; gmask (\f -&gt; runReaderT (m (\a -&gt; ReaderT $ \ctx' -&gt; f (runReaderT a ctx'))) ctx)</span></span>
+<span class="lineno">  121 </span>
+<span class="lineno">  122 </span>instance GhcMonad m =&gt; GhcMonad (ExceptT s m) where
+<span class="lineno">  123 </span>  <span class="decl"><span class="istickedoff">getSession = lift getSession</span></span>
+<span class="lineno">  124 </span>  <span class="decl"><span class="nottickedoff">setSession env = lift (setSession env)</span></span>
+<span class="lineno">  125 </span>
+<span class="lineno">  126 </span>instance ExceptionMonad m =&gt; ExceptionMonad (ExceptT s m) where
+<span class="lineno">  127 </span>  <span class="decl"><span class="nottickedoff">gcatch e c = ExceptT (runExceptT e `gcatch` (runExceptT . c))</span></span>
+<span class="lineno">  128 </span>  <span class="decl"><span class="nottickedoff">gmask m = ExceptT $ gmask (\f -&gt; runExceptT $ m (ExceptT . f . runExceptT))</span></span>
+
+</pre>
+</body>
+</html>
