@@ -1,0 +1,27 @@
+
+
+Still running (1 of 20): stack --no-terminal --test --no-run-tests --bench --no-run-benchmarks bench haskell-tools-cli
+[32;1mThe command stack --no-terminal --test --no-run-tests --bench --no-run-benchmarks bench haskell-tools-cli exited with 0.[0m
+
+[32;1mLog:[0m
+
+haskell-tools-cli-1.0.0.0: test (suite: haskell-tools-cli-tests)
+
+cli-tests
+  batch:   OK (4.98s)
+  session: OK (0.74s)
+
+All 2 tests passed (5.72s)
+
+haskell-tools-cli-1.0.0.0: benchmarks
+Running 1 benchmarks...
+Benchmark cli-benchmark: RUNNING...
+[{"dt":{"day":4,"year":2017,"month":12},"bm":{"bmId":"full-1","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 182:8-182:36 parseResult","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 181:1 gDefined","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 47:46-47:64 linesFixed","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 46:1 cppIfDef","OrganizeImports Language.Preprocessor.Cpphs.CppIfdef","Exit"]},"ms":[2.652192079998713,2.5642318700000004,7426164564,1,null,null,null,null,null,null,null]},{"dt":{"day":4,"year":2017,"month":12},"bm":{"bmId":"full-2","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.MacroPass 96:29-96:47 tokenizeTT","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 90:11-90:67 fun","OrganizeImports Language.Preprocessor.Cpphs.MacroPass","Exit"]},"ms":[0.7042998800006899,0.6577501460000001,1972028261,1,null,null,null,null,null,null,null]},{"dt":{"day":4,"year":2017,"month":12},"bm":{"bmId":"full-3","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 182:8-182:36 parseResult","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 181:1 gDefined","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 96:29-96:47 tokenizeTT","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 90:11-90:67 fun","ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 47:46-47:64 linesFixed","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 46:1 cppIfDef","OrganizeImports Language.Preprocessor.Cpphs.CppIfdef","Exit"]},"ms":[0.5743548969985568,0.5487331490000003,1608177136,1,null,null,null,null,null,null,null]},{"dt":{"day":4,"year":2017,"month":12},"bm":{"bmId":"3xGenerateTypeSignature","workingDir":"examples/CppHs","refactors":["GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","Exit"]},"ms":[0.5675878389993159,0.5481129750000004,1589268574,1,null,null,null,null,null,null,null]},{"dt":{"day":4,"year":2017,"month":12},"bm":{"bmId":"empty","workingDir":"examples/CppHs","refactors":["Exit"]},"ms":[0.5668424190007499,0.5474779239999998,1587140109,1,null,null,null,null,null,null,null]}]
+Execution times (cycles):
+# full-1: 7 426 164 564
+# full-2: 1 972 028 261
+# full-3: 1 608 177 136
+# 3xGenerateTypeSignature: 1 589 268 574
+# empty: 1 587 140 109
+Benchmark cli-benchmark: FINISH
+/home/travis/.travis/job_stages: line 169:  6654 Terminated              travis_jigger $! $timeout $cmd
