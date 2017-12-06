@@ -1,0 +1,107 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | Generation of names for refactorings
+<span class="lineno">    2 </span>{-# LANGUAGE OverloadedStrings
+<span class="lineno">    3 </span>           , ViewPatterns
+<span class="lineno">    4 </span>           , TypeFamilies
+<span class="lineno">    5 </span>           #-}
+<span class="lineno">    6 </span>module Language.Haskell.Tools.Rewrite.Create.Names where
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>import Data.String (IsString(..), String)
+<span class="lineno">    9 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   10 </span>import Language.Haskell.Tools.PrettyPrint.Prepare
+<span class="lineno">   11 </span>import Language.Haskell.Tools.Rewrite.Create.Utils (emptyList, mkAnn, mkAnnList)
+<span class="lineno">   12 </span>import Language.Haskell.Tools.Rewrite.ElementTypes
+<span class="lineno">   13 </span>import qualified Name as GHC
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>-- | Creates a simple, unqualified name
+<span class="lineno">   16 </span>mkName :: String -&gt; Name dom
+<span class="lineno">   17 </span><span class="decl"><span class="istickedoff">mkName = mkNormalName . mkSimpleName</span></span>
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>mkQualOp :: [String] -&gt; String -&gt; Operator dom
+<span class="lineno">   20 </span><span class="decl"><span class="istickedoff">mkQualOp quals = mkAnn child . UNormalOp . mkQualifiedName quals</span></span>
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>mkBacktickOp :: [String] -&gt; String -&gt; Operator dom
+<span class="lineno">   23 </span><span class="decl"><span class="istickedoff">mkBacktickOp quals = mkAnn (&quot;`&quot; &lt;&gt; child &lt;&gt; &quot;`&quot;) . UBacktickOp . mkQualifiedName quals</span></span>
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>-- | Creates an annotated qualified operator: @A.B.+@ or @\`A.B.mod\`@.
+<span class="lineno">   26 </span>mkQualOp' :: [String] -&gt; GHC.Name -&gt; Operator dom
+<span class="lineno">   27 </span><span class="decl"><span class="istickedoff">mkQualOp' quals n | <span class="tickonlytrue">GHC.isSymOcc (GHC.getOccName n)</span> = mkAnn child $ UNormalOp $ mkQualifiedName' quals n</span>
+<span class="lineno">   28 </span><span class="spaces">                  </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span>                       = <span class="nottickedoff">mkAnn (&quot;`&quot; &lt;&gt; child &lt;&gt; &quot;`&quot;) $ UBacktickOp $ mkQualifiedName' quals n</span></span></span>
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>-- | Creates an annotated unqualified operator: @+@ or @\`mod\`@.
+<span class="lineno">   31 </span>mkUnqualOp' :: GHC.Name -&gt; Operator dom
+<span class="lineno">   32 </span><span class="decl"><span class="nottickedoff">mkUnqualOp' n | GHC.isSymOcc (GHC.getOccName n) = mkAnn child $ UNormalOp $ mkSimpleName' n</span>
+<span class="lineno">   33 </span><span class="spaces">              </span><span class="nottickedoff">| otherwise                       = mkAnn (&quot;`&quot; &lt;&gt; child &lt;&gt; &quot;`&quot;) $ UBacktickOp $ mkSimpleName' n</span></span>
+<span class="lineno">   34 </span>  
+<span class="lineno">   35 </span>mkUnqualOp :: String -&gt; Operator dom
+<span class="lineno">   36 </span><span class="decl"><span class="istickedoff">mkUnqualOp = mkAnn child . UNormalOp . mkSimpleName</span></span>
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>-- | Creates an annotated qualified (non-operator) binding name: @A.B.f@ or @(A.B.+)@
+<span class="lineno">   39 </span>mkQualName' :: [String] -&gt; GHC.Name -&gt; Name dom
+<span class="lineno">   40 </span><span class="decl"><span class="istickedoff">mkQualName' quals n | <span class="tickonlyfalse">GHC.isSymOcc (GHC.getOccName n)</span> = <span class="nottickedoff">mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) $ UParenName $ mkQualifiedName' quals n</span></span>
+<span class="lineno">   41 </span><span class="spaces">                    </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span>                       = mkAnn child $ UNormalName $ mkQualifiedName' quals n</span></span>
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>-- | Creates an annotated unqualified (non-operator) binding name: @f@ or @(+)@
+<span class="lineno">   44 </span>mkUnqualName' :: GHC.Name -&gt; Name dom
+<span class="lineno">   45 </span><span class="decl"><span class="istickedoff">mkUnqualName' n | GHC.isSymOcc (GHC.getOccName n) = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) $ UParenName $ mkSimpleName' n</span>
+<span class="lineno">   46 </span><span class="spaces">                </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span>                       = mkAnn child $ UNormalName $ mkSimpleName' n</span></span>
+<span class="lineno">   47 </span>
+<span class="lineno">   48 </span>mkNormalName :: QualifiedName dom -&gt; Name dom
+<span class="lineno">   49 </span><span class="decl"><span class="istickedoff">mkNormalName = mkAnn child . UNormalName</span></span>
+<span class="lineno">   50 </span>
+<span class="lineno">   51 </span>-- | Creates a parenthesized name: @ foldl (+) 0 @
+<span class="lineno">   52 </span>mkParenName :: QualifiedName dom -&gt; Name dom
+<span class="lineno">   53 </span><span class="decl"><span class="istickedoff">mkParenName = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) . UParenName</span></span>
+<span class="lineno">   54 </span>
+<span class="lineno">   55 </span>-- | Creates an implicit name: @ ?var @
+<span class="lineno">   56 </span>mkImplicitName :: QualifiedName dom -&gt; Name dom
+<span class="lineno">   57 </span><span class="decl"><span class="nottickedoff">mkImplicitName = mkAnn (&quot;?&quot; &lt;&gt; child) . UImplicitName</span></span>
+<span class="lineno">   58 </span>
+<span class="lineno">   59 </span>-- | Creates an annotated qualified simple name
+<span class="lineno">   60 </span>mkQualifiedName' :: [String] -&gt; GHC.Name -&gt; QualifiedName dom
+<span class="lineno">   61 </span><span class="decl"><span class="istickedoff">mkQualifiedName' quals n = mkQualifiedName quals (GHC.occNameString $ GHC.getOccName n)</span></span>
+<span class="lineno">   62 </span>
+<span class="lineno">   63 </span>mkQualifiedName :: [String] -&gt; String -&gt; QualifiedName dom
+<span class="lineno">   64 </span><span class="decl"><span class="istickedoff">mkQualifiedName [] n = mkSimpleName n</span>
+<span class="lineno">   65 </span><span class="spaces"></span><span class="istickedoff">mkQualifiedName quals name</span>
+<span class="lineno">   66 </span><span class="spaces">  </span><span class="istickedoff">= mkAnn (child &lt;&gt; &quot;.&quot; &lt;&gt; child)</span>
+<span class="lineno">   67 </span><span class="spaces">          </span><span class="istickedoff">(UQualifiedName (mkAnnList (separatedBy &quot;.&quot; list) $ map mkNamePart quals) (mkNamePart name))</span></span>
+<span class="lineno">   68 </span>
+<span class="lineno">   69 </span>-- | Creates a part of a qualified name.         
+<span class="lineno">   70 </span>mkNamePart :: String -&gt; NamePart dom
+<span class="lineno">   71 </span><span class="decl"><span class="istickedoff">mkNamePart s = mkAnn (fromString s) (UNamePart <span class="nottickedoff">s</span>)</span></span>
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>-- | Creates a simple (unqualified) name
+<span class="lineno">   74 </span>mkSimpleName' :: GHC.Name -&gt; QualifiedName dom
+<span class="lineno">   75 </span><span class="decl"><span class="istickedoff">mkSimpleName' = mkSimpleName . GHC.occNameString . GHC.getOccName</span></span>
+<span class="lineno">   76 </span>
+<span class="lineno">   77 </span>-- | Creates a simple (unqualified) name
+<span class="lineno">   78 </span>mkSimpleName :: String -&gt; QualifiedName dom
+<span class="lineno">   79 </span><span class="decl"><span class="istickedoff">mkSimpleName n = mkAnn (child &lt;&gt; child) </span>
+<span class="lineno">   80 </span><span class="spaces">                       </span><span class="istickedoff">(UQualifiedName emptyList (mkNamePart n))</span></span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>-- | Creates a quoted text
+<span class="lineno">   83 </span>mkStringNode :: String -&gt; StringNode dom
+<span class="lineno">   84 </span><span class="decl"><span class="nottickedoff">mkStringNode s = mkAnn (fromString s) (UStringNode s)</span></span>
+
+</pre>
+</body>
+</html>

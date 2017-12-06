@@ -1,0 +1,59 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | Utility methods for generating parts of the AST for refactorings
+<span class="lineno">    2 </span>{-# LANGUAGE FlexibleInstances
+<span class="lineno">    3 </span>           , TypeFamilies
+<span class="lineno">    4 </span>           #-}
+<span class="lineno">    5 </span>module Language.Haskell.Tools.Rewrite.Create.Utils where
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>import Language.Haskell.Tools.AST
+<span class="lineno">    8 </span>import Language.Haskell.Tools.PrettyPrint.Prepare (child, opt, list)
+<span class="lineno">    9 </span>import Language.Haskell.Tools.Rewrite.ElementTypes (AnnMaybe, AnnList)
+<span class="lineno">   10 </span>
+<span class="lineno">   11 </span>fromTemplate :: src -&gt; NodeInfo sema src
+<span class="lineno">   12 </span><span class="decl"><span class="istickedoff">fromTemplate = NodeInfo <span class="nottickedoff">(error &quot;The newly generated AST fragments have no semantic info, but a refactoring tries to use that information.&quot;)</span></span></span>
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>emptyList :: AnnList e dom
+<span class="lineno">   15 </span><span class="decl"><span class="istickedoff">emptyList = AnnListG (fromTemplate list) []</span></span>
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>justVal :: Ann e dom SrcTemplateStage -&gt; AnnMaybeG e dom SrcTemplateStage
+<span class="lineno">   18 </span><span class="decl"><span class="istickedoff">justVal e = AnnMaybeG (fromTemplate opt) (Just e)</span></span>
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>noth :: AnnMaybe e dom
+<span class="lineno">   21 </span><span class="decl"><span class="istickedoff">noth = AnnMaybeG (fromTemplate opt) Nothing</span></span>
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>mkAnn :: SpanInfo SrcTemplateStage -&gt; e dom SrcTemplateStage -&gt; Ann e dom SrcTemplateStage
+<span class="lineno">   24 </span><span class="decl"><span class="istickedoff">mkAnn temp = Ann (fromTemplate temp)</span></span>
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>-- | Annotation for a simple wrapper AST node
+<span class="lineno">   27 </span>wrapperAnn :: e dom SrcTemplateStage -&gt; Ann e dom SrcTemplateStage
+<span class="lineno">   28 </span><span class="decl"><span class="istickedoff">wrapperAnn = mkAnn child</span></span>
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>-- | Transforms the list of elements to an AnnListG with the given source template.
+<span class="lineno">   31 </span>mkAnnList :: ListInfo SrcTemplateStage -&gt; [Ann e dom SrcTemplateStage] -&gt; AnnList e dom
+<span class="lineno">   32 </span><span class="decl"><span class="istickedoff">mkAnnList temp = AnnListG (fromTemplate temp)</span></span>
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>-- | Transforms the Maybe element to an AnnMaybeG with the given source template.
+<span class="lineno">   35 </span>mkAnnMaybe :: OptionalInfo SrcTemplateStage -&gt; Maybe (Ann e dom SrcTemplateStage) -&gt; AnnMaybe e dom
+<span class="lineno">   36 </span><span class="decl"><span class="istickedoff">mkAnnMaybe temp = AnnMaybeG (fromTemplate temp)</span></span>
+
+</pre>
+</body>
+</html>
