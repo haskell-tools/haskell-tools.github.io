@@ -1,265 +1,0 @@
-<html>
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<style type="text/css">
-span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
-span.nottickedoff { background: yellow}
-span.istickedoff { background: white }
-span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
-span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
-span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
-span.decl { font-weight: bold }
-span.spaces    { background: white }
-</style>
-</head>
-<body>
-<pre>
-<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
-</pre>
-<pre>
-<span class="lineno">    1 </span>{-# LANGUAGE StandaloneDeriving
-<span class="lineno">    2 </span>           , DeriveGeneric
-<span class="lineno">    3 </span>           , LambdaCase
-<span class="lineno">    4 </span>           , ScopedTypeVariables
-<span class="lineno">    5 </span>           , BangPatterns
-<span class="lineno">    6 </span>           , MultiWayIf
-<span class="lineno">    7 </span>           , FlexibleContexts
-<span class="lineno">    8 </span>           , TypeFamilies
-<span class="lineno">    9 </span>           , TupleSections
-<span class="lineno">   10 </span>           , ViewPatterns
-<span class="lineno">   11 </span>           #-}
-<span class="lineno">   12 </span>-- | Defines utility methods that prepare Haskell modules for refactoring
-<span class="lineno">   13 </span>module Language.Haskell.Tools.Refactor.Prepare where
-<span class="lineno">   14 </span>
-<span class="lineno">   15 </span>import Control.Exception (Exception(..), throwIO, throw)
-<span class="lineno">   16 </span>import Control.Monad
-<span class="lineno">   17 </span>import Control.Monad.IO.Class (MonadIO(..))
-<span class="lineno">   18 </span>import Data.List ((\\), isSuffixOf)
-<span class="lineno">   19 </span>import Data.List.Split (splitOn)
-<span class="lineno">   20 </span>import Data.Maybe (Maybe(..), fromMaybe, fromJust)
-<span class="lineno">   21 </span>import Language.Haskell.TH.LanguageExtensions (Extension(..))
-<span class="lineno">   22 </span>import System.Directory (canonicalizePath)
-<span class="lineno">   23 </span>import System.FilePath
-<span class="lineno">   24 </span>
-<span class="lineno">   25 </span>import CmdLineParser (CmdLineP(..), processArgs)
-<span class="lineno">   26 </span>import DynFlags
-<span class="lineno">   27 </span>import FastString (mkFastString)
-<span class="lineno">   28 </span>import GHC hiding (loadModule)
-<span class="lineno">   29 </span>import qualified GHC (loadModule)
-<span class="lineno">   30 </span>import GHC.Paths ( libdir )
-<span class="lineno">   31 </span>import GhcMonad
-<span class="lineno">   32 </span>import HscTypes (HscEnv(..), ModSummary(..))
-<span class="lineno">   33 </span>import Packages (initPackages)
-<span class="lineno">   34 </span>import SrcLoc
-<span class="lineno">   35 </span>import Outputable
-<span class="lineno">   36 </span>import StringBuffer (hGetStringBuffer)
-<span class="lineno">   37 </span>
-<span class="lineno">   38 </span>import Language.Haskell.Tools.AST as AST
-<span class="lineno">   39 </span>import Language.Haskell.Tools.BackendGHC
-<span class="lineno">   40 </span>import Language.Haskell.Tools.PrettyPrint (prettyPrint)
-<span class="lineno">   41 </span>import Language.Haskell.Tools.PrettyPrint.Prepare
-<span class="lineno">   42 </span>import Language.Haskell.Tools.Refactor.Monad (Refactoring(..))
-<span class="lineno">   43 </span>import Language.Haskell.Tools.Refactor.Representation
-<span class="lineno">   44 </span>import Language.Haskell.Tools.Refactor.Utils.Monadic (runRefactor)
-<span class="lineno">   45 </span>
-<span class="lineno">   46 </span>
-<span class="lineno">   47 </span>-- | A quick function to try the refactorings
-<span class="lineno">   48 </span>tryRefactor :: (RealSrcSpan -&gt; Refactoring IdDom) -&gt; String -&gt; String -&gt; IO ()
-<span class="lineno">   49 </span><span class="decl"><span class="nottickedoff">tryRefactor refact moduleName span</span>
-<span class="lineno">   50 </span><span class="spaces">  </span><span class="nottickedoff">= runGhc (Just libdir) $ do</span>
-<span class="lineno">   51 </span><span class="spaces">      </span><span class="nottickedoff">initGhcFlags</span>
-<span class="lineno">   52 </span><span class="spaces">      </span><span class="nottickedoff">useDirs [&quot;.&quot;]</span>
-<span class="lineno">   53 </span><span class="spaces">      </span><span class="nottickedoff">mod &lt;- loadModule &quot;.&quot; moduleName &gt;&gt;= parseTyped</span>
-<span class="lineno">   54 </span><span class="spaces">      </span><span class="nottickedoff">res &lt;- runRefactor (SourceFileKey (moduleSourceFile moduleName) moduleName, mod) []</span>
-<span class="lineno">   55 </span><span class="spaces">               </span><span class="nottickedoff">$ refact $ correctRefactorSpan mod $ readSrcSpan span</span>
-<span class="lineno">   56 </span><span class="spaces">      </span><span class="nottickedoff">case res of Right r -&gt; liftIO $ mapM_ (putStrLn . prettyPrint . snd . fromContentChanged) r</span>
-<span class="lineno">   57 </span><span class="spaces">                  </span><span class="nottickedoff">Left err -&gt; liftIO $ putStrLn err</span></span>
-<span class="lineno">   58 </span>
-<span class="lineno">   59 </span>-- | Adjust the source range to be applied to the refactored module
-<span class="lineno">   60 </span>correctRefactorSpan :: UnnamedModule dom -&gt; RealSrcSpan -&gt; RealSrcSpan
-<span class="lineno">   61 </span><span class="decl"><span class="istickedoff">correctRefactorSpan mod sp = mkRealSrcSpan (updateSrcFile fileName $ realSrcSpanStart sp)</span>
-<span class="lineno">   62 </span><span class="spaces">                                           </span><span class="istickedoff">(updateSrcFile <span class="nottickedoff">fileName</span> $ realSrcSpanEnd sp)</span>
-<span class="lineno">   63 </span><span class="spaces">  </span><span class="istickedoff">where fileName = case srcSpanStart $ getRange mod of RealSrcLoc loc -&gt; srcLocFile loc</span>
-<span class="lineno">   64 </span><span class="spaces">                                                       </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">error &quot;correctRefactorSpan: no real span&quot;</span></span>
-<span class="lineno">   65 </span><span class="spaces">        </span><span class="istickedoff">updateSrcFile fn loc = mkRealSrcLoc fn (srcLocLine loc) (srcLocCol loc)</span></span>
-<span class="lineno">   66 </span>
-<span class="lineno">   67 </span>-- | Set the given flags for the GHC session.
-<span class="lineno">   68 </span>-- Also gives back a change function that you can use to apply the settings to any flags.
-<span class="lineno">   69 </span>-- Prints out errors and warnings
-<span class="lineno">   70 </span>useFlags :: [String] -&gt; Ghc ([String], DynFlags -&gt; DynFlags)
-<span class="lineno">   71 </span><span class="decl"><span class="istickedoff">useFlags args = do</span>
-<span class="lineno">   72 </span><span class="spaces">  </span><span class="istickedoff">let lArgs = map <span class="nottickedoff">(L noSrcSpan)</span> args</span>
-<span class="lineno">   73 </span><span class="spaces">  </span><span class="istickedoff">dynflags &lt;- getSessionDynFlags</span>
-<span class="lineno">   74 </span><span class="spaces">  </span><span class="istickedoff">let change = runCmdLine $ processArgs <span class="nottickedoff">flagsAll</span> lArgs</span>
-<span class="lineno">   75 </span><span class="spaces">  </span><span class="istickedoff">let ((leftovers, errs, warnings), newDynFlags) = change dynflags</span>
-<span class="lineno">   76 </span><span class="spaces">  </span><span class="istickedoff">when (not (null warnings))</span>
-<span class="lineno">   77 </span><span class="spaces">    </span><span class="istickedoff">$ <span class="nottickedoff">liftIO $ putStrLn $ showSDocUnsafe $ ppr warnings</span></span>
-<span class="lineno">   78 </span><span class="spaces">  </span><span class="istickedoff">when (not (null errs))</span>
-<span class="lineno">   79 </span><span class="spaces">    </span><span class="istickedoff">$ <span class="nottickedoff">liftIO $ putStrLn $ showSDocUnsafe $ ppr errs</span></span>
-<span class="lineno">   80 </span><span class="spaces">  </span><span class="istickedoff">void $ setSessionDynFlags newDynFlags</span>
-<span class="lineno">   81 </span><span class="spaces">  </span><span class="istickedoff">when (any <span class="nottickedoff">(&quot;-package-db&quot; `isSuffixOf`)</span> args) <span class="nottickedoff">reloadPkgDb</span></span>
-<span class="lineno">   82 </span><span class="spaces">  </span><span class="istickedoff">return $ <span class="nottickedoff">(map unLoc leftovers, snd . change)</span></span></span>
-<span class="lineno">   83 </span>
-<span class="lineno">   84 </span>-- | Reloads the package database based on the session flags
-<span class="lineno">   85 </span>reloadPkgDb :: Ghc ()
-<span class="lineno">   86 </span><span class="decl"><span class="nottickedoff">reloadPkgDb = void $ setSessionDynFlags . fst =&lt;&lt; liftIO . initPackages . (\df -&gt; df { pkgDatabase = Nothing })</span>
-<span class="lineno">   87 </span><span class="spaces">                                              </span><span class="nottickedoff">=&lt;&lt; getSessionDynFlags</span></span>
-<span class="lineno">   88 </span>
-<span class="lineno">   89 </span>-- | Initialize GHC flags to default values that support refactoring
-<span class="lineno">   90 </span>initGhcFlags :: Ghc ()
-<span class="lineno">   91 </span><span class="decl"><span class="istickedoff">initGhcFlags = initGhcFlags' False</span></span>
-<span class="lineno">   92 </span>
-<span class="lineno">   93 </span>initGhcFlagsForTest :: Ghc ()
-<span class="lineno">   94 </span><span class="decl"><span class="istickedoff">initGhcFlagsForTest = do initGhcFlags' True</span>
-<span class="lineno">   95 </span><span class="spaces">                         </span><span class="istickedoff">dfs &lt;- getSessionDynFlags</span>
-<span class="lineno">   96 </span><span class="spaces">                         </span><span class="istickedoff">void $ setSessionDynFlags $ dfs { hscTarget = HscAsm }</span></span>
-<span class="lineno">   97 </span>
-<span class="lineno">   98 </span>-- | Sets up basic flags and settings for GHC
-<span class="lineno">   99 </span>initGhcFlags' :: Bool -&gt; Ghc ()
-<span class="lineno">  100 </span><span class="decl"><span class="istickedoff">initGhcFlags' needsCodeGen = do</span>
-<span class="lineno">  101 </span><span class="spaces">  </span><span class="istickedoff">dflags &lt;- getSessionDynFlags</span>
-<span class="lineno">  102 </span><span class="spaces">  </span><span class="istickedoff">void $ setSessionDynFlags</span>
-<span class="lineno">  103 </span><span class="spaces">    </span><span class="istickedoff">$ flip gopt_set Opt_KeepRawTokenStream</span>
-<span class="lineno">  104 </span><span class="spaces">    </span><span class="istickedoff">$ flip gopt_set Opt_NoHsMain</span>
-<span class="lineno">  105 </span><span class="spaces">    </span><span class="istickedoff">$ dflags { importPaths = []</span>
-<span class="lineno">  106 </span><span class="spaces">             </span><span class="istickedoff">, hscTarget = if needsCodeGen then HscInterpreted else HscNothing</span>
-<span class="lineno">  107 </span><span class="spaces">             </span><span class="istickedoff">, ghcLink = if needsCodeGen then LinkInMemory else NoLink</span>
-<span class="lineno">  108 </span><span class="spaces">             </span><span class="istickedoff">, ghcMode = CompManager</span>
-<span class="lineno">  109 </span><span class="spaces">             </span><span class="istickedoff">, packageFlags = ExposePackage <span class="nottickedoff">&quot;template-haskell&quot;</span> (PackageArg &quot;template-haskell&quot;) (ModRenaming True []) : packageFlags dflags</span>
-<span class="lineno">  110 </span><span class="spaces">             </span><span class="istickedoff">}</span></span>
-<span class="lineno">  111 </span>
-<span class="lineno">  112 </span>-- | Use the given source directories when searching for imported modules
-<span class="lineno">  113 </span>useDirs :: [FilePath] -&gt; Ghc ()
-<span class="lineno">  114 </span><span class="decl"><span class="istickedoff">useDirs workingDirs = do</span>
-<span class="lineno">  115 </span><span class="spaces">  </span><span class="istickedoff">dynflags &lt;- getSessionDynFlags</span>
-<span class="lineno">  116 </span><span class="spaces">  </span><span class="istickedoff">void $ setSessionDynFlags dynflags { importPaths = importPaths dynflags ++ workingDirs }</span></span>
-<span class="lineno">  117 </span>
-<span class="lineno">  118 </span>-- | Don't use the given source directories when searching for imported modules
-<span class="lineno">  119 </span>deregisterDirs :: [FilePath] -&gt; Ghc ()
-<span class="lineno">  120 </span><span class="decl"><span class="istickedoff">deregisterDirs workingDirs = do</span>
-<span class="lineno">  121 </span><span class="spaces">  </span><span class="istickedoff">dynflags &lt;- getSessionDynFlags</span>
-<span class="lineno">  122 </span><span class="spaces">  </span><span class="istickedoff">void $ setSessionDynFlags dynflags { importPaths = importPaths dynflags \\ workingDirs }</span></span>
-<span class="lineno">  123 </span>
-<span class="lineno">  124 </span>-- | Translates module name and working directory into the name of the file where the given module should be defined
-<span class="lineno">  125 </span>toFileName :: FilePath -&gt; String -&gt; FilePath
-<span class="lineno">  126 </span><span class="decl"><span class="istickedoff">toFileName workingDir mod = normalise $ workingDir &lt;/&gt; map (\case '.' -&gt; <span class="nottickedoff">pathSeparator</span>; c -&gt; c) mod ++ &quot;.hs&quot;</span></span>
-<span class="lineno">  127 </span>
-<span class="lineno">  128 </span>-- | Translates module name and working directory into the name of the file where the boot module should be defined
-<span class="lineno">  129 </span>toBootFileName :: FilePath -&gt; String -&gt; FilePath
-<span class="lineno">  130 </span><span class="decl"><span class="nottickedoff">toBootFileName workingDir mod = normalise $ workingDir &lt;/&gt; map (\case '.' -&gt; pathSeparator; c -&gt; c) mod ++ &quot;.hs-boot&quot;</span></span>
-<span class="lineno">  131 </span>
-<span class="lineno">  132 </span>-- | Get the source directory where the module is located.
-<span class="lineno">  133 </span>getSourceDir :: ModSummary -&gt; IO FilePath
-<span class="lineno">  134 </span><span class="decl"><span class="istickedoff">getSourceDir ms</span>
-<span class="lineno">  135 </span><span class="spaces">  </span><span class="istickedoff">= do filePath &lt;- canonicalizePath $ getModSumOrig ms</span>
-<span class="lineno">  136 </span><span class="spaces">       </span><span class="istickedoff">let modNameParts = splitOn &quot;.&quot; $ GHC.moduleNameString (moduleName (ms_mod ms))</span>
-<span class="lineno">  137 </span><span class="spaces">           </span><span class="istickedoff">filePathParts = splitPath filePath</span>
-<span class="lineno">  138 </span><span class="spaces">       </span><span class="istickedoff">let srcDirParts = reverse $ drop (length modNameParts) $ reverse filePathParts</span>
-<span class="lineno">  139 </span><span class="spaces">       </span><span class="istickedoff">return $ joinPath srcDirParts</span></span>
-<span class="lineno">  140 </span>
-<span class="lineno">  141 </span>-- | Gets the path to the source file of the module.
-<span class="lineno">  142 </span>getModSumOrig :: ModSummary -&gt; FilePath
-<span class="lineno">  143 </span><span class="decl"><span class="istickedoff">getModSumOrig = normalise . fromMaybe <span class="nottickedoff">(error &quot;getModSumOrig: The given module doesn't have haskell source file.&quot;)</span> . ml_hs_file . ms_location</span></span>
-<span class="lineno">  144 </span>
-<span class="lineno">  145 </span>keyFromMS :: ModSummary -&gt; SourceFileKey
-<span class="lineno">  146 </span><span class="decl"><span class="istickedoff">keyFromMS ms = SourceFileKey (normalise $ getModSumOrig ms) (getModSumName ms)</span></span>
-<span class="lineno">  147 </span>
-<span class="lineno">  148 </span>-- | Gets the module name
-<span class="lineno">  149 </span>getModSumName :: ModSummary -&gt; String
-<span class="lineno">  150 </span><span class="decl"><span class="istickedoff">getModSumName = GHC.moduleNameString . moduleName . ms_mod</span></span>
-<span class="lineno">  151 </span>
-<span class="lineno">  152 </span>-- | Load the summary of a module given by the working directory and module name.
-<span class="lineno">  153 </span>loadModule :: String -&gt; String -&gt; Ghc ModSummary
-<span class="lineno">  154 </span><span class="decl"><span class="istickedoff">loadModule workingDir moduleName</span>
-<span class="lineno">  155 </span><span class="spaces">  </span><span class="istickedoff">= do initGhcFlagsForTest</span>
-<span class="lineno">  156 </span><span class="spaces">       </span><span class="istickedoff">useDirs [workingDir]</span>
-<span class="lineno">  157 </span><span class="spaces">       </span><span class="istickedoff">target &lt;- guessTarget moduleName Nothing</span>
-<span class="lineno">  158 </span><span class="spaces">       </span><span class="istickedoff">setTargets [target]</span>
-<span class="lineno">  159 </span><span class="spaces">       </span><span class="istickedoff">void $ load (LoadUpTo $ mkModuleName moduleName)</span>
-<span class="lineno">  160 </span><span class="spaces">       </span><span class="istickedoff">getModSummary $ mkModuleName moduleName</span></span>
-<span class="lineno">  161 </span>
-<span class="lineno">  162 </span>-- | The final version of our AST, with type infromation added
-<span class="lineno">  163 </span>type TypedModule = Ann AST.UModule IdDom SrcTemplateStage
-<span class="lineno">  164 </span>
-<span class="lineno">  165 </span>-- | Get the typed representation from a type-correct program.
-<span class="lineno">  166 </span>parseTyped :: ModSummary -&gt; Ghc TypedModule
-<span class="lineno">  167 </span><span class="decl"><span class="istickedoff">parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do</span>
-<span class="lineno">  168 </span><span class="spaces">  </span><span class="istickedoff">let needCodeGen = StaticPointers `xopt` ms_hspp_opts modSum</span>
-<span class="lineno">  169 </span><span class="spaces">                     </span><span class="istickedoff">|| UnboxedTuples `xopt` ms_hspp_opts modSum</span>
-<span class="lineno">  170 </span><span class="spaces">                     </span><span class="istickedoff">|| UnboxedSums `xopt` ms_hspp_opts modSum</span>
-<span class="lineno">  171 </span><span class="spaces">      </span><span class="istickedoff">hasCppExtension = Cpp `xopt` ms_hspp_opts modSum</span>
-<span class="lineno">  172 </span><span class="spaces">      </span><span class="istickedoff">hasApplicativeDo = ApplicativeDo `xopt` ms_hspp_opts modSum</span>
-<span class="lineno">  173 </span><span class="spaces">      </span><span class="istickedoff">hasOverloadedLabels = OverloadedLabels `xopt` ms_hspp_opts modSum</span>
-<span class="lineno">  174 </span><span class="spaces">      </span><span class="istickedoff">ms = if needCodeGen then forceAsmGen (modSumNormalizeFlags modSum) else (modSumNormalizeFlags modSum)</span>
-<span class="lineno">  175 </span><span class="spaces">  </span><span class="istickedoff">when hasApplicativeDo $ <span class="nottickedoff">liftIO $ throwIO $ UnsupportedExtension &quot;ApplicativeDo&quot;</span></span>
-<span class="lineno">  176 </span><span class="spaces">  </span><span class="istickedoff">when hasOverloadedLabels $ <span class="nottickedoff">liftIO $ throwIO $ UnsupportedExtension &quot;OverloadedLabels&quot;</span></span>
-<span class="lineno">  177 </span><span class="spaces">  </span><span class="istickedoff">modifySession $ \s -&gt; s { hsc_mod_graph = filter (\m -&gt; ms_mod m /= ms_mod modSum) (hsc_mod_graph s) }</span>
-<span class="lineno">  178 </span><span class="spaces">  </span><span class="istickedoff">p &lt;- parseModule ms</span>
-<span class="lineno">  179 </span><span class="spaces">  </span><span class="istickedoff">tc &lt;- typecheckModule p</span>
-<span class="lineno">  180 </span><span class="spaces">  </span><span class="istickedoff">void $ GHC.loadModule tc -- when used with loadModule, the module will be loaded twice</span>
-<span class="lineno">  181 </span><span class="spaces">  </span><span class="istickedoff">let annots = pm_annotations p</span>
-<span class="lineno">  182 </span><span class="spaces">  </span><span class="istickedoff">srcBuffer &lt;- if hasCppExtension</span>
-<span class="lineno">  183 </span><span class="spaces">                    </span><span class="istickedoff">then liftIO $ hGetStringBuffer (getModSumOrig ms)</span>
-<span class="lineno">  184 </span><span class="spaces">                    </span><span class="istickedoff">else return (fromJust $ ms_hspp_buf $ pm_mod_summary p)</span>
-<span class="lineno">  185 </span><span class="spaces">  </span><span class="istickedoff">(if hasCppExtension then prepareASTCpp else prepareAST) srcBuffer . placeComments (fst annots) (getNormalComments $ snd annots)</span>
-<span class="lineno">  186 </span><span class="spaces">    </span><span class="istickedoff">&lt;$&gt; (addTypeInfos (typecheckedSource tc)</span>
-<span class="lineno">  187 </span><span class="spaces">           </span><span class="istickedoff">=&lt;&lt; (do parseTrf &lt;- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms (pm_parsed_source p)</span>
-<span class="lineno">  188 </span><span class="spaces">                   </span><span class="istickedoff">runTrf (fst annots) (getPragmaComments $ snd annots)</span>
-<span class="lineno">  189 </span><span class="spaces">                     </span><span class="istickedoff">$ trfModuleRename ms parseTrf</span>
-<span class="lineno">  190 </span><span class="spaces">                         </span><span class="istickedoff">(fromJust $ tm_renamed_source tc)</span>
-<span class="lineno">  191 </span><span class="spaces">                         </span><span class="istickedoff">(pm_parsed_source p)))</span></span>
-<span class="lineno">  192 </span>
-<span class="lineno">  193 </span>data UnsupportedExtension = UnsupportedExtension String
-<span class="lineno">  194 </span>  deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>
-<span class="lineno">  195 </span>
-<span class="lineno">  196 </span>instance Exception UnsupportedExtension
-<span class="lineno">  197 </span>
-<span class="lineno">  198 </span>trfProblem :: String -&gt; a
-<span class="lineno">  199 </span><span class="decl"><span class="nottickedoff">trfProblem = throw . UnsupportedExtension</span></span>
-<span class="lineno">  200 </span>
-<span class="lineno">  201 </span>-- | Modifies the dynamic flags for performing a ghc task
-<span class="lineno">  202 </span>withAlteredDynFlags :: GhcMonad m =&gt; (DynFlags -&gt; m DynFlags) -&gt; m a -&gt; m a
-<span class="lineno">  203 </span><span class="decl"><span class="istickedoff">withAlteredDynFlags modDFs action = do</span>
-<span class="lineno">  204 </span><span class="spaces">  </span><span class="istickedoff">dfs &lt;- getSessionDynFlags</span>
-<span class="lineno">  205 </span><span class="spaces">  </span><span class="istickedoff">newFlags &lt;- modDFs dfs</span>
-<span class="lineno">  206 </span><span class="spaces">  </span><span class="istickedoff">void $ modifySession $ \s -&gt; s { hsc_dflags = newFlags }</span>
-<span class="lineno">  207 </span><span class="spaces">  </span><span class="istickedoff">res &lt;- action</span>
-<span class="lineno">  208 </span><span class="spaces">  </span><span class="istickedoff">void $ modifySession $ \s -&gt; s { hsc_dflags = dfs }</span>
-<span class="lineno">  209 </span><span class="spaces">  </span><span class="istickedoff">return res</span></span>
-<span class="lineno">  210 </span>
-<span class="lineno">  211 </span>-- | Forces the code generation for a given module
-<span class="lineno">  212 </span>forceCodeGen :: ModSummary -&gt; ModSummary
-<span class="lineno">  213 </span><span class="decl"><span class="istickedoff">forceCodeGen ms = ms { ms_hspp_opts = codeGenDfs (ms_hspp_opts ms) }</span></span>
-<span class="lineno">  214 </span>
-<span class="lineno">  215 </span>codeGenDfs :: DynFlags -&gt; DynFlags
-<span class="lineno">  216 </span><span class="decl"><span class="istickedoff">codeGenDfs dfs = dfs { hscTarget = HscInterpreted, ghcLink = <span class="nottickedoff">LinkInMemory</span> }</span></span>
-<span class="lineno">  217 </span>
-<span class="lineno">  218 </span>-- | Forces ASM code generation for a given module
-<span class="lineno">  219 </span>forceAsmGen :: ModSummary -&gt; ModSummary
-<span class="lineno">  220 </span><span class="decl"><span class="istickedoff">forceAsmGen ms = ms { ms_hspp_opts = modOpts' }</span>
-<span class="lineno">  221 </span><span class="spaces">  </span><span class="istickedoff">where modOpts = (ms_hspp_opts ms) { hscTarget = defaultObjectTarget (targetPlatform (ms_hspp_opts ms)) }</span>
-<span class="lineno">  222 </span><span class="spaces">        </span><span class="istickedoff">modOpts' = modOpts { ghcLink = <span class="nottickedoff">LinkInMemory</span> }</span></span>
-<span class="lineno">  223 </span>
-<span class="lineno">  224 </span>-- | Normalizes the flags for a module summary
-<span class="lineno">  225 </span>modSumNormalizeFlags :: ModSummary -&gt; ModSummary
-<span class="lineno">  226 </span><span class="decl"><span class="istickedoff">modSumNormalizeFlags ms = ms { ms_hspp_opts = normalizeFlags (ms_hspp_opts ms) }</span></span>
-<span class="lineno">  227 </span>
-<span class="lineno">  228 </span>-- | Removes all flags that are unintelligable for refactoring
-<span class="lineno">  229 </span>normalizeFlags :: DynFlags -&gt; DynFlags
-<span class="lineno">  230 </span><span class="decl"><span class="istickedoff">normalizeFlags = updOptLevel 0</span></span>
-<span class="lineno">  231 </span>
-<span class="lineno">  232 </span>-- | Read a source range from our textual format: @line:col-line:col@ or @line:col@
-<span class="lineno">  233 </span>readSrcSpan :: String -&gt; RealSrcSpan
-<span class="lineno">  234 </span><span class="decl"><span class="istickedoff">readSrcSpan s = case splitOn &quot;-&quot; s of</span>
-<span class="lineno">  235 </span><span class="spaces">  </span><span class="istickedoff">[one] -&gt; mkRealSrcSpan (readSrcLoc one) (readSrcLoc one)</span>
-<span class="lineno">  236 </span><span class="spaces">  </span><span class="istickedoff">[from,to] -&gt; mkRealSrcSpan (readSrcLoc from) (readSrcLoc to)</span></span>
-<span class="lineno">  237 </span>
-<span class="lineno">  238 </span>-- | Read a source location from our format: @line:col@
-<span class="lineno">  239 </span>readSrcLoc :: String -&gt; RealSrcLoc
-<span class="lineno">  240 </span><span class="decl"><span class="istickedoff">readSrcLoc s = case splitOn &quot;:&quot; s of</span>
-<span class="lineno">  241 </span><span class="spaces">  </span><span class="istickedoff">[line,col] -&gt; mkRealSrcLoc (mkFastString &quot;file-name-should-be-fixed&quot;) (read line) (read col)</span>
-<span class="lineno">  242 </span><span class="spaces">  </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">error &quot;readSrcLoc: panic: splitOn gives empty list&quot;</span></span></span>
-
-</pre>
-</body>
-</html>
