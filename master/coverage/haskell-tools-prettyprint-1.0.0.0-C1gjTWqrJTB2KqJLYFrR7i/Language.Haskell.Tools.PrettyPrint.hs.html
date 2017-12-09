@@ -1,0 +1,159 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts, FlexibleInstances, NamedFieldPuns, UndecidableInstances #-}
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>-- | Pretty printing the AST
+<span class="lineno">    4 </span>module Language.Haskell.Tools.PrettyPrint (prettyPrint, toRoseTree, PrettyPrintProblem(..)) where
+<span class="lineno">    5 </span>
+<span class="lineno">    6 </span>import FastString (fsLit)
+<span class="lineno">    7 </span>import SrcLoc
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>import Language.Haskell.Tools.AST (SrcTemplateStage, SourceInfoTraversal(..))
+<span class="lineno">   10 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate
+<span class="lineno">   11 </span>import Language.Haskell.Tools.PrettyPrint.RoseTree
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>import Control.Monad.State
+<span class="lineno">   14 </span>import Control.Reference ((^.))
+<span class="lineno">   15 </span>import Data.Foldable (Foldable(..), concat)
+<span class="lineno">   16 </span>import Data.List as List
+<span class="lineno">   17 </span>import Data.List.Split (splitOn)
+<span class="lineno">   18 </span>import Data.Sequence hiding (null, replicate)
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>-- | Pretty prints an AST by using source templates stored as node info
+<span class="lineno">   21 </span>prettyPrint :: (SourceInfoTraversal node) =&gt; node dom SrcTemplateStage -&gt; String
+<span class="lineno">   22 </span><span class="decl"><span class="istickedoff">prettyPrint = toList . printRose . toRoseTree</span></span>
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>printRose :: RoseTree SrcTemplateStage -&gt; Seq Char
+<span class="lineno">   25 </span><span class="decl"><span class="istickedoff">printRose rt = evalState (printRose' <span class="nottickedoff">startLoc</span> rt) startLoc</span>
+<span class="lineno">   26 </span><span class="spaces">  </span><span class="istickedoff">where startLoc = mkRealSrcLoc <span class="nottickedoff">(fsLit &quot;&quot;)</span> 1 1</span></span>
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>type PPState = State RealSrcLoc
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>-- | Pretty prints a rose tree according to the source templates remaining from the original AST
+<span class="lineno">   31 </span>printRose' :: RealSrcLoc -&gt; RoseTree SrcTemplateStage -&gt; PPState (Seq Char)
+<span class="lineno">   32 </span>-- simple implementation could be optimized a bit
+<span class="lineno">   33 </span>-- warning: the length of the file should not exceed maxbound::Int
+<span class="lineno">   34 </span><span class="decl"><span class="istickedoff">printRose' parent (RoseTree (RoseSpan (SourceTemplateNode rng elems minInd relInd)) children)</span>
+<span class="lineno">   35 </span><span class="spaces">  </span><span class="istickedoff">= do slide &lt;- calculateSlide rng</span>
+<span class="lineno">   36 </span><span class="spaces">       </span><span class="istickedoff">let printTemplateElems :: [SourceTemplateElem] -&gt; [RoseTree SrcTemplateStage] -&gt; PPState (Seq Char)</span>
+<span class="lineno">   37 </span><span class="spaces">           </span><span class="istickedoff">printTemplateElems (TextElem txtElems _ : rest) children = putString slide min txt &gt;+&lt; printTemplateElems rest children</span>
+<span class="lineno">   38 </span><span class="spaces">             </span><span class="istickedoff">where txt = concatMap (^. sourceTemplateText) txtElems</span>
+<span class="lineno">   39 </span><span class="spaces">           </span><span class="istickedoff">printTemplateElems (ChildElem : rest) (child : children) = printRose' parent child &gt;+&lt; printTemplateElems rest children</span>
+<span class="lineno">   40 </span><span class="spaces">           </span><span class="istickedoff">printTemplateElems [] [] = return empty</span>
+<span class="lineno">   41 </span><span class="spaces">           </span><span class="istickedoff">printTemplateElems _ []</span>
+<span class="lineno">   42 </span><span class="spaces">             </span><span class="istickedoff">= <span class="nottickedoff">pprProblem $ &quot;More child elem in template than actual children (elems: &quot; ++ show elems</span></span>
+<span class="lineno">   43 </span><span class="spaces">                               </span><span class="istickedoff"><span class="nottickedoff">++ &quot;, children: &quot; ++ show children</span></span>
+<span class="lineno">   44 </span><span class="spaces">                               </span><span class="istickedoff"><span class="nottickedoff">++ &quot;). Check that the default templates for AST elements are correct.&quot;</span></span>
+<span class="lineno">   45 </span><span class="spaces">           </span><span class="istickedoff">printTemplateElems [] _</span>
+<span class="lineno">   46 </span><span class="spaces">             </span><span class="istickedoff">= <span class="nottickedoff">pprProblem $ &quot;Not all children are used to pretty printing. (elems: &quot;</span></span>
+<span class="lineno">   47 </span><span class="spaces">                              </span><span class="istickedoff"><span class="nottickedoff">++ show elems ++ &quot;, children: &quot; ++ show children</span></span>
+<span class="lineno">   48 </span><span class="spaces">                              </span><span class="istickedoff"><span class="nottickedoff">++ &quot;). Check that the default templates for AST elements are correct.&quot;</span></span>
+<span class="lineno">   49 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   50 </span><span class="spaces">           </span><span class="istickedoff">min = minInd `max` getPosByRelative <span class="nottickedoff">parent</span> relInd</span>
+<span class="lineno">   51 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   52 </span><span class="spaces">       </span><span class="istickedoff">printTemplateElems elems children</span>
+<span class="lineno">   53 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   54 </span><span class="spaces"></span><span class="istickedoff">printRose' _ (RoseTree (RoseList (SourceTemplateList {})) []) = return empty</span>
+<span class="lineno">   55 </span><span class="spaces"></span><span class="istickedoff">printRose' parent (RoseTree (RoseList (SourceTemplateList rng bef aft defSep indented seps minInd relInd)) children)</span>
+<span class="lineno">   56 </span><span class="spaces">    </span><span class="istickedoff">= do slide &lt;- calculateSlide rng</span>
+<span class="lineno">   57 </span><span class="spaces">         </span><span class="istickedoff">actRng &lt;- get</span>
+<span class="lineno">   58 </span><span class="spaces">         </span><span class="istickedoff">let min = minInd `max` getPosByRelative <span class="nottickedoff">parent</span> relInd</span>
+<span class="lineno">   59 </span><span class="spaces">         </span><span class="istickedoff">putString slide min bef</span>
+<span class="lineno">   60 </span><span class="spaces">           </span><span class="istickedoff">&gt;+&lt; (maybe printListWithSeps printListWithSepsIndented indented) actRng slide min actualSeps children</span>
+<span class="lineno">   61 </span><span class="spaces">           </span><span class="istickedoff">&gt;+&lt; putString <span class="nottickedoff">slide</span> <span class="nottickedoff">min</span> aft</span>
+<span class="lineno">   62 </span><span class="spaces">  </span><span class="istickedoff">where stringSeps :: [String]</span>
+<span class="lineno">   63 </span><span class="spaces">        </span><span class="istickedoff">stringSeps = map (concatMap (^. sourceTemplateText)) (map fst seps)</span>
+<span class="lineno">   64 </span><span class="spaces">        </span><span class="istickedoff">actualSeps = case stringSeps of [] -&gt; repeat defSep</span>
+<span class="lineno">   65 </span><span class="spaces">                                        </span><span class="istickedoff">_  -&gt; stringSeps ++ repeat (last stringSeps)</span>
+<span class="lineno">   66 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   67 </span><span class="spaces"></span><span class="istickedoff">printRose' _ (RoseTree (RoseOptional (SourceTemplateOpt {})) []) = return empty</span>
+<span class="lineno">   68 </span><span class="spaces"></span><span class="istickedoff">printRose' parent (RoseTree (RoseOptional (SourceTemplateOpt rng bef aft minInd relInd)) [child])</span>
+<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">= do slide &lt;- calculateSlide rng</span>
+<span class="lineno">   70 </span><span class="spaces">       </span><span class="istickedoff">actRng &lt;- get</span>
+<span class="lineno">   71 </span><span class="spaces">       </span><span class="istickedoff">let min = minInd `max` getPosByRelative parent relInd</span>
+<span class="lineno">   72 </span><span class="spaces">       </span><span class="istickedoff">putString slide min bef &gt;+&lt; printRose' <span class="nottickedoff">actRng</span> child &gt;+&lt; putString <span class="nottickedoff">slide</span> <span class="nottickedoff">min</span> aft</span>
+<span class="lineno">   73 </span><span class="spaces"></span><span class="istickedoff">printRose' _ (RoseTree (RoseOptional _) _) = <span class="nottickedoff">pprProblem &quot;More than one child element in an optional node.&quot;</span></span></span>
+<span class="lineno">   74 </span>
+<span class="lineno">   75 </span>getPosByRelative :: RealSrcLoc -&gt; Maybe Int -&gt; Int
+<span class="lineno">   76 </span><span class="decl"><span class="istickedoff">getPosByRelative sp (Just i) = srcLocCol sp + i - 1</span>
+<span class="lineno">   77 </span><span class="spaces"></span><span class="istickedoff">getPosByRelative _ _ = 0</span></span>
+<span class="lineno">   78 </span>
+<span class="lineno">   79 </span>calculateSlide :: SrcSpan -&gt; PPState Int
+<span class="lineno">   80 </span><span class="decl"><span class="istickedoff">calculateSlide (RealSrcSpan originalSpan) = do</span>
+<span class="lineno">   81 </span><span class="spaces">  </span><span class="istickedoff">actualSpan &lt;- get</span>
+<span class="lineno">   82 </span><span class="spaces">  </span><span class="istickedoff">return $ srcLocCol actualSpan - srcLocCol (realSrcSpanStart originalSpan)</span>
+<span class="lineno">   83 </span><span class="spaces"></span><span class="istickedoff">calculateSlide _ = return 0</span></span>
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>putString :: Int -&gt; Int -&gt; String -&gt; PPState (Seq Char)
+<span class="lineno">   86 </span><span class="decl"><span class="istickedoff">putString slide minInd s</span>
+<span class="lineno">   87 </span><span class="spaces">  </span><span class="istickedoff">= do modify $ advanceStr newStr</span>
+<span class="lineno">   88 </span><span class="spaces">       </span><span class="istickedoff">return (fromList newStr)</span>
+<span class="lineno">   89 </span><span class="spaces">  </span><span class="istickedoff">where start:rest = splitOn &quot;\n&quot; s</span>
+<span class="lineno">   90 </span><span class="spaces">        </span><span class="istickedoff">newStr = concat $ List.intersperse (&quot;\n&quot; ++ replicate slide ' ') (start : map (extendToNSpaces minInd) rest)</span>
+<span class="lineno">   91 </span><span class="spaces">        </span><span class="istickedoff">extendToNSpaces n str = replicate n ' ' ++ (List.dropWhile (== ' ') $ List.take n str) ++ List.drop n str</span></span>
+<span class="lineno">   92 </span>
+<span class="lineno">   93 </span>advanceStr :: String -&gt; RealSrcLoc -&gt; RealSrcLoc
+<span class="lineno">   94 </span><span class="decl"><span class="istickedoff">advanceStr s loc = foldl advanceSrcLoc loc s</span></span>
+<span class="lineno">   95 </span>
+<span class="lineno">   96 </span>untilReaches :: String -&gt; RealSrcLoc -&gt; RealSrcLoc -&gt; (String, Int)
+<span class="lineno">   97 </span><span class="decl"><span class="istickedoff">untilReaches s start end</span>
+<span class="lineno">   98 </span><span class="spaces">  </span><span class="istickedoff">= let ls = splitOn &quot;\n&quot; s</span>
+<span class="lineno">   99 </span><span class="spaces">     </span><span class="istickedoff">in case ls of _:_:_ -&gt; (unlines (init ls) ++)</span>
+<span class="lineno">  100 </span><span class="spaces">                              </span><span class="istickedoff">`mapFst` untilReaches' (last ls) (advanceSrcLoc start '\n') end</span>
+<span class="lineno">  101 </span><span class="spaces">                   </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">(s, srcLocCol $ foldl advanceSrcLoc start s)</span></span>
+<span class="lineno">  102 </span><span class="spaces">  </span><span class="istickedoff">where</span>
+<span class="lineno">  103 </span><span class="spaces">    </span><span class="istickedoff">untilReaches' [] curr _ = ([], srcLocCol curr)</span>
+<span class="lineno">  104 </span><span class="spaces">    </span><span class="istickedoff">untilReaches' (c:rest) curr until | <span class="tickonlytrue">srcLocCol advancedLoc &lt;= srcLocCol until</span></span>
+<span class="lineno">  105 </span><span class="spaces">      </span><span class="istickedoff">= (c:) `mapFst` untilReaches' rest advancedLoc until</span>
+<span class="lineno">  106 </span><span class="spaces">      </span><span class="istickedoff">where advancedLoc = advanceSrcLoc curr c</span>
+<span class="lineno">  107 </span><span class="spaces">    </span><span class="istickedoff">untilReaches' _ curr _ = <span class="nottickedoff">([], srcLocCol curr)</span></span></span>
+<span class="lineno">  108 </span>
+<span class="lineno">  109 </span>mapFst :: (a -&gt; b) -&gt; (a, x) -&gt; (b, x)
+<span class="lineno">  110 </span><span class="decl"><span class="istickedoff">mapFst f (a, x) = (f a, x)</span></span>
+<span class="lineno">  111 </span>
+<span class="lineno">  112 </span>(&gt;+&lt;) :: PPState (Seq Char) -&gt; PPState (Seq Char) -&gt; PPState (Seq Char)
+<span class="lineno">  113 </span><span class="decl"><span class="istickedoff">(&gt;+&lt;) = liftM2 (&gt;&lt;)</span></span>
+<span class="lineno">  114 </span>
+<span class="lineno">  115 </span>printListWithSeps :: RealSrcLoc -&gt; Int -&gt; Int -&gt; [String] -&gt; [RoseTree SrcTemplateStage] -&gt; PPState (Seq Char)
+<span class="lineno">  116 </span><span class="decl"><span class="istickedoff">printListWithSeps = printListWithSeps' (const putString) <span class="nottickedoff">0</span></span></span>
+<span class="lineno">  117 </span>
+<span class="lineno">  118 </span>-- | Prints the elements of a list where the elements must be printed in the same line (do stmts, case alts, let binds, ...)
+<span class="lineno">  119 </span>printListWithSepsIndented :: [Bool] -&gt; RealSrcLoc -&gt; Int -&gt; Int -&gt; [String] -&gt; [RoseTree SrcTemplateStage] -&gt; PPState (Seq Char)
+<span class="lineno">  120 </span><span class="decl"><span class="istickedoff">printListWithSepsIndented indentedChildren parent slide minInd seps children</span>
+<span class="lineno">  121 </span><span class="spaces">  </span><span class="istickedoff">= do base &lt;- get</span>
+<span class="lineno">  122 </span><span class="spaces">       </span><span class="istickedoff">let putCorrectSep i _ min s | isIndented i</span>
+<span class="lineno">  123 </span><span class="spaces">              </span><span class="istickedoff">= do curr &lt;- get</span>
+<span class="lineno">  124 </span><span class="spaces">                   </span><span class="istickedoff">let (shortened, currCol) = untilReaches s curr base</span>
+<span class="lineno">  125 </span><span class="spaces">                   </span><span class="istickedoff">putString 0 min $ shortened ++ replicate (srcLocCol base - currCol) ' '</span>
+<span class="lineno">  126 </span><span class="spaces">           </span><span class="istickedoff">putCorrectSep _ slide minInd s = putString <span class="nottickedoff">slide</span> <span class="nottickedoff">minInd</span> s</span>
+<span class="lineno">  127 </span><span class="spaces">       </span><span class="istickedoff">printListWithSeps' putCorrectSep 0 parent <span class="nottickedoff">slide</span> minInd seps children</span>
+<span class="lineno">  128 </span><span class="spaces">  </span><span class="istickedoff">where -- the ith separator is before the ith element</span>
+<span class="lineno">  129 </span><span class="spaces">        </span><span class="istickedoff">isIndented i = case List.drop i indentedChildren of False:_ -&gt; False; _ -&gt; True</span></span>
+<span class="lineno">  130 </span>
+<span class="lineno">  131 </span>printListWithSeps' :: (Int -&gt; Int -&gt; Int -&gt; String -&gt; PPState (Seq Char)) -&gt; Int -&gt; RealSrcLoc -&gt; Int -&gt; Int -&gt; [String] -&gt; [RoseTree SrcTemplateStage] -&gt; PPState (Seq Char)
+<span class="lineno">  132 </span><span class="decl"><span class="istickedoff">printListWithSeps' _ _ _ _ _ _ [] = <span class="nottickedoff">return empty</span></span>
+<span class="lineno">  133 </span><span class="spaces"></span><span class="istickedoff">printListWithSeps' _ _ parent _ _ _ [child] = printRose' parent child</span>
+<span class="lineno">  134 </span><span class="spaces"></span><span class="istickedoff">printListWithSeps' putCorrectSep i parent slide minInd (sep:seps) (child:children)</span>
+<span class="lineno">  135 </span><span class="spaces">  </span><span class="istickedoff">= printRose' <span class="nottickedoff">parent</span> child &gt;+&lt; putCorrectSep i slide minInd sep &gt;+&lt; printListWithSeps' putCorrectSep (i+1) parent slide minInd seps children</span>
+<span class="lineno">  136 </span><span class="spaces"></span><span class="istickedoff">printListWithSeps' _ _ _ _ _ [] _ = <span class="nottickedoff">pprProblem &quot;printListWithSeps': the number of elements and separators does not match&quot;</span></span></span>
+
+</pre>
+</body>
+</html>
