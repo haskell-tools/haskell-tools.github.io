@@ -98,7 +98,6 @@ trfName' :: TransformName n r => n -> Trf (UName (Dom r) RangeStage)
 trfAmbiguousFieldName :: TransformName n r => Located (AmbiguousFieldOcc n) -> Trf (Ann UName (Dom r) RangeStage)
 trfAmbiguousFieldName' :: forall n r. TransformName n r => SrcSpan -> AmbiguousFieldOcc n -> Trf (Ann UName (Dom r) RangeStage)
 trfAmbiguousOperator' :: forall n r. TransformName n r => SrcSpan -> AmbiguousFieldOcc n -> Trf (Ann UOperator (Dom r) RangeStage)
-trfAmbiguousFieldOperator' :: () => p -> AmbiguousFieldOcc name -> Trf Ann UOperator Dom n RangeStage
 class (DataId n, Eq n, GHCName n, FromGHCName n, NameOrRdrName n ~ n, HasOccName n) => TransformableName n
 correctNameString :: TransformableName n => n -> Trf String
 transformSplice :: TransformableName n => HsSplice RdrName -> Trf (HsSplice n)
