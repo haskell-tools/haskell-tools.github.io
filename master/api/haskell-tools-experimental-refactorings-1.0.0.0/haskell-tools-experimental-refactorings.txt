@@ -38,6 +38,18 @@ parenExpr :: Expr -> DollarMonad Expr
 parenDollar :: Bool -> Expr -> DollarMonad Expr
 dollarName :: Name
 
+module Language.Haskell.Tools.Refactor.Builtin.FindUnused
+data UnusedState
+UnusedState :: Set Name -> Set Name -> UnusedState
+[_defined] :: UnusedState -> Set Name
+[_used] :: UnusedState -> Set Name
+initState :: UnusedState
+used :: Lens UnusedState UnusedState (Set Name) (Set Name)
+defined :: Lens UnusedState UnusedState (Set Name) (Set Name)
+findUnusedRefactoring :: RefactoringChoice
+findUnused :: ProjectRefactoring
+recordName :: QualifiedName -> State UnusedState QualifiedName
+
 module Language.Haskell.Tools.Refactor.Builtin.HelloRefactor
 tryItOut :: String -> String -> IO ()
 helloRefactor :: RealSrcSpan -> LocalRefactoring
