@@ -1,0 +1,169 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | UPattern matching on type-level AST fragments for refactorings.
+<span class="lineno">    2 </span>{-# LANGUAGE PatternSynonyms #-}
+<span class="lineno">    3 </span>module Language.Haskell.Tools.Rewrite.Match.Types where
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>import Language.Haskell.Tools.AST
+<span class="lineno">    6 </span>import Language.Haskell.Tools.Rewrite.ElementTypes
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>-- * Types
+<span class="lineno">    9 </span>
+<span class="lineno">   10 </span>-- | Forall types (@ forall x y . type @)
+<span class="lineno">   11 </span>pattern ForallType :: TyVarList -&gt; Type -&gt; Type
+<span class="lineno">   12 </span>pattern ForallType vars t &lt;- <span class="nottickedoff">Ann _ (UTyForall vars t)</span>
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>-- | Type with a context (@ forall x y . type @)
+<span class="lineno">   15 </span>pattern CtxType :: Context -&gt; Type -&gt; Type
+<span class="lineno">   16 </span>pattern CtxType ctx t &lt;- <span class="nottickedoff">Ann _ (UTyCtx ctx t)</span>
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>-- | Function types (@ a -&gt; b @)
+<span class="lineno">   19 </span>pattern FunctionType :: Type -&gt; Type -&gt; Type
+<span class="lineno">   20 </span>pattern FunctionType at rt &lt;- <span class="nottickedoff">Ann _ (UTyFun at rt)</span>
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>-- | Tuple types (@ (a,b) @)
+<span class="lineno">   23 </span>pattern TupleType :: TypeList -&gt; Type
+<span class="lineno">   24 </span>pattern TupleType args &lt;- <span class="istickedoff">Ann _ (UTyTuple args)</span>
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>-- | Unboxed tuple types (@ (\#a,b\#) @)
+<span class="lineno">   27 </span>pattern UnboxedTupleType :: TypeList -&gt; Type
+<span class="lineno">   28 </span>pattern UnboxedTupleType args &lt;- <span class="nottickedoff">Ann _ (UTyUnbTuple args)</span>
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>-- | List type with special syntax (@ [a] @)
+<span class="lineno">   31 </span>pattern ListType :: Type -&gt; Type
+<span class="lineno">   32 </span>pattern ListType t &lt;- <span class="istickedoff">Ann _ (UTyList t)</span>
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>-- | Parallel array type (@ [:a:] @)
+<span class="lineno">   35 </span>pattern ParArrayType :: Type -&gt; Type
+<span class="lineno">   36 </span>pattern ParArrayType t &lt;- <span class="nottickedoff">Ann _ (UTyParArray t)</span>
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>-- | Type application (@ F a @)
+<span class="lineno">   39 </span>pattern TypeApp :: Type -&gt; Type -&gt; Type
+<span class="lineno">   40 </span>pattern TypeApp ft at &lt;- <span class="istickedoff">Ann _ (UTyApp ft at)</span>
+<span class="lineno">   41 </span>
+<span class="lineno">   42 </span>-- | Infix type constructor (@ (a &lt;: b) @)
+<span class="lineno">   43 </span>pattern InfixTypeApp :: Type -&gt; Operator -&gt; Type -&gt; Type
+<span class="lineno">   44 </span>pattern InfixTypeApp left op right &lt;- <span class="istickedoff">Ann _ (UTyInfix left op right)</span>
+<span class="lineno">   45 </span>
+<span class="lineno">   46 </span>-- | Type surrounded by parentheses (@ (T a) @)
+<span class="lineno">   47 </span>pattern ParenType :: Type -&gt; Type
+<span class="lineno">   48 </span>pattern ParenType t &lt;- <span class="istickedoff">Ann _ (UTyParen t)</span>
+<span class="lineno">   49 </span>
+<span class="lineno">   50 </span>-- | Type variable or constructor (@ a @)
+<span class="lineno">   51 </span>pattern VarType :: Name -&gt; Type
+<span class="lineno">   52 </span>pattern VarType n &lt;- <span class="istickedoff">Ann _ (UTyVar n)</span>
+<span class="lineno">   53 </span>
+<span class="lineno">   54 </span>-- | Type with explicit kind signature (@ a :: * @)
+<span class="lineno">   55 </span>pattern KindedType :: Type -&gt; Kind -&gt; Type
+<span class="lineno">   56 </span>pattern KindedType t k &lt;- <span class="istickedoff">Ann _ (UTyKinded t k)</span>
+<span class="lineno">   57 </span>
+<span class="lineno">   58 </span>-- | Strict type marked with @!@.
+<span class="lineno">   59 </span>pattern BangType :: Type -&gt; Type
+<span class="lineno">   60 </span>pattern BangType n &lt;- <span class="nottickedoff">Ann _ (UTyBang n)</span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>-- | Lazy type marked with @~@. (Should only be used if @Strict@ or @StrictData@ language extension is used)
+<span class="lineno">   63 </span>pattern LazyType :: Type -&gt; Type
+<span class="lineno">   64 </span>pattern LazyType n &lt;- <span class="nottickedoff">Ann _ (UTyLazy n)</span>
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>-- | Strict type marked with UNPACK pragma. (Usually contains the bang mark.)
+<span class="lineno">   67 </span>pattern UnpackType :: Type -&gt; Type
+<span class="lineno">   68 </span>pattern UnpackType n &lt;- <span class="nottickedoff">Ann _ (UTyUnpack n)</span>
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>-- | Strict type marked with NOUNPACK pragma. (Usually contains the bang mark.)
+<span class="lineno">   71 </span>pattern NoUnpackType :: Type -&gt; Type
+<span class="lineno">   72 </span>pattern NoUnpackType t &lt;- <span class="nottickedoff">Ann _ (UTyNoUnpack t)</span>
+<span class="lineno">   73 </span>
+<span class="lineno">   74 </span>-- | A wildcard type (@ _ @) with @-XPartialTypeSignatures@
+<span class="lineno">   75 </span>pattern WildcardType :: Type
+<span class="lineno">   76 </span>pattern WildcardType &lt;- <span class="nottickedoff">Ann _ UTyWildcard</span>
+<span class="lineno">   77 </span>
+<span class="lineno">   78 </span>-- | A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
+<span class="lineno">   79 </span>pattern NamedWildcardType :: Name -&gt; Type
+<span class="lineno">   80 </span>pattern NamedWildcardType n &lt;- <span class="nottickedoff">Ann _ (UTyNamedWildc n)</span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>-- | A Template Haskell splice type (@ $(genType) @).
+<span class="lineno">   83 </span>pattern SpliceType :: Splice -&gt; Type
+<span class="lineno">   84 </span>pattern SpliceType spl &lt;- <span class="nottickedoff">Ann _ (UTySplice spl)</span>
+<span class="lineno">   85 </span>
+<span class="lineno">   86 </span>-- | A Template Haskell splice type (@ $(genType) @).
+<span class="lineno">   87 </span>pattern QuasiQuoteType :: QuasiQuote -&gt; Type
+<span class="lineno">   88 </span>pattern QuasiQuoteType spl &lt;- <span class="nottickedoff">Ann _ (UTyQuasiQuote spl)</span>
+<span class="lineno">   89 </span>
+<span class="lineno">   90 </span>-- | Numeric value promoted to the type level.
+<span class="lineno">   91 </span>pattern PromotedIntType :: Integer -&gt; Type
+<span class="lineno">   92 </span>pattern PromotedIntType i &lt;- <span class="nottickedoff">Ann _ (UTyPromoted (Ann _ (UPromotedInt i)))</span>
+<span class="lineno">   93 </span>
+<span class="lineno">   94 </span>-- | String value promoted to the type level.
+<span class="lineno">   95 </span>pattern PromotedStringType :: String -&gt; Type
+<span class="lineno">   96 </span>pattern PromotedStringType s &lt;- <span class="nottickedoff">Ann _ (UTyPromoted (Ann _ (UPromotedString s)))</span>
+<span class="lineno">   97 </span>
+<span class="lineno">   98 </span>-- | A data constructor value promoted to the type level.
+<span class="lineno">   99 </span>pattern PromotedConType :: Name -&gt; Type
+<span class="lineno">  100 </span>pattern PromotedConType s &lt;- <span class="nottickedoff">Ann _ (UTyPromoted (Ann _ (UPromotedCon s)))</span>
+<span class="lineno">  101 </span>
+<span class="lineno">  102 </span>-- | A list of elements as a type.
+<span class="lineno">  103 </span>pattern PromotedListType :: TypeList -&gt; Type
+<span class="lineno">  104 </span>pattern PromotedListType elems &lt;- <span class="nottickedoff">Ann _ (UTyPromoted (Ann _ (UPromotedList elems)))</span>
+<span class="lineno">  105 </span>
+<span class="lineno">  106 </span>-- | A tuple of elements as a type.
+<span class="lineno">  107 </span>pattern PromotedTupleType :: TypeList -&gt; Type
+<span class="lineno">  108 </span>pattern PromotedTupleType elems &lt;- <span class="nottickedoff">Ann _ (UTyPromoted (Ann _ (UPromotedTuple elems)))</span>
+<span class="lineno">  109 </span>
+<span class="lineno">  110 </span>-- | Kind of the unit value @()@.
+<span class="lineno">  111 </span>pattern PromotedUnitType :: Type
+<span class="lineno">  112 </span>pattern PromotedUnitType &lt;- <span class="nottickedoff">Ann _ (UTyPromoted (Ann _ UPromotedUnit))</span>
+<span class="lineno">  113 </span>
+<span class="lineno">  114 </span>-- * Type variable
+<span class="lineno">  115 </span>
+<span class="lineno">  116 </span>-- | Type variable declaration
+<span class="lineno">  117 </span>pattern TyVarDecl :: Name -&gt; TyVar
+<span class="lineno">  118 </span>pattern TyVarDecl n &lt;- <span class="nottickedoff">Ann _ (UTyVarDecl n _)</span>
+<span class="lineno">  119 </span>
+<span class="lineno">  120 </span>-- | Kinded type variable declaration (@ v :: * @)
+<span class="lineno">  121 </span>pattern KindedTyVarDecl :: Name -&gt; Kind -&gt; TyVar
+<span class="lineno">  122 </span>pattern KindedTyVarDecl n k &lt;- <span class="nottickedoff">Ann _ (UTyVarDecl n (AnnJust (Ann _ (UKindConstraint k))))</span>
+<span class="lineno">  123 </span>
+<span class="lineno">  124 </span>-- * Contexts
+<span class="lineno">  125 </span>
+<span class="lineno">  126 </span>-- | A context of assertions (@ C a =&gt; ... @)
+<span class="lineno">  127 </span>pattern Context :: Assertion -&gt; Context
+<span class="lineno">  128 </span>pattern Context n &lt;- <span class="nottickedoff">Ann _ (UContext n)</span>
+<span class="lineno">  129 </span>
+<span class="lineno">  130 </span>-- * Assertions
+<span class="lineno">  131 </span>
+<span class="lineno">  132 </span>-- | Class assertion (@Cls x@)
+<span class="lineno">  133 </span>pattern ClassAssert :: Name -&gt; TypeList -&gt; Assertion
+<span class="lineno">  134 </span>pattern ClassAssert n args &lt;- <span class="nottickedoff">Ann _ (UClassAssert n args)</span>
+<span class="lineno">  135 </span>
+<span class="lineno">  136 </span>-- | Infix class assertion, also contains type equations (@ a ~ X y @)
+<span class="lineno">  137 </span>pattern InfixAssert :: Type -&gt; Operator -&gt; Type -&gt; Assertion
+<span class="lineno">  138 </span>pattern InfixAssert left op right &lt;- <span class="nottickedoff">Ann _ (UInfixAssert left op right)</span>
+<span class="lineno">  139 </span>
+<span class="lineno">  140 </span>-- | Assertion for implicit parameter binding (@ ?cmp :: a -&gt; a -&gt; Bool @)
+<span class="lineno">  141 </span>pattern ImplicitAssert :: Name -&gt; Type -&gt; Assertion
+<span class="lineno">  142 </span>pattern ImplicitAssert n t &lt;- <span class="nottickedoff">Ann _ (UImplicitAssert n t)</span>
+<span class="lineno">  143 </span>
+<span class="lineno">  144 </span>-- | A list of assertions (@ (Eq a, Show a) @)
+<span class="lineno">  145 </span>pattern TupleAssert :: [Assertion] -&gt; Assertion
+<span class="lineno">  146 </span>pattern TupleAssert ass &lt;- <span class="nottickedoff">Ann _ (UTupleAssert (AnnList ass))</span>
+
+</pre>
+</body>
+</html>
