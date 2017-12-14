@@ -62,13 +62,13 @@ span.spaces    { background: white }
 <span class="lineno">   43 </span><span class="spaces">                              </span><span class="istickedoff">Extracted binds -&gt; put Inserted &gt;&gt; (return $ annListElems .- (++ binds) $ locs)</span>
 <span class="lineno">   44 </span><span class="spaces">                              </span><span class="istickedoff">Inserted -&gt; <span class="nottickedoff">return locs</span></span>
 <span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">where selected = locs ^? annList &amp; filtered (isInside sp)</span>
-<span class="lineno">   46 </span><span class="spaces">        </span><span class="istickedoff">floated = normalizeElements $ selected ++ (locs ^? annList &amp; filtered (nameIsSelected . (^? elementName)))</span>
-<span class="lineno">   47 </span><span class="spaces">          </span><span class="istickedoff">where nameIsSelected [n] = n `elem` concatMap (^? elementName) selected</span>
+<span class="lineno">   46 </span><span class="spaces">        </span><span class="istickedoff">floated = normalizeElements $ selected ++ (locs ^? annList &amp; filtered (nameIsSelected . map semanticsName . (^? elementName)))</span>
+<span class="lineno">   47 </span><span class="spaces">          </span><span class="istickedoff">where nameIsSelected [n] = n `elem` concatMap (map semanticsName . (^? elementName)) selected</span>
 <span class="lineno">   48 </span><span class="spaces">                </span><span class="istickedoff">nameIsSelected _ = False</span>
 <span class="lineno">   49 </span><span class="spaces"></span><span class="istickedoff"></span>
 <span class="lineno">   50 </span><span class="spaces">        </span><span class="istickedoff">filteredLocs = filterList (\e -&gt; not (getRange e `elem` floatedElemRanges)) locs</span>
 <span class="lineno">   51 </span><span class="spaces">          </span><span class="istickedoff">where floatedElemRanges = map getRange floated</span>
-<span class="lineno">   52 </span><span class="spaces">        </span><span class="istickedoff">hasSharedSig = any (\e -&gt; not $ null ((filteredLocs ^? annList &amp; elementName) `intersect` (e ^? elementName))) selected</span>
+<span class="lineno">   52 </span><span class="spaces">        </span><span class="istickedoff">hasSharedSig = any (\e -&gt; not $ null (map semanticsName (filteredLocs ^? annList &amp; elementName) `intersect` map semanticsName (e ^? elementName))) selected</span>
 <span class="lineno">   53 </span><span class="spaces">        </span><span class="istickedoff">conflicts = map checkConflict selected</span>
 <span class="lineno">   54 </span><span class="spaces"></span><span class="istickedoff"></span>
 <span class="lineno">   55 </span><span class="spaces">        </span><span class="istickedoff">nameConflicts = concat $ map fst conflicts</span>

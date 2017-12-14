@@ -474,7 +474,7 @@ isAnnNothing :: () => AnnMaybeG e d s -> Bool
 --   did it pass. However after transforming the GHC representation to our
 --   AST, the domain keeps the same. The domain is not applied to the AST
 --   elements that are generated while refactoring.
-type Domain d = (Typeable * d, Data d, (~) * SemanticInfo' d SameInfoDefaultCls NoSemanticInfo, Data SemanticInfo' d SameInfoNameCls, Data SemanticInfo' d SameInfoLitCls, Data SemanticInfo' d SameInfoExprCls, Data SemanticInfo' d SameInfoImportCls, Data SemanticInfo' d SameInfoModuleCls, Data SemanticInfo' d SameInfoWildcardCls, Show SemanticInfo' d SameInfoNameCls, Show SemanticInfo' d SameInfoExprCls, Show SemanticInfo' d SameInfoLitCls, Show SemanticInfo' d SameInfoImportCls, Show SemanticInfo' d SameInfoModuleCls, Show SemanticInfo' d SameInfoWildcardCls)
+type Domain d = (Typeable * d, Data d, (~) * SemanticInfo' d SameInfoDefaultCls NoSemanticInfo, Data SemanticInfo' d SameInfoNameCls, Data SemanticInfo' d SameInfoLitCls, Data SemanticInfo' d SameInfoExprCls, Data SemanticInfo' d SameInfoImportCls, Data SemanticInfo' d SameInfoModuleCls, Data SemanticInfo' d SameInfoWildcardCls)
 
 -- | With this domain, semantic information can be parameterized. In
 --   practice it is only used if the compilation cannot proceed past the

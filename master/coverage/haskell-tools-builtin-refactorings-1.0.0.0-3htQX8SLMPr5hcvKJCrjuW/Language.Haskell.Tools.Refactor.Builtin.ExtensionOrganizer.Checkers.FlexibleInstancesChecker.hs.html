@@ -21,15 +21,15 @@ span.spaces    { background: white }
 <span class="lineno">    2 </span>
 <span class="lineno">    3 </span>module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker where
 <span class="lineno">    4 </span>
-<span class="lineno">    5 </span>import Control.Reference ((^.), (!~), biplateRef)
-<span class="lineno">    6 </span>import Language.Haskell.Tools.Refactor as Refact
-<span class="lineno">    7 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
-<span class="lineno">    8 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup (lookupSynDefM)
-<span class="lineno">    9 </span>
+<span class="lineno">    5 </span>import Control.Monad.Trans.Maybe (MaybeT(..))
+<span class="lineno">    6 </span>import Data.Data (Data(..))
+<span class="lineno">    7 </span>import Data.List (nubBy)
+<span class="lineno">    8 </span>import Data.Function (on)
+<span class="lineno">    9 </span>import Control.Reference ((^.), (!~), biplateRef)
 <span class="lineno">   10 </span>
-<span class="lineno">   11 </span>import Control.Monad.Trans.Maybe (MaybeT(..))
-<span class="lineno">   12 </span>import Data.Data (Data(..))
-<span class="lineno">   13 </span>import Data.List (nub)
+<span class="lineno">   11 </span>import Language.Haskell.Tools.Refactor as Refact
+<span class="lineno">   12 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+<span class="lineno">   13 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup (lookupSynDefM)
 <span class="lineno">   14 </span>
 <span class="lineno">   15 </span>import Name as GHC (isTyVarName, isTyConName, isWiredInName)
 <span class="lineno">   16 </span>
@@ -113,7 +113,7 @@ span.spaces    { background: white }
 <span class="lineno">   94 </span><span class="spaces">          </span><span class="istickedoff">(isOk, (_, vs)) &lt;- runStateT (runMaybeT (chkAll vars)) (<span class="nottickedoff">[]</span>,[])</span>
 <span class="lineno">   95 </span><span class="spaces">          </span><span class="istickedoff">case isOk of</span>
 <span class="lineno">   96 </span><span class="spaces">            </span><span class="istickedoff">Just isOk -&gt;</span>
-<span class="lineno">   97 </span><span class="spaces">              </span><span class="istickedoff">unless (isOk &amp;&amp; length vs == (length . nub $ vs)) --tyvars are different</span>
+<span class="lineno">   97 </span><span class="spaces">              </span><span class="istickedoff">unless (isOk &amp;&amp; length vs == (length . nubBy ((==) `on` (semanticsName . (^. simpleName))) $ vs)) --tyvars are different</span>
 <span class="lineno">   98 </span><span class="spaces">                </span><span class="istickedoff">(addOccurence_ FlexibleInstances vars)</span>
 <span class="lineno">   99 </span><span class="spaces">            </span><span class="istickedoff">Nothing   -&gt; <span class="nottickedoff">error &quot;chkTyVars: Couldn't look up something&quot;</span></span>
 <span class="lineno">  100 </span><span class="spaces">          </span><span class="istickedoff">return <span class="nottickedoff">vars</span></span>

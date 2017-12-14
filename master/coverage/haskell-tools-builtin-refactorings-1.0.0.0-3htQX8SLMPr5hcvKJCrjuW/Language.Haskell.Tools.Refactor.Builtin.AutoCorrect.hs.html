@@ -95,9 +95,9 @@ span.spaces    { background: white }
 <span class="lineno">   76 </span><span class="spaces">                           </span><span class="istickedoff">ls -&gt; -- TODO: choose the best one</span>
 <span class="lineno">   77 </span><span class="spaces">                                 </span><span class="istickedoff"><span class="nottickedoff">error $ &quot;multiple correct parentheses were found: &quot; ++ intercalate &quot;, &quot; (map (either prettyPrintAtom prettyPrint) ls)</span></span></span>
 <span class="lineno">   78 </span>
-<span class="lineno">   79 </span>data Atom = NameA { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">aName</span></span></span> :: HT.Name }
-<span class="lineno">   80 </span>          | OperatorA { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">aOperator</span></span></span> :: Operator }
-<span class="lineno">   81 </span>          | LiteralA { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">aLiteral</span></span></span> :: Literal }
+<span class="lineno">   79 </span>data Atom = NameA HT.Name
+<span class="lineno">   80 </span>          | OperatorA Operator
+<span class="lineno">   81 </span>          | LiteralA Literal
 <span class="lineno">   82 </span>
 <span class="lineno">   83 </span>prettyPrintAtom :: Atom -&gt; String
 <span class="lineno">   84 </span><span class="decl"><span class="nottickedoff">prettyPrintAtom (NameA n) = prettyPrint n</span>
