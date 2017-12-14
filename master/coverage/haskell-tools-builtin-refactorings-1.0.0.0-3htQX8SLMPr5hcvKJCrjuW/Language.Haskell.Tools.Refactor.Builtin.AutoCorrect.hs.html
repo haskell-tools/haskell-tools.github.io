@@ -55,111 +55,113 @@ span.spaces    { background: white }
 <span class="lineno">   36 </span>--------------------------------------------------------------------------------------------
 <span class="lineno">   37 </span>
 <span class="lineno">   38 </span>reOrder :: RealSrcSpan -&gt; HT.Module -&gt; LocalRefactor (Maybe HT.Module)
-<span class="lineno">   39 </span><span class="decl"><span class="istickedoff">reOrder sp mod = do let insts = semanticsPrelInsts mod ++ concatMap semanticsInsts (mod ^? modImports &amp; annList :: [HT.ImportDecl])</span>
+<span class="lineno">   39 </span><span class="decl"><span class="istickedoff">reOrder sp mod = do let accessibleMods = semanticsModule mod : semanticsPrelTransMods mod ++ concatMap semanticsTransMods (mod ^? modImports &amp; annList :: [HT.ImportDecl])</span>
 <span class="lineno">   40 </span><span class="spaces">                        </span><span class="istickedoff">rng:_ = map getRange (mod ^? nodesContained sp :: [Expr])</span>
-<span class="lineno">   41 </span><span class="spaces">                    </span><span class="istickedoff">(res,done) &lt;- liftGhc $ flip runStateT <span class="nottickedoff">False</span> ((nodesContained sp &amp; filtered ((==rng) . getRange) !~ reOrderExpr insts) mod)</span>
-<span class="lineno">   42 </span><span class="spaces">                    </span><span class="istickedoff">return (if <span class="tickonlytrue">done</span> then Just res else <span class="nottickedoff">Nothing</span>)</span></span>
-<span class="lineno">   43 </span>
-<span class="lineno">   44 </span>reOrderExpr :: [ClsInst] -&gt; Expr -&gt; StateT Bool Ghc Expr
-<span class="lineno">   45 </span><span class="decl"><span class="istickedoff">reOrderExpr insts e@(App (App f a1) a2)</span>
-<span class="lineno">   46 </span><span class="spaces">  </span><span class="istickedoff">= do funTy &lt;- lift $ typeExpr f</span>
-<span class="lineno">   47 </span><span class="spaces">       </span><span class="istickedoff">arg1Ty &lt;- lift $ typeExpr a1</span>
-<span class="lineno">   48 </span><span class="spaces">       </span><span class="istickedoff">arg2Ty &lt;- lift $ typeExpr a2</span>
-<span class="lineno">   49 </span><span class="spaces">       </span><span class="istickedoff">-- liftIO $ putStrLn $ (show $ isJust $ appTypeMatches insts funTy [arg1Ty, arg2Ty]) ++ &quot; &quot; ++ (show $ isJust $ appTypeMatches insts funTy [arg2Ty, arg1Ty]) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ funTy) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ arg1Ty) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ arg2Ty)</span>
-<span class="lineno">   50 </span><span class="spaces">       </span><span class="istickedoff">if not (isJust (appTypeMatches insts funTy [arg1Ty, arg2Ty])) &amp;&amp; isJust (appTypeMatches insts funTy [arg2Ty, arg1Ty])</span>
-<span class="lineno">   51 </span><span class="spaces">          </span><span class="istickedoff">then put True &gt;&gt; return (exprArg .= a1 $ exprFun&amp;exprArg .= a2 $ e)</span>
-<span class="lineno">   52 </span><span class="spaces">          </span><span class="istickedoff">else return <span class="nottickedoff">e</span></span>
-<span class="lineno">   53 </span><span class="spaces"></span><span class="istickedoff">reOrderExpr insts e@(InfixApp lhs op rhs) </span>
-<span class="lineno">   54 </span><span class="spaces">  </span><span class="istickedoff">= do let funTy = idType $ semanticsId (op ^. operatorName)</span>
-<span class="lineno">   55 </span><span class="spaces">       </span><span class="istickedoff">lhsTy &lt;- lift $ typeExpr lhs</span>
-<span class="lineno">   56 </span><span class="spaces">       </span><span class="istickedoff">rhsTy &lt;- lift $ typeExpr rhs</span>
-<span class="lineno">   57 </span><span class="spaces">       </span><span class="istickedoff">-- liftIO $ putStrLn $ (show $ isJust $ appTypeMatches insts funTy [lhsTy, rhsTy]) ++ &quot; &quot; ++ (show $ isJust $ appTypeMatches insts funTy [lhsTy, rhsTy]) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ funTy) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ lhsTy) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ rhsTy)</span>
-<span class="lineno">   58 </span><span class="spaces">       </span><span class="istickedoff">if not (isJust (appTypeMatches insts funTy [lhsTy, rhsTy])) &amp;&amp; isJust (appTypeMatches insts funTy [rhsTy, lhsTy])</span>
-<span class="lineno">   59 </span><span class="spaces">          </span><span class="istickedoff">then put True &gt;&gt; return (exprLhs .= rhs $ exprRhs .= lhs $ e)</span>
-<span class="lineno">   60 </span><span class="spaces">          </span><span class="istickedoff">else return <span class="nottickedoff">e</span></span>
-<span class="lineno">   61 </span><span class="spaces"></span><span class="istickedoff">reOrderExpr _ e = <span class="nottickedoff">return e</span></span></span>
-<span class="lineno">   62 </span>
-<span class="lineno">   63 </span>------------------------------------------------------------------------------------------
-<span class="lineno">   64 </span>
-<span class="lineno">   65 </span>reParen :: RealSrcSpan -&gt; HT.Module -&gt; LocalRefactor (Maybe HT.Module)
-<span class="lineno">   66 </span><span class="decl"><span class="istickedoff">reParen sp mod = do let insts = semanticsPrelInsts mod ++ concatMap semanticsInsts (mod ^? modImports &amp; annList :: [HT.ImportDecl])</span>
-<span class="lineno">   67 </span><span class="spaces">                        </span><span class="istickedoff">rng:_ = map getRange (mod ^? nodesContained sp :: [Expr])</span>
-<span class="lineno">   68 </span><span class="spaces">                    </span><span class="istickedoff">(res,done) &lt;- liftGhc $ flip runStateT False ((nodesContained sp &amp; filtered ((==rng) . getRange) !~ reParenExpr insts) mod)</span>
-<span class="lineno">   69 </span><span class="spaces">                    </span><span class="istickedoff">return (if done then Just res else Nothing)</span></span>
-<span class="lineno">   70 </span>
-<span class="lineno">   71 </span>reParenExpr :: [ClsInst] -&gt; Expr -&gt; StateT Bool Ghc Expr
-<span class="lineno">   72 </span><span class="decl"><span class="istickedoff">reParenExpr insts e = do atoms &lt;- lift $ extractAtoms e</span>
-<span class="lineno">   73 </span><span class="spaces">                         </span><span class="istickedoff">case correctParening insts $ map (_2 .- Left) atoms of</span>
-<span class="lineno">   74 </span><span class="spaces">                           </span><span class="istickedoff">[e'] -&gt; put True &gt;&gt; return (wrapAtom e')</span>
-<span class="lineno">   75 </span><span class="spaces">                           </span><span class="istickedoff">[] -&gt; return <span class="nottickedoff">e</span></span>
-<span class="lineno">   76 </span><span class="spaces">                           </span><span class="istickedoff">ls -&gt; -- TODO: choose the best one</span>
-<span class="lineno">   77 </span><span class="spaces">                                 </span><span class="istickedoff"><span class="nottickedoff">error $ &quot;multiple correct parentheses were found: &quot; ++ intercalate &quot;, &quot; (map (either prettyPrintAtom prettyPrint) ls)</span></span></span>
-<span class="lineno">   78 </span>
-<span class="lineno">   79 </span>data Atom = NameA HT.Name
-<span class="lineno">   80 </span>          | OperatorA Operator
-<span class="lineno">   81 </span>          | LiteralA Literal
-<span class="lineno">   82 </span>
-<span class="lineno">   83 </span>prettyPrintAtom :: Atom -&gt; String
-<span class="lineno">   84 </span><span class="decl"><span class="nottickedoff">prettyPrintAtom (NameA n) = prettyPrint n</span>
-<span class="lineno">   85 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintAtom (OperatorA o) = prettyPrint o</span>
-<span class="lineno">   86 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintAtom (LiteralA l) = prettyPrint l</span></span>
-<span class="lineno">   87 </span>
-<span class="lineno">   88 </span>type Build = Either Atom Expr
+<span class="lineno">   41 </span><span class="spaces">                    </span><span class="istickedoff">insts &lt;- liftGhc $ fst &lt;$&gt; getInstances accessibleMods</span>
+<span class="lineno">   42 </span><span class="spaces">                    </span><span class="istickedoff">(res,done) &lt;- liftGhc $ flip runStateT <span class="nottickedoff">False</span> ((nodesContained sp &amp; filtered ((==rng) . getRange) !~ reOrderExpr insts) mod)</span>
+<span class="lineno">   43 </span><span class="spaces">                    </span><span class="istickedoff">return (if <span class="tickonlytrue">done</span> then Just res else <span class="nottickedoff">Nothing</span>)</span></span>
+<span class="lineno">   44 </span>
+<span class="lineno">   45 </span>reOrderExpr :: [ClsInst] -&gt; Expr -&gt; StateT Bool Ghc Expr
+<span class="lineno">   46 </span><span class="decl"><span class="istickedoff">reOrderExpr insts e@(App (App f a1) a2)</span>
+<span class="lineno">   47 </span><span class="spaces">  </span><span class="istickedoff">= do funTy &lt;- lift $ typeExpr f</span>
+<span class="lineno">   48 </span><span class="spaces">       </span><span class="istickedoff">arg1Ty &lt;- lift $ typeExpr a1</span>
+<span class="lineno">   49 </span><span class="spaces">       </span><span class="istickedoff">arg2Ty &lt;- lift $ typeExpr a2</span>
+<span class="lineno">   50 </span><span class="spaces">       </span><span class="istickedoff">-- liftIO $ putStrLn $ (show $ isJust $ appTypeMatches insts funTy [arg1Ty, arg2Ty]) ++ &quot; &quot; ++ (show $ isJust $ appTypeMatches insts funTy [arg2Ty, arg1Ty]) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ funTy) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ arg1Ty) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ arg2Ty)</span>
+<span class="lineno">   51 </span><span class="spaces">       </span><span class="istickedoff">if not (isJust (appTypeMatches insts funTy [arg1Ty, arg2Ty])) &amp;&amp; isJust (appTypeMatches insts funTy [arg2Ty, arg1Ty])</span>
+<span class="lineno">   52 </span><span class="spaces">          </span><span class="istickedoff">then put True &gt;&gt; return (exprArg .= a1 $ exprFun&amp;exprArg .= a2 $ e)</span>
+<span class="lineno">   53 </span><span class="spaces">          </span><span class="istickedoff">else return <span class="nottickedoff">e</span></span>
+<span class="lineno">   54 </span><span class="spaces"></span><span class="istickedoff">reOrderExpr insts e@(InfixApp lhs op rhs) </span>
+<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">= do let funTy = idType $ semanticsId (op ^. operatorName)</span>
+<span class="lineno">   56 </span><span class="spaces">       </span><span class="istickedoff">lhsTy &lt;- lift $ typeExpr lhs</span>
+<span class="lineno">   57 </span><span class="spaces">       </span><span class="istickedoff">rhsTy &lt;- lift $ typeExpr rhs</span>
+<span class="lineno">   58 </span><span class="spaces">       </span><span class="istickedoff">-- liftIO $ putStrLn $ (show $ isJust $ appTypeMatches insts funTy [lhsTy, rhsTy]) ++ &quot; &quot; ++ (show $ isJust $ appTypeMatches insts funTy [lhsTy, rhsTy]) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ funTy) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ lhsTy) ++ &quot; &quot; ++ (showSDocUnsafe $ ppr $ rhsTy)</span>
+<span class="lineno">   59 </span><span class="spaces">       </span><span class="istickedoff">if not (isJust (appTypeMatches insts funTy [lhsTy, rhsTy])) &amp;&amp; isJust (appTypeMatches insts funTy [rhsTy, lhsTy])</span>
+<span class="lineno">   60 </span><span class="spaces">          </span><span class="istickedoff">then put True &gt;&gt; return (exprLhs .= rhs $ exprRhs .= lhs $ e)</span>
+<span class="lineno">   61 </span><span class="spaces">          </span><span class="istickedoff">else return <span class="nottickedoff">e</span></span>
+<span class="lineno">   62 </span><span class="spaces"></span><span class="istickedoff">reOrderExpr _ e = <span class="nottickedoff">return e</span></span></span>
+<span class="lineno">   63 </span>
+<span class="lineno">   64 </span>------------------------------------------------------------------------------------------
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>reParen :: RealSrcSpan -&gt; HT.Module -&gt; LocalRefactor (Maybe HT.Module)
+<span class="lineno">   67 </span><span class="decl"><span class="istickedoff">reParen sp mod = do let accessibleMods = semanticsModule mod : semanticsPrelTransMods mod ++ concatMap semanticsTransMods (mod ^? modImports &amp; annList :: [HT.ImportDecl])</span>
+<span class="lineno">   68 </span><span class="spaces">                        </span><span class="istickedoff">rng:_ = map getRange (mod ^? nodesContained sp :: [Expr])</span>
+<span class="lineno">   69 </span><span class="spaces">                    </span><span class="istickedoff">insts &lt;- liftGhc $ fst &lt;$&gt; getInstances accessibleMods</span>
+<span class="lineno">   70 </span><span class="spaces">                    </span><span class="istickedoff">(res,done) &lt;- liftGhc $ flip runStateT False ((nodesContained sp &amp; filtered ((==rng) . getRange) !~ reParenExpr insts) mod)</span>
+<span class="lineno">   71 </span><span class="spaces">                    </span><span class="istickedoff">return (if done then Just res else Nothing)</span></span>
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>reParenExpr :: [ClsInst] -&gt; Expr -&gt; StateT Bool Ghc Expr
+<span class="lineno">   74 </span><span class="decl"><span class="istickedoff">reParenExpr insts e = do atoms &lt;- lift $ extractAtoms e</span>
+<span class="lineno">   75 </span><span class="spaces">                         </span><span class="istickedoff">case correctParening insts $ map (_2 .- Left) atoms of</span>
+<span class="lineno">   76 </span><span class="spaces">                           </span><span class="istickedoff">[e'] -&gt; put True &gt;&gt; return (wrapAtom e')</span>
+<span class="lineno">   77 </span><span class="spaces">                           </span><span class="istickedoff">[] -&gt; return <span class="nottickedoff">e</span></span>
+<span class="lineno">   78 </span><span class="spaces">                           </span><span class="istickedoff">ls -&gt; -- TODO: choose the best one</span>
+<span class="lineno">   79 </span><span class="spaces">                                 </span><span class="istickedoff"><span class="nottickedoff">error $ &quot;multiple correct parentheses were found: &quot; ++ intercalate &quot;, &quot; (map (either prettyPrintAtom prettyPrint) ls)</span></span></span>
+<span class="lineno">   80 </span>
+<span class="lineno">   81 </span>data Atom = NameA HT.Name
+<span class="lineno">   82 </span>          | OperatorA Operator
+<span class="lineno">   83 </span>          | LiteralA Literal
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>prettyPrintAtom :: Atom -&gt; String
+<span class="lineno">   86 </span><span class="decl"><span class="nottickedoff">prettyPrintAtom (NameA n) = prettyPrint n</span>
+<span class="lineno">   87 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintAtom (OperatorA o) = prettyPrint o</span>
+<span class="lineno">   88 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintAtom (LiteralA l) = prettyPrint l</span></span>
 <span class="lineno">   89 </span>
-<span class="lineno">   90 </span>extractAtoms :: Expr -&gt; Ghc [(GHC.Type, Atom)]
-<span class="lineno">   91 </span><span class="decl"><span class="istickedoff">extractAtoms e = do lits &lt;- mapM (\l -&gt; (, LiteralA l) &lt;$&gt; literalType l) (e ^? biplateRef)</span>
-<span class="lineno">   92 </span><span class="spaces">                    </span><span class="istickedoff">return $ sortOn (srcSpanStart . atomRange . snd) </span>
-<span class="lineno">   93 </span><span class="spaces">                           </span><span class="istickedoff">$ map (\n -&gt; (idType $ semanticsId (n ^. simpleName), NameA n)) (e ^? biplateRef) </span>
-<span class="lineno">   94 </span><span class="spaces">                               </span><span class="istickedoff">++ map (\o -&gt; (idType $ semanticsId (o ^. operatorName), OperatorA o)) (e ^? biplateRef) </span>
-<span class="lineno">   95 </span><span class="spaces">                               </span><span class="istickedoff">++ lits</span></span>
-<span class="lineno">   96 </span>
-<span class="lineno">   97 </span>atomRange :: Atom -&gt; SrcSpan
-<span class="lineno">   98 </span><span class="decl"><span class="istickedoff">atomRange (NameA n) = getRange n</span>
-<span class="lineno">   99 </span><span class="spaces"></span><span class="istickedoff">atomRange (OperatorA n) = getRange n</span>
-<span class="lineno">  100 </span><span class="spaces"></span><span class="istickedoff">atomRange (LiteralA n) = getRange n</span></span>
-<span class="lineno">  101 </span>
-<span class="lineno">  102 </span>wrapAtom :: Build -&gt; Expr
-<span class="lineno">  103 </span><span class="decl"><span class="istickedoff">wrapAtom (Right e) = e</span>
-<span class="lineno">  104 </span><span class="spaces"></span><span class="istickedoff">wrapAtom (Left (NameA n)) = mkVar n</span>
-<span class="lineno">  105 </span><span class="spaces"></span><span class="istickedoff">wrapAtom (Left (OperatorA (NormalOp o))) = <span class="nottickedoff">mkVar (mkParenName o)</span></span>
-<span class="lineno">  106 </span><span class="spaces"></span><span class="istickedoff">wrapAtom (Left (OperatorA (BacktickOp n))) = <span class="nottickedoff">mkVar (mkNormalName n)</span></span>
-<span class="lineno">  107 </span><span class="spaces"></span><span class="istickedoff">wrapAtom (Left (LiteralA l)) = mkLit l</span></span>
-<span class="lineno">  108 </span>
-<span class="lineno">  109 </span>correctParening :: [ClsInst] -&gt; [(GHC.Type, Build)] -&gt; [Build]
-<span class="lineno">  110 </span><span class="decl"><span class="istickedoff">correctParening _ [(_,e)] = [e]</span>
-<span class="lineno">  111 </span><span class="spaces"></span><span class="istickedoff">correctParening insts ls = concatMap (correctParening insts) (reduceAtoms insts ls)</span></span>
-<span class="lineno">  112 </span>
-<span class="lineno">  113 </span>reduceAtoms :: [ClsInst] -&gt; [(GHC.Type, Build)] -&gt; [[(GHC.Type, Build)]]
-<span class="lineno">  114 </span><span class="decl"><span class="istickedoff">reduceAtoms _ [(t,e)] = <span class="nottickedoff">[[(t,e)]]</span></span>
-<span class="lineno">  115 </span><span class="spaces"></span><span class="istickedoff">reduceAtoms insts ls = concatMap (reduceBy insts ls) [0 .. length ls - 2]</span></span>
-<span class="lineno">  116 </span>
-<span class="lineno">  117 </span>reduceBy :: [ClsInst] -&gt; [(GHC.Type, Build)] -&gt; Int -&gt; [[(GHC.Type, Build)]]
-<span class="lineno">  118 </span><span class="decl"><span class="istickedoff">reduceBy insts (zip [0..] -&gt; ls) i = maybeToList (reduceFunctionApp ls i) ++ maybeToList (reduceOperatorApp ls i)</span>
-<span class="lineno">  119 </span><span class="spaces">  </span><span class="istickedoff">where reduceFunctionApp ls i | Just (funT, fun) &lt;- lookup i ls</span>
-<span class="lineno">  120 </span><span class="spaces">                               </span><span class="istickedoff">, Just (argT, arg) &lt;- lookup (i+1) ls</span>
-<span class="lineno">  121 </span><span class="spaces">                               </span><span class="istickedoff">, Just (subst, resTyp) &lt;- appTypeMatches insts funT [argT]</span>
-<span class="lineno">  122 </span><span class="spaces">          </span><span class="istickedoff">= Just $ map ((_1 .- substTy subst) . snd) (take i ls) </span>
-<span class="lineno">  123 </span><span class="spaces">                     </span><span class="istickedoff">++ [(resTyp, mkParen' (mkApp' fun arg))] </span>
-<span class="lineno">  124 </span><span class="spaces">                     </span><span class="istickedoff">++ map ((_1 .- substTy subst) . snd) (drop (i + 2) ls)</span>
-<span class="lineno">  125 </span><span class="spaces">        </span><span class="istickedoff">reduceFunctionApp _ _ = Nothing</span>
-<span class="lineno">  126 </span><span class="spaces">        </span><span class="istickedoff"></span>
-<span class="lineno">  127 </span><span class="spaces">        </span><span class="istickedoff">reduceOperatorApp ls i | Just (opT, Left (OperatorA op)) &lt;- lookup i ls</span>
-<span class="lineno">  128 </span><span class="spaces">                               </span><span class="istickedoff">, Just (lArgT, lArg) &lt;- lookup (i-1) ls</span>
-<span class="lineno">  129 </span><span class="spaces">                               </span><span class="istickedoff">, Just (rArgT, rArg) &lt;- lookup (i+1) ls</span>
-<span class="lineno">  130 </span><span class="spaces">                               </span><span class="istickedoff">, Just (subst, resTyp) &lt;- appTypeMatches insts opT [lArgT, rArgT]</span>
-<span class="lineno">  131 </span><span class="spaces">          </span><span class="istickedoff">= Just $ map ((_1 .- substTy subst) . snd) (take (i - 1) ls) </span>
-<span class="lineno">  132 </span><span class="spaces">                     </span><span class="istickedoff">++ [(resTyp, mkParen' (mkInfixApp' lArg op rArg))] </span>
-<span class="lineno">  133 </span><span class="spaces">                     </span><span class="istickedoff">++ map <span class="nottickedoff">((_1 .- substTy subst) . snd)</span> (drop (i + 2) ls)</span>
-<span class="lineno">  134 </span><span class="spaces">        </span><span class="istickedoff">reduceOperatorApp _ _ = Nothing</span></span>
-<span class="lineno">  135 </span>
-<span class="lineno">  136 </span>mkApp' :: Build -&gt; Build -&gt; Build
-<span class="lineno">  137 </span><span class="decl"><span class="istickedoff">mkApp' (wrapAtom -&gt; f) (wrapAtom -&gt; a) = Right $ mkApp f a</span></span>
-<span class="lineno">  138 </span>
-<span class="lineno">  139 </span>mkInfixApp' :: Build -&gt; Operator -&gt; Build -&gt; Build
-<span class="lineno">  140 </span><span class="decl"><span class="istickedoff">mkInfixApp' (wrapAtom -&gt; lhs) op (wrapAtom -&gt; rhs) = Right $ mkInfixApp lhs op rhs</span></span>
-<span class="lineno">  141 </span>
-<span class="lineno">  142 </span>mkParen' :: Build -&gt; Build
-<span class="lineno">  143 </span><span class="decl"><span class="istickedoff">mkParen' (wrapAtom -&gt; e) = Right $ mkParen e</span></span>
+<span class="lineno">   90 </span>type Build = Either Atom Expr
+<span class="lineno">   91 </span>
+<span class="lineno">   92 </span>extractAtoms :: Expr -&gt; Ghc [(GHC.Type, Atom)]
+<span class="lineno">   93 </span><span class="decl"><span class="istickedoff">extractAtoms e = do lits &lt;- mapM (\l -&gt; (, LiteralA l) &lt;$&gt; literalType l) (e ^? biplateRef)</span>
+<span class="lineno">   94 </span><span class="spaces">                    </span><span class="istickedoff">return $ sortOn (srcSpanStart . atomRange . snd) </span>
+<span class="lineno">   95 </span><span class="spaces">                           </span><span class="istickedoff">$ map (\n -&gt; (idType $ semanticsId (n ^. simpleName), NameA n)) (e ^? biplateRef) </span>
+<span class="lineno">   96 </span><span class="spaces">                               </span><span class="istickedoff">++ map (\o -&gt; (idType $ semanticsId (o ^. operatorName), OperatorA o)) (e ^? biplateRef) </span>
+<span class="lineno">   97 </span><span class="spaces">                               </span><span class="istickedoff">++ lits</span></span>
+<span class="lineno">   98 </span>
+<span class="lineno">   99 </span>atomRange :: Atom -&gt; SrcSpan
+<span class="lineno">  100 </span><span class="decl"><span class="istickedoff">atomRange (NameA n) = getRange n</span>
+<span class="lineno">  101 </span><span class="spaces"></span><span class="istickedoff">atomRange (OperatorA n) = getRange n</span>
+<span class="lineno">  102 </span><span class="spaces"></span><span class="istickedoff">atomRange (LiteralA n) = getRange n</span></span>
+<span class="lineno">  103 </span>
+<span class="lineno">  104 </span>wrapAtom :: Build -&gt; Expr
+<span class="lineno">  105 </span><span class="decl"><span class="istickedoff">wrapAtom (Right e) = e</span>
+<span class="lineno">  106 </span><span class="spaces"></span><span class="istickedoff">wrapAtom (Left (NameA n)) = mkVar n</span>
+<span class="lineno">  107 </span><span class="spaces"></span><span class="istickedoff">wrapAtom (Left (OperatorA (NormalOp o))) = <span class="nottickedoff">mkVar (mkParenName o)</span></span>
+<span class="lineno">  108 </span><span class="spaces"></span><span class="istickedoff">wrapAtom (Left (OperatorA (BacktickOp n))) = <span class="nottickedoff">mkVar (mkNormalName n)</span></span>
+<span class="lineno">  109 </span><span class="spaces"></span><span class="istickedoff">wrapAtom (Left (LiteralA l)) = mkLit l</span></span>
+<span class="lineno">  110 </span>
+<span class="lineno">  111 </span>correctParening :: [ClsInst] -&gt; [(GHC.Type, Build)] -&gt; [Build]
+<span class="lineno">  112 </span><span class="decl"><span class="istickedoff">correctParening _ [(_,e)] = [e]</span>
+<span class="lineno">  113 </span><span class="spaces"></span><span class="istickedoff">correctParening insts ls = concatMap (correctParening insts) (reduceAtoms insts ls)</span></span>
+<span class="lineno">  114 </span>
+<span class="lineno">  115 </span>reduceAtoms :: [ClsInst] -&gt; [(GHC.Type, Build)] -&gt; [[(GHC.Type, Build)]]
+<span class="lineno">  116 </span><span class="decl"><span class="istickedoff">reduceAtoms _ [(t,e)] = <span class="nottickedoff">[[(t,e)]]</span></span>
+<span class="lineno">  117 </span><span class="spaces"></span><span class="istickedoff">reduceAtoms insts ls = concatMap (reduceBy insts ls) [0 .. length ls - 2]</span></span>
+<span class="lineno">  118 </span>
+<span class="lineno">  119 </span>reduceBy :: [ClsInst] -&gt; [(GHC.Type, Build)] -&gt; Int -&gt; [[(GHC.Type, Build)]]
+<span class="lineno">  120 </span><span class="decl"><span class="istickedoff">reduceBy insts (zip [0..] -&gt; ls) i = maybeToList (reduceFunctionApp ls i) ++ maybeToList (reduceOperatorApp ls i)</span>
+<span class="lineno">  121 </span><span class="spaces">  </span><span class="istickedoff">where reduceFunctionApp ls i | Just (funT, fun) &lt;- lookup i ls</span>
+<span class="lineno">  122 </span><span class="spaces">                               </span><span class="istickedoff">, Just (argT, arg) &lt;- lookup (i+1) ls</span>
+<span class="lineno">  123 </span><span class="spaces">                               </span><span class="istickedoff">, Just (subst, resTyp) &lt;- appTypeMatches insts funT [argT]</span>
+<span class="lineno">  124 </span><span class="spaces">          </span><span class="istickedoff">= Just $ map ((_1 .- substTy subst) . snd) (take i ls) </span>
+<span class="lineno">  125 </span><span class="spaces">                     </span><span class="istickedoff">++ [(resTyp, mkParen' (mkApp' fun arg))] </span>
+<span class="lineno">  126 </span><span class="spaces">                     </span><span class="istickedoff">++ map ((_1 .- substTy subst) . snd) (drop (i + 2) ls)</span>
+<span class="lineno">  127 </span><span class="spaces">        </span><span class="istickedoff">reduceFunctionApp _ _ = Nothing</span>
+<span class="lineno">  128 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">  129 </span><span class="spaces">        </span><span class="istickedoff">reduceOperatorApp ls i | Just (opT, Left (OperatorA op)) &lt;- lookup i ls</span>
+<span class="lineno">  130 </span><span class="spaces">                               </span><span class="istickedoff">, Just (lArgT, lArg) &lt;- lookup (i-1) ls</span>
+<span class="lineno">  131 </span><span class="spaces">                               </span><span class="istickedoff">, Just (rArgT, rArg) &lt;- lookup (i+1) ls</span>
+<span class="lineno">  132 </span><span class="spaces">                               </span><span class="istickedoff">, Just (subst, resTyp) &lt;- appTypeMatches insts opT [lArgT, rArgT]</span>
+<span class="lineno">  133 </span><span class="spaces">          </span><span class="istickedoff">= Just $ map ((_1 .- substTy subst) . snd) (take (i - 1) ls) </span>
+<span class="lineno">  134 </span><span class="spaces">                     </span><span class="istickedoff">++ [(resTyp, mkParen' (mkInfixApp' lArg op rArg))] </span>
+<span class="lineno">  135 </span><span class="spaces">                     </span><span class="istickedoff">++ map <span class="nottickedoff">((_1 .- substTy subst) . snd)</span> (drop (i + 2) ls)</span>
+<span class="lineno">  136 </span><span class="spaces">        </span><span class="istickedoff">reduceOperatorApp _ _ = Nothing</span></span>
+<span class="lineno">  137 </span>
+<span class="lineno">  138 </span>mkApp' :: Build -&gt; Build -&gt; Build
+<span class="lineno">  139 </span><span class="decl"><span class="istickedoff">mkApp' (wrapAtom -&gt; f) (wrapAtom -&gt; a) = Right $ mkApp f a</span></span>
+<span class="lineno">  140 </span>
+<span class="lineno">  141 </span>mkInfixApp' :: Build -&gt; Operator -&gt; Build -&gt; Build
+<span class="lineno">  142 </span><span class="decl"><span class="istickedoff">mkInfixApp' (wrapAtom -&gt; lhs) op (wrapAtom -&gt; rhs) = Right $ mkInfixApp lhs op rhs</span></span>
+<span class="lineno">  143 </span>
+<span class="lineno">  144 </span>mkParen' :: Build -&gt; Build
+<span class="lineno">  145 </span><span class="decl"><span class="istickedoff">mkParen' (wrapAtom -&gt; e) = Right $ mkParen e</span></span>
 
 </pre>
 </body>
