@@ -900,6 +900,9 @@ mkCase :: Expr -> [Alt] -> Expr
 -- | Create a do-notation expressions (<tt> do x &lt;- act1; act2 </tt>)
 mkDoBlock :: [Stmt] -> Expr
 
+-- | Create a mdo-notation expressions (<tt> mdo x &lt;- act1; act2 </tt>)
+mkMDoBlock :: [Stmt] -> Expr
+
 -- | Create a tuple expression (<tt> (e1, e2, e3) </tt>)
 mkTuple :: [Expr] -> Expr
 
@@ -2017,6 +2020,8 @@ module Language.Haskell.Tools.Rewrite.Match.Exprs
 --   -&gt; expr2 </tt>)
 
 -- | Do-notation expressions (<tt> do x &lt;- act1; act2 </tt>)
+
+-- | MDo-notation expressions (<tt> mdo x &lt;- act1; act2 </tt>)
 
 -- | Tuple expression (<tt> (e1, e2, e3) </tt>)
 

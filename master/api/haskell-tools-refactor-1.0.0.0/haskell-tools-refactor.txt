@@ -292,8 +292,11 @@ referenceBy :: ([String] -> Name -> Ann nt IdDom SrcTemplateStage) -> Name -> [A
 -- | Defines utility methods that prepare Haskell modules for refactoring
 module Language.Haskell.Tools.Refactor.Prepare
 
+-- | Type synonym for module names.
+type ModuleName = String
+
 -- | A quick function to try the refactorings
-tryRefactor :: (RealSrcSpan -> Refactoring) -> String -> String -> IO ()
+tryRefactor :: (RealSrcSpan -> Refactoring) -> String -> ModuleName -> IO ()
 
 -- | Adjust the source range to be applied to the refactored module
 correctRefactorSpan :: UnnamedModule -> RealSrcSpan -> RealSrcSpan
@@ -322,11 +325,11 @@ deregisterDirs :: [FilePath] -> Ghc ()
 
 -- | Translates module name and working directory into the name of the file
 --   where the given module should be defined
-toFileName :: FilePath -> String -> FilePath
+toFileName :: FilePath -> ModuleName -> FilePath
 
 -- | Translates module name and working directory into the name of the file
 --   where the boot module should be defined
-toBootFileName :: FilePath -> String -> FilePath
+toBootFileName :: FilePath -> ModuleName -> FilePath
 
 -- | Get the source directory where the module is located.
 getSourceDir :: ModSummary -> IO FilePath
@@ -338,9 +341,13 @@ keyFromMS :: ModSummary -> SourceFileKey
 -- | Gets the module name
 getModSumName :: ModSummary -> String
 
+-- | Load the AST of a module given by the working directory and module
+--   name.
+loadModuleAST :: FilePath -> ModuleName -> Ghc TypedModule
+
 -- | Load the summary of a module given by the working directory and module
 --   name.
-loadModule :: String -> String -> Ghc ModSummary
+loadModule :: FilePath -> ModuleName -> Ghc ModSummary
 
 -- | The final version of our AST, with type infromation added
 type TypedModule = Ann UModule IdDom SrcTemplateStage
@@ -474,7 +481,7 @@ isAnnNothing :: () => AnnMaybeG e d s -> Bool
 --   did it pass. However after transforming the GHC representation to our
 --   AST, the domain keeps the same. The domain is not applied to the AST
 --   elements that are generated while refactoring.
-type Domain d = (Typeable * d, Data d, (~) * SemanticInfo' d SameInfoDefaultCls NoSemanticInfo, Data SemanticInfo' d SameInfoNameCls, Data SemanticInfo' d SameInfoLitCls, Data SemanticInfo' d SameInfoExprCls, Data SemanticInfo' d SameInfoImportCls, Data SemanticInfo' d SameInfoModuleCls, Data SemanticInfo' d SameInfoWildcardCls)
+type Domain d = (Typeable * d, Data d, (~) * SemanticInfo' d SemaInfoDefaultCls NoSemanticInfo, Data SemanticInfo' d SemaInfoNameCls, Data SemanticInfo' d SemaInfoLitCls, Data SemanticInfo' d SemaInfoExprCls, Data SemanticInfo' d SemaInfoImportCls, Data SemanticInfo' d SemaInfoModuleCls, Data SemanticInfo' d SemaInfoWildcardCls)
 
 -- | With this domain, semantic information can be parameterized. In
 --   practice it is only used if the compilation cannot proceed past the
