@@ -1,0 +1,244 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE ConstraintKinds, FlexibleContexts, MultiWayIf, RankNTypes, ScopedTypeVariables, TypeApplications, TypeFamilies, ViewPatterns #-}
+<span class="lineno">    2 </span>module Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
+<span class="lineno">    3 </span>  (extractBinding', tryItOut, extractBindingRefactoring) where
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>import qualified GHC
+<span class="lineno">    6 </span>import Name (nameModule_maybe)
+<span class="lineno">    7 </span>import qualified OccName as GHC (occNameString)
+<span class="lineno">    8 </span>import OccName (HasOccName(..))
+<span class="lineno">    9 </span>import PrelNames
+<span class="lineno">   10 </span>import RdrName (isOrig_maybe)
+<span class="lineno">   11 </span>import SrcLoc
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>import Control.Monad.State
+<span class="lineno">   14 </span>import Control.Reference
+<span class="lineno">   15 </span>import Data.Generics.Uniplate.Data ()
+<span class="lineno">   16 </span>import Data.List (find, intersperse)
+<span class="lineno">   17 </span>import Data.Maybe
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>import Language.Haskell.Tools.Refactor
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>extractBindingRefactoring :: RefactoringChoice
+<span class="lineno">   23 </span><span class="decl"><span class="istickedoff">extractBindingRefactoring = NamingRefactoring &quot;ExtractBinding&quot; (\loc s -&gt; localRefactoring (extractBinding' loc s))</span></span>
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>tryItOut :: String -&gt; String -&gt; String -&gt; IO ()
+<span class="lineno">   26 </span><span class="decl"><span class="nottickedoff">tryItOut mod sp name = tryRefactor (localRefactoring . flip extractBinding' name) mod sp</span></span>
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>extractBinding' :: RealSrcSpan -&gt; String -&gt; LocalRefactoring
+<span class="lineno">   29 </span><span class="decl"><span class="istickedoff">extractBinding' sp name mod</span>
+<span class="lineno">   30 </span><span class="spaces">  </span><span class="istickedoff">= if <span class="tickonlytrue">isNothing (isValidBindingName name)</span></span>
+<span class="lineno">   31 </span><span class="spaces">      </span><span class="istickedoff">then extractBinding sp (nodesContaining sp) (nodesContaining sp) name mod</span>
+<span class="lineno">   32 </span><span class="spaces">      </span><span class="istickedoff">else <span class="nottickedoff">refactError $ &quot;The given name is not a valid for the extracted binding: &quot; ++ fromJust (isValidBindingName name)</span></span></span>
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>-- | Safely performs the transformation to introduce the local binding and replace the expression with the call.
+<span class="lineno">   35 </span>-- Checks if the introduction of the name causes a name conflict.
+<span class="lineno">   36 </span>extractBinding :: RealSrcSpan -&gt; Simple Traversal Module ValueBind
+<span class="lineno">   37 </span>                   -&gt; Simple Traversal ValueBind Expr
+<span class="lineno">   38 </span>                   -&gt; String -&gt; LocalRefactoring
+<span class="lineno">   39 </span><span class="decl"><span class="istickedoff">extractBinding sp selectDecl selectExpr name mod</span>
+<span class="lineno">   40 </span><span class="spaces">  </span><span class="istickedoff">= let conflicting = filter (isConflicting name) ((take 1 $ reverse $ mod ^? selectDecl) ^? biplateRef :: [QualifiedName])</span>
+<span class="lineno">   41 </span><span class="spaces">        </span><span class="istickedoff">exprRanges = map getRange (mod ^? selectDecl &amp; selectExpr)</span>
+<span class="lineno">   42 </span><span class="spaces">        </span><span class="istickedoff">decl = last (mod ^? selectDecl)</span>
+<span class="lineno">   43 </span><span class="spaces">        </span><span class="istickedoff">declPats = decl ^? valBindPat &amp;+&amp; funBindMatches &amp; annList &amp; matchLhs</span>
+<span class="lineno">   44 </span><span class="spaces">                                            </span><span class="istickedoff">&amp; (matchLhsArgs &amp; annList &amp;+&amp; matchLhsLhs &amp;+&amp; matchLhsRhs &amp;+&amp; matchLhsArgs &amp; annList)</span>
+<span class="lineno">   45 </span><span class="spaces">     </span><span class="istickedoff">in case exprRanges of</span>
+<span class="lineno">   46 </span><span class="spaces">          </span><span class="istickedoff">(reverse -&gt; exprRange:_) -&gt;</span>
+<span class="lineno">   47 </span><span class="spaces">            </span><span class="istickedoff">if | not (null conflicting)</span>
+<span class="lineno">   48 </span><span class="spaces">               </span><span class="istickedoff">-&gt; refactError $ <span class="nottickedoff">&quot;The given name causes name conflict with the definition(s) at: &quot; ++ concat (intersperse &quot;,&quot; (map (shortShowSpanWithFile . getRange) conflicting))</span></span>
+<span class="lineno">   49 </span><span class="spaces">               </span><span class="istickedoff">| any (`containsRange` exprRange) $ map getRange declPats</span>
+<span class="lineno">   50 </span><span class="spaces">               </span><span class="istickedoff">-&gt; refactError <span class="nottickedoff">&quot;Extract binding cannot be applied to view pattern expressions.&quot;</span></span>
+<span class="lineno">   51 </span><span class="spaces">               </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span></span>
+<span class="lineno">   52 </span><span class="spaces">               </span><span class="istickedoff">-&gt; case decl ^? actualContainingExpr exprRange of</span>
+<span class="lineno">   53 </span><span class="spaces">                    </span><span class="istickedoff">expr:_ -&gt; do (res, st) &lt;- runStateT (selectDecl&amp;selectExpr !~ extractThatBind sp name expr $ mod) Nothing</span>
+<span class="lineno">   54 </span><span class="spaces">                                 </span><span class="istickedoff">case st of Just def -&gt; return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False</span>
+<span class="lineno">   55 </span><span class="spaces">                                            </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">refactError &quot;There is no applicable expression to extract.&quot;</span></span>
+<span class="lineno">   56 </span><span class="spaces">                    </span><span class="istickedoff">[] -&gt; <span class="nottickedoff">refactError $ &quot;There is no applicable expression to extract.&quot;</span></span>
+<span class="lineno">   57 </span><span class="spaces">          </span><span class="istickedoff">[] -&gt; <span class="nottickedoff">refactError &quot;There is no applicable expression to extract.&quot;</span></span>
+<span class="lineno">   58 </span><span class="spaces">  </span><span class="istickedoff">where RealSrcSpan sp1 `containsRange` RealSrcSpan sp2 = sp1 `containsSpan` sp2</span>
+<span class="lineno">   59 </span><span class="spaces">        </span><span class="istickedoff">_ `containsRange` _ = <span class="nottickedoff">False</span></span></span>
+<span class="lineno">   60 </span>
+<span class="lineno">   61 </span>-- | Decides if a new name defined to be the given string will conflict with the given AST element
+<span class="lineno">   62 </span>isConflicting :: String -&gt; QualifiedName -&gt; Bool
+<span class="lineno">   63 </span><span class="decl"><span class="istickedoff">isConflicting name used</span>
+<span class="lineno">   64 </span><span class="spaces">  </span><span class="istickedoff">= semanticsDefining used</span>
+<span class="lineno">   65 </span><span class="spaces">      </span><span class="istickedoff">&amp;&amp; (GHC.occNameString . GHC.getOccName &lt;$&gt; semanticsName used) == Just name</span></span>
+<span class="lineno">   66 </span>
+<span class="lineno">   67 </span>-- Replaces the selected expression with a call and generates the called binding.
+<span class="lineno">   68 </span>extractThatBind :: RealSrcSpan -&gt; String -&gt; Expr -&gt; Expr -&gt; StateT (Maybe ValueBind) LocalRefactor Expr
+<span class="lineno">   69 </span><span class="decl"><span class="istickedoff">extractThatBind sp name cont e</span>
+<span class="lineno">   70 </span><span class="spaces">  </span><span class="istickedoff">= do ret &lt;- get -- being in a state monad to only apply the</span>
+<span class="lineno">   71 </span><span class="spaces">       </span><span class="istickedoff">if (isJust ret) then return e</span>
+<span class="lineno">   72 </span><span class="spaces">          </span><span class="istickedoff">else case e of</span>
+<span class="lineno">   73 </span><span class="spaces">            </span><span class="istickedoff">-- only the expression inside the parameters should be extracted</span>
+<span class="lineno">   74 </span><span class="spaces">            </span><span class="istickedoff">Paren {} | <span class="tickonlyfalse">hasParameter</span> -&gt; <span class="nottickedoff">exprInner !~ doExtract name cont $ e</span></span>
+<span class="lineno">   75 </span><span class="spaces">                     </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span>    -&gt; doExtract name cont (fromJust $ e ^? exprInner)</span>
+<span class="lineno">   76 </span><span class="spaces">            </span><span class="istickedoff">-- a single variable cannot be extracted (would lead to precedence problems)</span>
+<span class="lineno">   77 </span><span class="spaces">            </span><span class="istickedoff">Var {} -&gt; lift $ refactError <span class="nottickedoff">&quot;The selected expression is too simple to be extracted.&quot;</span></span>
+<span class="lineno">   78 </span><span class="spaces">            </span><span class="istickedoff">-- extract operator sections</span>
+<span class="lineno">   79 </span><span class="spaces">            </span><span class="istickedoff">InfixApp lhs op rhs</span>
+<span class="lineno">   80 </span><span class="spaces">               </span><span class="istickedoff">| (lhs `outside` sp) &amp;&amp; (sp `encloses` op) &amp;&amp; (sp `encloses` rhs)</span>
+<span class="lineno">   81 </span><span class="spaces">               </span><span class="istickedoff">-&gt; do let params = getExternalBinds cont rhs ++ opName op</span>
+<span class="lineno">   82 </span><span class="spaces">                     </span><span class="istickedoff">put (Just (generateBind name (map mkVarPat params) (mkRightSection op (parenIfInfix rhs))))</span>
+<span class="lineno">   83 </span><span class="spaces">                     </span><span class="istickedoff">return (mkApp (generateCall name params) (parenIfInfix lhs))</span>
+<span class="lineno">   84 </span><span class="spaces">               </span><span class="istickedoff">| (sp `encloses` lhs) &amp;&amp; (sp `encloses` op) &amp;&amp; (rhs `outside` sp)</span>
+<span class="lineno">   85 </span><span class="spaces">               </span><span class="istickedoff">-&gt; do let params = getExternalBinds cont lhs ++ opName op</span>
+<span class="lineno">   86 </span><span class="spaces">                     </span><span class="istickedoff">put (Just (generateBind name (map <span class="nottickedoff">mkVarPat</span> params) (mkLeftSection (parenIfInfix lhs) op)))</span>
+<span class="lineno">   87 </span><span class="spaces">                     </span><span class="istickedoff">return (mkApp (generateCall name params) (parenIfInfix rhs))</span>
+<span class="lineno">   88 </span><span class="spaces">              </span><span class="istickedoff">where parenIfInfix e@(InfixApp {}) = mkParen e</span>
+<span class="lineno">   89 </span><span class="spaces">                    </span><span class="istickedoff">parenIfInfix e = e</span>
+<span class="lineno">   90 </span><span class="spaces">            </span><span class="istickedoff">-- extract parts of known associative infix operators</span>
+<span class="lineno">   91 </span><span class="spaces">            </span><span class="istickedoff">InfixApp (InfixApp lhs lop mid) rop rhs -- correction for left-associative operators</span>
+<span class="lineno">   92 </span><span class="spaces">              </span><span class="istickedoff">| (Just lName, Just rName) &lt;- (semanticsName (lop ^. operatorName), semanticsName (rop ^. operatorName))</span>
+<span class="lineno">   93 </span><span class="spaces">              </span><span class="istickedoff">, (lop `outside` sp) &amp;&amp; (sp `encloses` mid) &amp;&amp; (sp `encloses` rhs)</span>
+<span class="lineno">   94 </span><span class="spaces">                  </span><span class="istickedoff">&amp;&amp; lName == rName &amp;&amp; isKnownCommutativeOp lName</span>
+<span class="lineno">   95 </span><span class="spaces">              </span><span class="istickedoff">-&gt; do let params = getExternalBinds <span class="nottickedoff">cont</span> mid ++ opName rop ++ getExternalBinds <span class="nottickedoff">cont</span> rhs</span>
+<span class="lineno">   96 </span><span class="spaces">                    </span><span class="istickedoff">put (Just (generateBind name (map <span class="nottickedoff">mkVarPat</span> params) (mkInfixApp mid rop rhs)))</span>
+<span class="lineno">   97 </span><span class="spaces">                    </span><span class="istickedoff">return (mkInfixApp lhs lop (generateCall name params))</span>
+<span class="lineno">   98 </span><span class="spaces">            </span><span class="istickedoff">InfixApp lhs lop (InfixApp mid rop rhs) -- correction for right-associative operators</span>
+<span class="lineno">   99 </span><span class="spaces">              </span><span class="istickedoff">| (Just lName, Just rName) &lt;- (semanticsName (lop ^. operatorName), semanticsName (rop ^. operatorName))</span>
+<span class="lineno">  100 </span><span class="spaces">              </span><span class="istickedoff">, <span class="tickonlytrue">(sp `encloses` lhs) &amp;&amp; (sp `encloses` mid) &amp;&amp; (rop `outside` sp)</span></span>
+<span class="lineno">  101 </span><span class="spaces">                  </span><span class="istickedoff"><span class="tickonlytrue">&amp;&amp; lName == rName &amp;&amp; isKnownCommutativeOp lName</span></span>
+<span class="lineno">  102 </span><span class="spaces">              </span><span class="istickedoff">-&gt; do let params = getExternalBinds cont lhs ++ opName lop ++ getExternalBinds cont mid</span>
+<span class="lineno">  103 </span><span class="spaces">                    </span><span class="istickedoff">put (Just (generateBind name (map <span class="nottickedoff">mkVarPat</span> params) (mkInfixApp lhs lop mid)))</span>
+<span class="lineno">  104 </span><span class="spaces">                    </span><span class="istickedoff">return (mkInfixApp (generateCall name params) rop rhs)</span>
+<span class="lineno">  105 </span><span class="spaces">            </span><span class="istickedoff">-- normal case</span>
+<span class="lineno">  106 </span><span class="spaces">            </span><span class="istickedoff">el | <span class="tickonlyfalse">isParenLikeExpr el &amp;&amp; hasParameter</span> -&gt; <span class="nottickedoff">mkParen &lt;$&gt; doExtract name cont e</span></span>
+<span class="lineno">  107 </span><span class="spaces">               </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> -&gt; doExtract name cont e</span>
+<span class="lineno">  108 </span><span class="spaces">  </span><span class="istickedoff">where hasParameter = not (null (getExternalBinds cont e))</span>
+<span class="lineno">  109 </span><span class="spaces">        </span><span class="istickedoff">-- True if the elem is completely inside the given source range</span>
+<span class="lineno">  110 </span><span class="spaces">        </span><span class="istickedoff">sp `encloses` elem = case getRange elem of RealSrcSpan enc -&gt; sp `containsSpan` enc</span>
+<span class="lineno">  111 </span><span class="spaces">                                                   </span><span class="istickedoff">_               -&gt; <span class="nottickedoff">False</span></span>
+<span class="lineno">  112 </span><span class="spaces">        </span><span class="istickedoff">-- True if the elem is completely outside the given range (no overlapping)</span>
+<span class="lineno">  113 </span><span class="spaces">        </span><span class="istickedoff">elem `outside` sp = case getRange elem of RealSrcSpan out -&gt; realSrcSpanStart sp &gt; realSrcSpanEnd out</span>
+<span class="lineno">  114 </span><span class="spaces">                                                                       </span><span class="istickedoff">|| realSrcSpanEnd sp &lt; realSrcSpanStart out</span>
+<span class="lineno">  115 </span><span class="spaces">                                                  </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">False</span></span>
+<span class="lineno">  116 </span><span class="spaces">        </span><span class="istickedoff">opName op = case semanticsName (op ^. operatorName) of</span>
+<span class="lineno">  117 </span><span class="spaces">                      </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">[]</span></span>
+<span class="lineno">  118 </span><span class="spaces">                      </span><span class="istickedoff">Just n -&gt; [mkUnqualName' n | not $ n `inScope` semanticsScope cont]</span>
+<span class="lineno">  119 </span><span class="spaces">        </span><span class="istickedoff">isKnownCommutativeOp :: GHC.Name -&gt; Bool</span>
+<span class="lineno">  120 </span><span class="spaces">        </span><span class="istickedoff">isKnownCommutativeOp n = isJust $ find (maybe <span class="nottickedoff">False</span> (\(mn, occ) -&gt; (nameModule_maybe n) == Just mn &amp;&amp; occName n == occ) . isOrig_maybe) ops</span>
+<span class="lineno">  121 </span><span class="spaces">          </span><span class="istickedoff">where ops = [plus_RDR, times_RDR, append_RDR, and_RDR, {- or_RDR, -} compose_RDR]</span></span> -- somehow or is missing... WHY?
+<span class="lineno">  122 </span>
+<span class="lineno">  123 </span>-- | Adds a local binding to the where clause of the enclosing binding
+<span class="lineno">  124 </span>addLocalBinding :: SrcSpan -&gt; ValueBind -&gt; ValueBind -&gt; State Bool ValueBind
+<span class="lineno">  125 </span>-- this uses the state monad to only add the local binding to the first selected element
+<span class="lineno">  126 </span><span class="decl"><span class="istickedoff">addLocalBinding exprRange local bind</span>
+<span class="lineno">  127 </span><span class="spaces">  </span><span class="istickedoff">= do done &lt;- get</span>
+<span class="lineno">  128 </span><span class="spaces">       </span><span class="istickedoff">if not done then do put True</span>
+<span class="lineno">  129 </span><span class="spaces">                           </span><span class="istickedoff">return $ indentBody $ doAddBinding exprRange local bind</span>
+<span class="lineno">  130 </span><span class="spaces">                   </span><span class="istickedoff">else return bind</span>
+<span class="lineno">  131 </span><span class="spaces">  </span><span class="istickedoff">where</span>
+<span class="lineno">  132 </span><span class="spaces">    </span><span class="istickedoff">doAddBinding _ local sb@(SimpleBind {}) = valBindLocals .- insertLocalBind local $ sb</span>
+<span class="lineno">  133 </span><span class="spaces">    </span><span class="istickedoff">doAddBinding (RealSrcSpan rng) local fb@(FunctionBind {})</span>
+<span class="lineno">  134 </span><span class="spaces">      </span><span class="istickedoff">= funBindMatches &amp; annList &amp; filtered (isInside rng) &amp; matchBinds</span>
+<span class="lineno">  135 </span><span class="spaces">          </span><span class="istickedoff">.- insertLocalBind local $ fb</span>
+<span class="lineno">  136 </span><span class="spaces">    </span><span class="istickedoff">doAddBinding _ _ _ = <span class="nottickedoff">error &quot;doAddBinding: invalid expression range&quot;</span></span>
+<span class="lineno">  137 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  138 </span><span class="spaces">    </span><span class="istickedoff">indentBody = (valBindRhs .- updIndent) . (funBindMatches &amp; annList &amp; matchLhs .- updIndent) . (funBindMatches &amp; annList &amp; matchRhs .- updIndent)</span>
+<span class="lineno">  139 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  140 </span><span class="spaces">    </span><span class="istickedoff">updIndent :: SourceInfoTraversal elem =&gt; elem dom SrcTemplateStage -&gt; elem dom SrcTemplateStage</span>
+<span class="lineno">  141 </span><span class="spaces">    </span><span class="istickedoff">updIndent = setMinimalIndent 4</span></span>
+<span class="lineno">  142 </span>
+<span class="lineno">  143 </span>-- | Puts a value definition into a list of local binds
+<span class="lineno">  144 </span>insertLocalBind :: ValueBind -&gt; MaybeLocalBinds -&gt; MaybeLocalBinds
+<span class="lineno">  145 </span><span class="decl"><span class="istickedoff">insertLocalBind toInsert locals</span>
+<span class="lineno">  146 </span><span class="spaces">  </span><span class="istickedoff">| isAnnNothing locals = mkLocalBinds [mkLocalValBind toInsert]</span>
+<span class="lineno">  147 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = annJust &amp; localBinds .- insertWhere True (mkLocalValBind toInsert) (const True) isNothing $ locals</span></span>
+<span class="lineno">  148 </span>
+<span class="lineno">  149 </span>-- | All expressions that are bound stronger than function application.
+<span class="lineno">  150 </span>isParenLikeExpr :: Expr -&gt; Bool
+<span class="lineno">  151 </span><span class="decl"><span class="istickedoff">isParenLikeExpr (If {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  152 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (Paren {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  153 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (List {}) = True</span>
+<span class="lineno">  154 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (ParArray {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  155 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (LeftSection {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  156 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (RightSection {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  157 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (RecCon {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  158 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (RecUpdate {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  159 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (Enum {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  160 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (ParArrayEnum {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  161 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (ListComp {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  162 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (ParArrayComp {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  163 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (BracketExpr {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  164 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (SpliceExpr {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  165 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr (QuasiQuoteExpr {}) = <span class="nottickedoff">True</span></span>
+<span class="lineno">  166 </span><span class="spaces"></span><span class="istickedoff">isParenLikeExpr _ = False</span></span>
+<span class="lineno">  167 </span>
+<span class="lineno">  168 </span>-- | Replaces the expression with the call and stores the binding of the call in its state
+<span class="lineno">  169 </span>doExtract :: String -&gt; Expr -&gt; Expr -&gt; StateT (Maybe ValueBind) LocalRefactor Expr
+<span class="lineno">  170 </span><span class="decl"><span class="istickedoff">doExtract name cont e@(Lambda (AnnList bindings) inner)</span>
+<span class="lineno">  171 </span><span class="spaces">  </span><span class="istickedoff">= do let params = getExternalBinds cont e</span>
+<span class="lineno">  172 </span><span class="spaces">       </span><span class="istickedoff">put (Just (generateBind name (map <span class="nottickedoff">mkVarPat</span> params ++ bindings) inner))</span>
+<span class="lineno">  173 </span><span class="spaces">       </span><span class="istickedoff">return (generateCall name params)</span>
+<span class="lineno">  174 </span><span class="spaces"></span><span class="istickedoff">doExtract name cont e</span>
+<span class="lineno">  175 </span><span class="spaces">  </span><span class="istickedoff">= do let params = getExternalBinds cont e</span>
+<span class="lineno">  176 </span><span class="spaces">       </span><span class="istickedoff">put (Just (generateBind name (map mkVarPat params) e))</span>
+<span class="lineno">  177 </span><span class="spaces">       </span><span class="istickedoff">return (generateCall name params)</span></span>
+<span class="lineno">  178 </span>
+<span class="lineno">  179 </span>-- | Gets the values that have to be passed to the extracted definition
+<span class="lineno">  180 </span>getExternalBinds :: Expr -&gt; Expr -&gt; [Name]
+<span class="lineno">  181 </span><span class="decl"><span class="istickedoff">getExternalBinds cont expr = map exprToName $ keepFirsts $ filter isApplicableName (expr ^? uniplateRef)</span>
+<span class="lineno">  182 </span><span class="spaces">  </span><span class="istickedoff">where isApplicableName (getExprNameInfo -&gt; Just nm) = inScopeForOriginal nm &amp;&amp; notInScopeForExtracted nm</span>
+<span class="lineno">  183 </span><span class="spaces">        </span><span class="istickedoff">isApplicableName _ = False</span>
+<span class="lineno">  184 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  185 </span><span class="spaces">        </span><span class="istickedoff">getExprNameInfo :: Expr -&gt; Maybe GHC.Name</span>
+<span class="lineno">  186 </span><span class="spaces">        </span><span class="istickedoff">getExprNameInfo expr = semanticsName =&lt;&lt; (listToMaybe $ expr ^? (exprName&amp;simpleName &amp;+&amp; exprOperator&amp;operatorName))</span>
+<span class="lineno">  187 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  188 </span><span class="spaces">        </span><span class="istickedoff">-- | Creates the parameter value to pass the name (operators are passed in parentheses)</span>
+<span class="lineno">  189 </span><span class="spaces">        </span><span class="istickedoff">exprToName :: Expr -&gt; Name</span>
+<span class="lineno">  190 </span><span class="spaces">        </span><span class="istickedoff">exprToName e | Just n &lt;- e ^? exprName                     = n</span>
+<span class="lineno">  191 </span><span class="spaces">                     </span><span class="istickedoff">| Just op &lt;- <span class="nottickedoff">e ^? exprOperator &amp; operatorName</span> = <span class="nottickedoff">mkParenName op</span></span>
+<span class="lineno">  192 </span><span class="spaces">                     </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span>                                   = <span class="nottickedoff">error &quot;exprToName: name not found&quot;</span></span>
+<span class="lineno">  193 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  194 </span><span class="spaces">        </span><span class="istickedoff">notInScopeForExtracted :: GHC.Name -&gt; Bool</span>
+<span class="lineno">  195 </span><span class="spaces">        </span><span class="istickedoff">notInScopeForExtracted n = not $ n `inScope` semanticsScope cont</span>
+<span class="lineno">  196 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  197 </span><span class="spaces">        </span><span class="istickedoff">inScopeForOriginal :: GHC.Name -&gt; Bool</span>
+<span class="lineno">  198 </span><span class="spaces">        </span><span class="istickedoff">inScopeForOriginal n = n `inScope` semanticsScope expr</span>
+<span class="lineno">  199 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  200 </span><span class="spaces">        </span><span class="istickedoff">keepFirsts (e:rest) = e : keepFirsts (filter (/= e) rest)</span>
+<span class="lineno">  201 </span><span class="spaces">        </span><span class="istickedoff">keepFirsts [] = []</span></span>
+<span class="lineno">  202 </span>
+<span class="lineno">  203 </span>actualContainingExpr :: SrcSpan -&gt; Simple Traversal ValueBind Expr
+<span class="lineno">  204 </span><span class="decl"><span class="istickedoff">actualContainingExpr (RealSrcSpan rng) = accessRhs &amp; accessExpr</span>
+<span class="lineno">  205 </span><span class="spaces">  </span><span class="istickedoff">where accessRhs :: Simple Traversal ValueBind Rhs</span>
+<span class="lineno">  206 </span><span class="spaces">        </span><span class="istickedoff">accessRhs = valBindRhs &amp;+&amp; funBindMatches &amp; annList &amp; filtered (rng `isInside`) &amp; matchRhs</span>
+<span class="lineno">  207 </span><span class="spaces">        </span><span class="istickedoff">accessExpr :: Simple Traversal Rhs Expr</span>
+<span class="lineno">  208 </span><span class="spaces">        </span><span class="istickedoff">accessExpr = rhsExpr &amp;+&amp; <span class="nottickedoff">rhsGuards &amp; annList &amp; filtered (rng `isInside`) &amp; guardExpr</span></span>
+<span class="lineno">  209 </span><span class="spaces"></span><span class="istickedoff">actualContainingExpr _ = <span class="nottickedoff">error &quot;actualContainingExpr: not a real range&quot;</span></span></span>
+<span class="lineno">  210 </span>
+<span class="lineno">  211 </span>-- | Generates the expression that calls the local binding
+<span class="lineno">  212 </span>generateCall :: String -&gt; [Name] -&gt; Expr
+<span class="lineno">  213 </span><span class="decl"><span class="istickedoff">generateCall name args = foldl (\e a -&gt; mkApp e (mkVar a)) (mkVar $ mkNormalName $ mkSimpleName name) args</span></span>
+<span class="lineno">  214 </span>
+<span class="lineno">  215 </span>-- | Generates the local binding for the selected expression
+<span class="lineno">  216 </span>generateBind :: String -&gt; [Pattern] -&gt; Expr -&gt; ValueBind
+<span class="lineno">  217 </span><span class="decl"><span class="istickedoff">generateBind name [] e = mkSimpleBind (mkVarPat $ mkNormalName $ mkSimpleName name) (mkUnguardedRhs e) Nothing</span>
+<span class="lineno">  218 </span><span class="spaces"></span><span class="istickedoff">generateBind name args e = mkFunctionBind [mkMatch (mkMatchLhs (mkNormalName $ mkSimpleName name) args) (mkUnguardedRhs e) Nothing]</span></span>
+<span class="lineno">  219 </span>
+<span class="lineno">  220 </span>isValidBindingName :: String -&gt; Maybe String
+<span class="lineno">  221 </span><span class="decl"><span class="istickedoff">isValidBindingName = nameValid Variable</span></span>
+
+</pre>
+</body>
+</html>

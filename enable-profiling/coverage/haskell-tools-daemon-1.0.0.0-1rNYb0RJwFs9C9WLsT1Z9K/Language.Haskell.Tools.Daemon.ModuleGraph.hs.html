@@ -1,0 +1,114 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | Creating a dependency graph of the modules loaded into a session.
+<span class="lineno">    2 </span>-- Code copied from GHC because it is not public in GhcMake module
+<span class="lineno">    3 </span>module Language.Haskell.Tools.Daemon.ModuleGraph
+<span class="lineno">    4 </span>  (moduleGraphNodes, getModFromNode, dependentModules, supportingModules) where
+<span class="lineno">    5 </span>
+<span class="lineno">    6 </span>import Control.Monad (Monad(..), Functor(..), filterM)
+<span class="lineno">    7 </span>import qualified Data.Map as Map (fromList, Map, lookup)
+<span class="lineno">    8 </span>import Data.Maybe (Maybe(..), mapMaybe, catMaybes)
+<span class="lineno">    9 </span>
+<span class="lineno">   10 </span>import Digraph as GHC
+<span class="lineno">   11 </span>import FastString as GHC (FastString, fsLit)
+<span class="lineno">   12 </span>import GHC
+<span class="lineno">   13 </span>import HscTypes as GHC
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>type NodeKey   = (ModuleName, HscSource)
+<span class="lineno">   16 </span>type NodeMap a = Map.Map NodeKey a
+<span class="lineno">   17 </span>type SummaryNode = (ModSummary, Int, [Int])
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>getModFromNode :: SummaryNode -&gt; ModSummary
+<span class="lineno">   20 </span><span class="decl"><span class="istickedoff">getModFromNode (ms, _, _) = ms</span></span>
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>-- Creates the dependency graph of modules currently loaded. Used for checking which modules need
+<span class="lineno">   23 </span>-- to be reloaded after a recompilation.
+<span class="lineno">   24 </span>moduleGraphNodes :: Bool -&gt; [ModSummary]
+<span class="lineno">   25 </span>  -&gt; (Graph SummaryNode, HscSource -&gt; ModuleName -&gt; Maybe SummaryNode)
+<span class="lineno">   26 </span><span class="decl"><span class="istickedoff">moduleGraphNodes drop_hs_boot_nodes summaries = (graphFromEdgedVerticesOrd nodes, lookup_node)</span>
+<span class="lineno">   27 </span><span class="spaces">  </span><span class="istickedoff">where</span>
+<span class="lineno">   28 </span><span class="spaces">    </span><span class="istickedoff">numbered_summaries = zip summaries [1..]</span>
+<span class="lineno">   29 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   30 </span><span class="spaces">    </span><span class="istickedoff">lookup_node :: HscSource -&gt; ModuleName -&gt; Maybe SummaryNode</span>
+<span class="lineno">   31 </span><span class="spaces">    </span><span class="istickedoff">lookup_node hs_src mod = Map.lookup (mod, hs_src) node_map</span>
+<span class="lineno">   32 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   33 </span><span class="spaces">    </span><span class="istickedoff">lookup_key :: HscSource -&gt; ModuleName -&gt; Maybe Int</span>
+<span class="lineno">   34 </span><span class="spaces">    </span><span class="istickedoff">lookup_key hs_src mod = fmap summaryNodeKey (lookup_node hs_src mod)</span>
+<span class="lineno">   35 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   36 </span><span class="spaces">    </span><span class="istickedoff">node_map :: NodeMap SummaryNode</span>
+<span class="lineno">   37 </span><span class="spaces">    </span><span class="istickedoff">node_map = Map.fromList [ ((moduleName (ms_mod s), (ms_hsc_src s)), node)</span>
+<span class="lineno">   38 </span><span class="spaces">                            </span><span class="istickedoff">| node@(s, _, _) &lt;- nodes ]</span>
+<span class="lineno">   39 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   40 </span><span class="spaces">    </span><span class="istickedoff">nodes :: [SummaryNode]</span>
+<span class="lineno">   41 </span><span class="spaces">    </span><span class="istickedoff">nodes = [ (s, key, out_keys)</span>
+<span class="lineno">   42 </span><span class="spaces">            </span><span class="istickedoff">| (s, key) &lt;- numbered_summaries</span>
+<span class="lineno">   43 </span><span class="spaces">            </span><span class="istickedoff">, <span class="tickonlytrue">not (isBootSummary s &amp;&amp; drop_hs_boot_nodes)</span></span>
+<span class="lineno">   44 </span><span class="spaces">            </span><span class="istickedoff">, let out_keys = out_edge_keys hs_boot_key (map unLoc (ms_home_srcimps s)) ++</span>
+<span class="lineno">   45 </span><span class="spaces">                             </span><span class="istickedoff">out_edge_keys HsSrcFile   (map unLoc (ms_home_imps s)) ++</span>
+<span class="lineno">   46 </span><span class="spaces">                             </span><span class="istickedoff">(-- see [boot-edges] below</span>
+<span class="lineno">   47 </span><span class="spaces">                              </span><span class="istickedoff">if drop_hs_boot_nodes || ms_hsc_src s == HsBootFile</span>
+<span class="lineno">   48 </span><span class="spaces">                              </span><span class="istickedoff">then []</span>
+<span class="lineno">   49 </span><span class="spaces">                              </span><span class="istickedoff">else case lookup_key HsBootFile (ms_mod_name s) of</span>
+<span class="lineno">   50 </span><span class="spaces">                                    </span><span class="istickedoff">Nothing -&gt; []</span>
+<span class="lineno">   51 </span><span class="spaces">                                    </span><span class="istickedoff">Just k  -&gt; [k]) ]</span>
+<span class="lineno">   52 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   53 </span><span class="spaces">    </span><span class="istickedoff">hs_boot_key | <span class="tickonlyfalse">drop_hs_boot_nodes</span> = <span class="nottickedoff">HsSrcFile</span></span>
+<span class="lineno">   54 </span><span class="spaces">                </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span>          = HsBootFile</span>
+<span class="lineno">   55 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   56 </span><span class="spaces">    </span><span class="istickedoff">out_edge_keys :: HscSource -&gt; [ModuleName] -&gt; [Int]</span>
+<span class="lineno">   57 </span><span class="spaces">    </span><span class="istickedoff">out_edge_keys hi_boot ms = mapMaybe (lookup_key hi_boot) ms</span></span>
+<span class="lineno">   58 </span>
+<span class="lineno">   59 </span>summaryNodeKey :: SummaryNode -&gt; Int
+<span class="lineno">   60 </span><span class="decl"><span class="istickedoff">summaryNodeKey (_, k, _) = k</span></span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>ms_home_imps :: ModSummary -&gt; [Located ModuleName]
+<span class="lineno">   63 </span><span class="decl"><span class="istickedoff">ms_home_imps = home_imps . ms_imps</span></span>
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>ms_home_srcimps :: ModSummary -&gt; [Located ModuleName]
+<span class="lineno">   66 </span><span class="decl"><span class="istickedoff">ms_home_srcimps = home_imps . ms_srcimps</span></span>
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>home_imps :: [(Maybe FastString, Located ModuleName)] -&gt; [Located ModuleName]
+<span class="lineno">   69 </span><span class="decl"><span class="istickedoff">home_imps imps = [ lmodname |  (mb_pkg, lmodname) &lt;- imps,</span>
+<span class="lineno">   70 </span><span class="spaces">                                  </span><span class="istickedoff"><span class="tickonlytrue">isLocal mb_pkg</span> ]</span>
+<span class="lineno">   71 </span><span class="spaces">  </span><span class="istickedoff">where isLocal Nothing = True</span>
+<span class="lineno">   72 </span><span class="spaces">        </span><span class="istickedoff">isLocal (Just pkg) | <span class="nottickedoff">pkg == fsLit &quot;this&quot;</span> = <span class="nottickedoff">True</span> -- &quot;this&quot; is special</span>
+<span class="lineno">   73 </span><span class="spaces">        </span><span class="istickedoff">isLocal _ = <span class="nottickedoff">False</span></span></span>
+<span class="lineno">   74 </span>
+<span class="lineno">   75 </span>supportingModules :: (ModSummary -&gt; Ghc Bool) -&gt; Ghc [ModSummary]
+<span class="lineno">   76 </span><span class="decl"><span class="istickedoff">supportingModules = reachedModules False</span></span>
+<span class="lineno">   77 </span>
+<span class="lineno">   78 </span>dependentModules :: (ModSummary -&gt; Ghc Bool) -&gt; Ghc [ModSummary]
+<span class="lineno">   79 </span><span class="decl"><span class="istickedoff">dependentModules = reachedModules True</span></span>
+<span class="lineno">   80 </span>
+<span class="lineno">   81 </span>reachedModules :: Bool -&gt; (ModSummary -&gt; Ghc Bool) -&gt; Ghc [ModSummary]
+<span class="lineno">   82 </span><span class="decl"><span class="istickedoff">reachedModules dependent pred = do</span>
+<span class="lineno">   83 </span><span class="spaces">  </span><span class="istickedoff">let op = if dependent then transposeG else id</span>
+<span class="lineno">   84 </span><span class="spaces">  </span><span class="istickedoff">allMods &lt;- getModuleGraph</span>
+<span class="lineno">   85 </span><span class="spaces">  </span><span class="istickedoff">selected &lt;- filterM pred allMods</span>
+<span class="lineno">   86 </span><span class="spaces">  </span><span class="istickedoff">let (allModsGraph, lookup) = moduleGraphNodes False allMods</span>
+<span class="lineno">   87 </span><span class="spaces">      </span><span class="istickedoff">selectedMods = catMaybes $ map (\ms -&gt; lookup (ms_hsc_src ms) (moduleName $ ms_mod ms)) selected</span>
+<span class="lineno">   88 </span><span class="spaces">      </span><span class="istickedoff">recompMods = map (moduleName . ms_mod . getModFromNode) $ reachablesG (op allModsGraph) selectedMods -- TODO: compare on file name</span>
+<span class="lineno">   89 </span><span class="spaces">      </span><span class="istickedoff">sortedMods = map getModFromNode $ reverse $ topologicalSortG allModsGraph</span>
+<span class="lineno">   90 </span><span class="spaces">      </span><span class="istickedoff">sortedSelectedMods = filter ((`elem` recompMods) . moduleName . ms_mod) sortedMods -- TODO: compare on file name</span>
+<span class="lineno">   91 </span><span class="spaces">  </span><span class="istickedoff">return sortedSelectedMods</span></span>
+
+</pre>
+</body>
+</html>

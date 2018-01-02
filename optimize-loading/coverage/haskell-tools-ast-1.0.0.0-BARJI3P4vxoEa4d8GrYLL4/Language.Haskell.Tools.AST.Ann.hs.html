@@ -1,0 +1,432 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE AllowAmbiguousTypes, ConstraintKinds, DeriveDataTypeable, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TypeApplications, TypeFamilies, UndecidableInstances #-}
+<span class="lineno">    2 </span>-- | Parts of AST representation for keeping extra data
+<span class="lineno">    3 </span>module Language.Haskell.Tools.AST.Ann where
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>import Control.Reference
+<span class="lineno">    6 </span>import Data.Data
+<span class="lineno">    7 </span>import FastString
+<span class="lineno">    8 </span>import Id as GHC
+<span class="lineno">    9 </span>import Language.Haskell.Tools.AST.SemaInfoTypes
+<span class="lineno">   10 </span>import Language.Haskell.Tools.AST.Utils.GHCInstances ()
+<span class="lineno">   11 </span>import qualified Name as GHC
+<span class="lineno">   12 </span>import SrcLoc as GHC
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs as AST
+<span class="lineno">   15 </span>import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Modules as AST
+<span class="lineno">   16 </span>import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Names as AST
+<span class="lineno">   17 </span>import Language.Haskell.Tools.AST.Representation.Literals as AST
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>-- * Annotation type resolution
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>-- | A stage in which the nodes are marked with the ranges in the source
+<span class="lineno">   22 </span>-- files which contain the source code of the given AST element.
+<span class="lineno">   23 </span>data RangeStage
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">deriving instance Data RangeStage</span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">   26 </span>
+<span class="lineno">   27 </span>-- | A stage in which the nodes are still marked with ranges, but these
+<span class="lineno">   28 </span>-- ranges are normalized. Optional and list elements also have ranges
+<span class="lineno">   29 </span>-- in that state.
+<span class="lineno">   30 </span>data NormRangeStage
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">deriving instance Data NormRangeStage</span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>-- | A stage in which AST elements are marked with templates. These
+<span class="lineno">   35 </span>-- templates are hierarchical, and contain the places of the children
+<span class="lineno">   36 </span>-- elements of the node.
+<span class="lineno">   37 </span>data RngTemplateStage
+<span class="lineno">   38 </span>
+<span class="lineno">   39 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">deriving instance Data RngTemplateStage</span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>-- | A stage where the annotation controls how the original source code can be
+<span class="lineno">   42 </span>-- retrieved from the AST. A source template is assigned to each node.
+<span class="lineno">   43 </span>-- It has holes where the content of an other node should be printed and
+<span class="lineno">   44 </span>-- ranges for the source code of the node.
+<span class="lineno">   45 </span>data SrcTemplateStage
+<span class="lineno">   46 </span>
+<span class="lineno">   47 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">deriving instance Data SrcTemplateStage</span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">   48 </span>
+<span class="lineno">   49 </span>-- | With this domain, semantic information can be parameterized. In practice
+<span class="lineno">   50 </span>-- it is only used if the compilation cannot proceed past the type checking phase.
+<span class="lineno">   51 </span>data Dom name
+<span class="lineno">   52 </span>
+<span class="lineno">   53 </span>-- Semantic information that contains types. Only normal names remain in this domain.
+<span class="lineno">   54 </span>data IdDom
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">deriving instance (Data name, Typeable name) =&gt; Data (Dom name)</span></span></span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">   57 </span>
+<span class="lineno">   58 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">deriving instance Data IdDom</span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>type SemanticInfo (domain :: *) (node :: * -&gt; * -&gt; *) = SemanticInfo' domain (SemaInfoClassify node)
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>data SameInfoNameCls
+<span class="lineno">   63 </span>data SameInfoLitCls
+<span class="lineno">   64 </span>data SameInfoExprCls
+<span class="lineno">   65 </span>data SameInfoImportCls
+<span class="lineno">   66 </span>data SameInfoModuleCls
+<span class="lineno">   67 </span>data SameInfoDefaultCls
+<span class="lineno">   68 </span>data SameInfoWildcardCls
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>type family SemaInfoClassify (node :: * -&gt; * -&gt; *) where
+<span class="lineno">   71 </span>  SemaInfoClassify UQualifiedName = SameInfoNameCls
+<span class="lineno">   72 </span>  SemaInfoClassify ULiteral       = SameInfoLitCls
+<span class="lineno">   73 </span>  SemaInfoClassify UExpr          = SameInfoExprCls
+<span class="lineno">   74 </span>  SemaInfoClassify UImportDecl    = SameInfoImportCls
+<span class="lineno">   75 </span>  SemaInfoClassify AST.UModule    = SameInfoModuleCls
+<span class="lineno">   76 </span>  SemaInfoClassify UFieldWildcard = SameInfoWildcardCls
+<span class="lineno">   77 </span>  SemaInfoClassify a              = SameInfoDefaultCls
+<span class="lineno">   78 </span>
+<span class="lineno">   79 </span>type family SemanticInfo' (domain :: *) (nodecls :: *)
+<span class="lineno">   80 </span>
+<span class="lineno">   81 </span>type instance SemanticInfo' (Dom n) SameInfoNameCls = NameInfo n
+<span class="lineno">   82 </span>type instance SemanticInfo' (Dom n) SameInfoLitCls = PreLiteralInfo
+<span class="lineno">   83 </span>type instance SemanticInfo' (Dom n) SameInfoExprCls = ScopeInfo
+<span class="lineno">   84 </span>type instance SemanticInfo' (Dom n) SameInfoImportCls = ImportInfo n
+<span class="lineno">   85 </span>type instance SemanticInfo' (Dom n) SameInfoModuleCls = ModuleInfo GHC.Name
+<span class="lineno">   86 </span>type instance SemanticInfo' (Dom n) SameInfoWildcardCls = ImplicitFieldInfo
+<span class="lineno">   87 </span>type instance SemanticInfo' (Dom n) SameInfoDefaultCls = NoSemanticInfo
+<span class="lineno">   88 </span>
+<span class="lineno">   89 </span>type instance SemanticInfo' IdDom SameInfoNameCls = CNameInfo
+<span class="lineno">   90 </span>type instance SemanticInfo' IdDom SameInfoExprCls = ScopeInfo
+<span class="lineno">   91 </span>type instance SemanticInfo' IdDom SameInfoLitCls = LiteralInfo
+<span class="lineno">   92 </span>type instance SemanticInfo' IdDom SameInfoImportCls = ImportInfo GHC.Id
+<span class="lineno">   93 </span>type instance SemanticInfo' IdDom SameInfoModuleCls = ModuleInfo GHC.Id
+<span class="lineno">   94 </span>type instance SemanticInfo' IdDom SameInfoWildcardCls = ImplicitFieldInfo
+<span class="lineno">   95 </span>type instance SemanticInfo' IdDom SameInfoDefaultCls = NoSemanticInfo
+<span class="lineno">   96 </span>
+<span class="lineno">   97 </span>-- | A semantic domain for the AST. The semantic domain maps semantic information for
+<span class="lineno">   98 </span>-- the different types of nodes in the AST. The kind of semantic domain for an AST
+<span class="lineno">   99 </span>-- depends on which stages of the compilation did it pass. However after transforming
+<span class="lineno">  100 </span>-- the GHC representation to our AST, the domain keeps the same.
+<span class="lineno">  101 </span>-- The domain is not applied to the AST elements that are generated while refactoring.
+<span class="lineno">  102 </span>type Domain d = ( Typeable d
+<span class="lineno">  103 </span>                , Data d
+<span class="lineno">  104 </span>                , SemanticInfo' d SameInfoDefaultCls ~ NoSemanticInfo
+<span class="lineno">  105 </span>                , Data (SemanticInfo' d SameInfoNameCls)
+<span class="lineno">  106 </span>                , Data (SemanticInfo' d SameInfoLitCls)
+<span class="lineno">  107 </span>                , Data (SemanticInfo' d SameInfoExprCls)
+<span class="lineno">  108 </span>                , Data (SemanticInfo' d SameInfoImportCls)
+<span class="lineno">  109 </span>                , Data (SemanticInfo' d SameInfoModuleCls)
+<span class="lineno">  110 </span>                , Data (SemanticInfo' d SameInfoWildcardCls)
+<span class="lineno">  111 </span>                )
+<span class="lineno">  112 </span>
+<span class="lineno">  113 </span>type DomainWith e d = ( Data (SemanticInfo' d (SemaInfoClassify e))
+<span class="lineno">  114 </span>                      , Domain d
+<span class="lineno">  115 </span>                      )
+<span class="lineno">  116 </span>
+<span class="lineno">  117 </span>-- | Extracts or modifies the concrete range corresponding to a given source info.
+<span class="lineno">  118 </span>-- In case of lists and optional elements, it may not contain the elements inside.
+<span class="lineno">  119 </span>class HasRange a where
+<span class="lineno">  120 </span>  getRange :: a -&gt; SrcSpan
+<span class="lineno">  121 </span>  setRange :: SrcSpan -&gt; a -&gt; a
+<span class="lineno">  122 </span>
+<span class="lineno">  123 </span>-- | Class for source information stages
+<span class="lineno">  124 </span>class ( Typeable stage
+<span class="lineno">  125 </span>      , Data stage
+<span class="lineno">  126 </span>      , Data (SpanInfo stage)
+<span class="lineno">  127 </span>      , Data (ListInfo stage)
+<span class="lineno">  128 </span>      , Data (OptionalInfo stage)
+<span class="lineno">  129 </span>      , HasRange (SpanInfo stage)
+<span class="lineno">  130 </span>      , HasRange (ListInfo stage)
+<span class="lineno">  131 </span>      , HasRange (OptionalInfo stage)
+<span class="lineno">  132 </span>      ) =&gt; SourceInfo stage where
+<span class="lineno">  133 </span>
+<span class="lineno">  134 </span>  -- | UType of source info for normal AST elements
+<span class="lineno">  135 </span>  data SpanInfo stage :: *
+<span class="lineno">  136 </span>  -- | UType of source info for lists of AST elements
+<span class="lineno">  137 </span>  data ListInfo stage :: *
+<span class="lineno">  138 </span>  -- | UType of source info for optional AST elements
+<span class="lineno">  139 </span>  data OptionalInfo stage :: *
+<span class="lineno">  140 </span>
+<span class="lineno">  141 </span>
+<span class="lineno">  142 </span>instance SourceInfo RangeStage where
+<span class="lineno">  143 </span>  data SpanInfo RangeStage = NodeSpan { <span class="istickedoff"><span class="decl"><span class="istickedoff">_nodeSpan</span></span></span> :: SrcSpan }
+<span class="lineno">  144 </span>    deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">  145 </span>  data ListInfo RangeStage = ListPos  { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_listBefore</span></span></span> :: String
+<span class="lineno">  146 </span>                                      , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_listAfter</span></span></span> :: String
+<span class="lineno">  147 </span>                                      , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_listDefaultSep</span></span></span> :: String
+<span class="lineno">  148 </span>                                      , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_listIndented</span></span></span> :: Maybe [Bool]
+<span class="lineno">  149 </span>                                      , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_listPos</span></span></span> :: SrcLoc
+<span class="lineno">  150 </span>                                      }
+<span class="lineno">  151 </span>    deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">  152 </span>  data OptionalInfo RangeStage = OptionalPos { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_optionalBefore</span></span></span> :: String
+<span class="lineno">  153 </span>                                             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_optionalAfter</span></span></span> :: String
+<span class="lineno">  154 </span>                                             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_optionalPos</span></span></span> :: SrcLoc
+<span class="lineno">  155 </span>                                             }
+<span class="lineno">  156 </span>    deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">  157 </span>
+<span class="lineno">  158 </span>instance Show (SpanInfo RangeStage) where
+<span class="lineno">  159 </span>  <span class="decl"><span class="nottickedoff">show (NodeSpan sp) = shortShowSpan sp</span></span>
+<span class="lineno">  160 </span>
+<span class="lineno">  161 </span>instance Show (ListInfo RangeStage) where
+<span class="lineno">  162 </span>  <span class="decl"><span class="nottickedoff">show sp = shortShowLoc (_listPos sp)</span></span>
+<span class="lineno">  163 </span>
+<span class="lineno">  164 </span>instance Show (OptionalInfo RangeStage) where
+<span class="lineno">  165 </span>  <span class="decl"><span class="nottickedoff">show sp = shortShowLoc (_optionalPos sp)</span></span>
+<span class="lineno">  166 </span>
+<span class="lineno">  167 </span>instance SourceInfo NormRangeStage where
+<span class="lineno">  168 </span>  data SpanInfo NormRangeStage = NormNodeInfo { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_normNodeSpan</span></span></span> :: SrcSpan }
+<span class="lineno">  169 </span>    deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">  170 </span>  data ListInfo NormRangeStage = NormListInfo { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_normListBefore</span></span></span> :: String
+<span class="lineno">  171 </span>                                              , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_normListAfter</span></span></span> :: String
+<span class="lineno">  172 </span>                                              , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_normListDefaultSep</span></span></span> :: String
+<span class="lineno">  173 </span>                                              , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_normListIndented</span></span></span> :: Maybe [Bool]
+<span class="lineno">  174 </span>                                              , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_normListSpan</span></span></span> :: SrcSpan
+<span class="lineno">  175 </span>                                              }
+<span class="lineno">  176 </span>    deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">  177 </span>  data OptionalInfo NormRangeStage = NormOptInfo { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_normOptBefore</span></span></span> :: String
+<span class="lineno">  178 </span>                                                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_normOptAfter</span></span></span> :: String
+<span class="lineno">  179 </span>                                                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_normOptSpan</span></span></span> :: SrcSpan
+<span class="lineno">  180 </span>                                                 }
+<span class="lineno">  181 </span>    deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">  182 </span>
+<span class="lineno">  183 </span>instance Show (SpanInfo NormRangeStage) where
+<span class="lineno">  184 </span>  <span class="decl"><span class="nottickedoff">show (NormNodeInfo sp) = shortShowSpan sp</span></span>
+<span class="lineno">  185 </span>
+<span class="lineno">  186 </span>instance Show (ListInfo NormRangeStage) where
+<span class="lineno">  187 </span>  <span class="decl"><span class="nottickedoff">show sp = shortShowSpan (_normListSpan sp)</span></span>
+<span class="lineno">  188 </span>
+<span class="lineno">  189 </span>instance Show (OptionalInfo NormRangeStage) where
+<span class="lineno">  190 </span>  <span class="decl"><span class="nottickedoff">show sp = shortShowSpan (_normOptSpan sp)</span></span>
+<span class="lineno">  191 </span>
+<span class="lineno">  192 </span>-- | A short form of showing a range, without file name, for debugging purposes.
+<span class="lineno">  193 </span>shortShowSpan :: SrcSpan -&gt; String
+<span class="lineno">  194 </span><span class="decl"><span class="istickedoff">shortShowSpan (UnhelpfulSpan _) = <span class="nottickedoff">&quot;??-??&quot;</span></span>
+<span class="lineno">  195 </span><span class="spaces"></span><span class="istickedoff">shortShowSpan sp@(RealSrcSpan _)</span>
+<span class="lineno">  196 </span><span class="spaces">  </span><span class="istickedoff">= shortShowLoc (srcSpanStart sp) ++ &quot;-&quot; ++ shortShowLoc (srcSpanEnd sp)</span></span>
+<span class="lineno">  197 </span>
+<span class="lineno">  198 </span>shortShowSpanWithFile :: SrcSpan -&gt; String
+<span class="lineno">  199 </span><span class="decl"><span class="nottickedoff">shortShowSpanWithFile (UnhelpfulSpan _) = &quot;?? ??-??&quot;</span>
+<span class="lineno">  200 </span><span class="spaces"></span><span class="nottickedoff">shortShowSpanWithFile sp@(RealSrcSpan rsp)</span>
+<span class="lineno">  201 </span><span class="spaces">  </span><span class="nottickedoff">= unpackFS (srcSpanFile rsp) ++ &quot; &quot; ++ shortShowLoc (srcSpanStart sp) ++ &quot;-&quot; ++ shortShowLoc (srcSpanEnd sp)</span></span>
+<span class="lineno">  202 </span>
+<span class="lineno">  203 </span>-- | A short form of showing a range, without file name, for debugging purposes.
+<span class="lineno">  204 </span>shortShowLoc :: SrcLoc -&gt; String
+<span class="lineno">  205 </span><span class="decl"><span class="istickedoff">shortShowLoc (UnhelpfulLoc _) = <span class="nottickedoff">&quot;??&quot;</span></span>
+<span class="lineno">  206 </span><span class="spaces"></span><span class="istickedoff">shortShowLoc (RealSrcLoc loc) = show (srcLocLine loc) ++ &quot;:&quot; ++ show (srcLocCol loc)</span></span>
+<span class="lineno">  207 </span>
+<span class="lineno">  208 </span>-- | A class for marking a source information stage. All programs, regardless of
+<span class="lineno">  209 </span>-- correct Haskell programs or not, must go through these stages to be refactored.
+<span class="lineno">  210 </span>class SourceInfo stage
+<span class="lineno">  211 </span>   =&gt; RangeInfo stage where
+<span class="lineno">  212 </span>  nodeSpan :: Simple Lens (SpanInfo stage) GHC.SrcSpan
+<span class="lineno">  213 </span>  listPos :: Simple Lens (ListInfo stage) GHC.SrcLoc
+<span class="lineno">  214 </span>  optionalPos :: Simple Lens (OptionalInfo stage) GHC.SrcLoc
+<span class="lineno">  215 </span>
+<span class="lineno">  216 </span>instance RangeInfo RangeStage where
+<span class="lineno">  217 </span>  <span class="decl"><span class="istickedoff">nodeSpan = lens _nodeSpan (\v s -&gt; s { _nodeSpan = v })</span></span>
+<span class="lineno">  218 </span>  <span class="decl"><span class="nottickedoff">listPos = lens _listPos (\v s -&gt; s { _listPos = v })</span></span>
+<span class="lineno">  219 </span>  <span class="decl"><span class="nottickedoff">optionalPos = lens _optionalPos (\v s -&gt; s { _optionalPos = v })</span></span>
+<span class="lineno">  220 </span>
+<span class="lineno">  221 </span>-- * Annotations
+<span class="lineno">  222 </span>
+<span class="lineno">  223 </span>-- | Semantic and source code related information for an AST node.
+<span class="lineno">  224 </span>data NodeInfo sema src
+<span class="lineno">  225 </span>  = NodeInfo { <span class="istickedoff"><span class="decl"><span class="istickedoff">_semanticInfo</span></span></span> :: sema
+<span class="lineno">  226 </span>             , <span class="istickedoff"><span class="decl"><span class="istickedoff">_sourceInfo</span></span></span> :: src
+<span class="lineno">  227 </span>             }
+<span class="lineno">  228 </span>  deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span>)
+<span class="lineno">  229 </span>
+<span class="lineno">  230 </span><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff">makeReferences ''NodeInfo</span></span></span></span></span>
+<span class="lineno">  231 </span>
+<span class="lineno">  232 </span>-- | An element of the AST keeping extra information.
+<span class="lineno">  233 </span>data Ann elem dom stage
+<span class="lineno">  234 </span>-- The type parameters are organized this way because we want the annotation type to
+<span class="lineno">  235 </span>-- be more flexible, but the annotation is the first parameter because it eases
+<span class="lineno">  236 </span>-- pattern matching.
+<span class="lineno">  237 </span>  = Ann { <span class="istickedoff"><span class="decl"><span class="istickedoff">_annotation</span></span></span> :: NodeInfo (SemanticInfo dom elem) (SpanInfo stage) -- ^ The extra information for the AST part
+<span class="lineno">  238 </span>        , <span class="istickedoff"><span class="decl"><span class="istickedoff">_element</span></span></span>    :: elem dom stage -- ^ The original AST part
+<span class="lineno">  239 </span>        }
+<span class="lineno">  240 </span>
+<span class="lineno">  241 </span>instance SourceInfo src =&gt; Eq (Ann elem dom src) where
+<span class="lineno">  242 </span>  <span class="decl"><span class="istickedoff">a == b = getRange a == getRange b</span></span>
+<span class="lineno">  243 </span>
+<span class="lineno">  244 </span><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff">makeReferences ''Ann</span></span></span></span></span>
+<span class="lineno">  245 </span>
+<span class="lineno">  246 </span>-- | A list of AST elements
+<span class="lineno">  247 </span>data AnnListG elem dom stage = AnnListG { <span class="istickedoff"><span class="decl"><span class="istickedoff">_annListAnnot</span></span></span> :: NodeInfo (SemanticInfo dom (AnnListG elem)) (ListInfo stage)
+<span class="lineno">  248 </span>                                        , <span class="istickedoff"><span class="decl"><span class="istickedoff">_annListElems</span></span></span> :: [Ann elem dom stage]
+<span class="lineno">  249 </span>                                        }
+<span class="lineno">  250 </span>
+<span class="lineno">  251 </span><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff">makeReferences ''AnnListG</span></span></span></span></span>
+<span class="lineno">  252 </span>
+<span class="lineno">  253 </span>annList :: Traversal (AnnListG e d s) (AnnListG e d s) (Ann e d s) (Ann e d s)
+<span class="lineno">  254 </span><span class="decl"><span class="istickedoff">annList = annListElems &amp; traversal</span></span>
+<span class="lineno">  255 </span>
+<span class="lineno">  256 </span>-- | An optional AST element
+<span class="lineno">  257 </span>data AnnMaybeG elem dom stage = AnnMaybeG { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_annMaybeAnnot</span></span></span> :: NodeInfo (SemanticInfo dom (AnnMaybeG elem)) (OptionalInfo stage)
+<span class="lineno">  258 </span>                                          , <span class="istickedoff"><span class="decl"><span class="istickedoff">_annMaybe</span></span></span> :: Maybe (Ann elem dom stage)
+<span class="lineno">  259 </span>                                          }
+<span class="lineno">  260 </span>
+<span class="lineno">  261 </span><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff">makeReferences ''AnnMaybeG</span></span></span></span></span></span>
+<span class="lineno">  262 </span>
+<span class="lineno">  263 </span>class HasSourceInfo e where
+<span class="lineno">  264 </span>  type SourceInfoType e :: *
+<span class="lineno">  265 </span>  srcInfo :: Simple Lens e (SourceInfoType e)
+<span class="lineno">  266 </span>
+<span class="lineno">  267 </span>instance HasSourceInfo (Ann elem dom stage) where
+<span class="lineno">  268 </span>  type SourceInfoType (Ann elem dom stage) = SpanInfo stage
+<span class="lineno">  269 </span>  <span class="decl"><span class="nottickedoff">srcInfo = annotation &amp; sourceInfo</span></span>
+<span class="lineno">  270 </span>
+<span class="lineno">  271 </span>instance HasSourceInfo (AnnListG elem dom stage) where
+<span class="lineno">  272 </span>  type SourceInfoType (AnnListG elem dom stage) = ListInfo stage
+<span class="lineno">  273 </span>  <span class="decl"><span class="istickedoff">srcInfo = annListAnnot &amp; sourceInfo</span></span>
+<span class="lineno">  274 </span>
+<span class="lineno">  275 </span>instance HasSourceInfo (AnnMaybeG elem dom stage) where
+<span class="lineno">  276 </span>  type SourceInfoType (AnnMaybeG elem dom stage) = OptionalInfo stage
+<span class="lineno">  277 </span>  <span class="decl"><span class="nottickedoff">srcInfo = annMaybeAnnot &amp; sourceInfo</span></span>
+<span class="lineno">  278 </span>
+<span class="lineno">  279 </span>annJust :: Partial (AnnMaybeG e d s) (AnnMaybeG e d s) (Ann e d s) (Ann e d s)
+<span class="lineno">  280 </span><span class="decl"><span class="istickedoff">annJust = annMaybe &amp; just</span></span>
+<span class="lineno">  281 </span>
+<span class="lineno">  282 </span>-- | An empty list of AST elements
+<span class="lineno">  283 </span>annNil :: NodeInfo (SemanticInfo d (AnnListG e)) (ListInfo s) -&gt; AnnListG e d s
+<span class="lineno">  284 </span><span class="decl"><span class="nottickedoff">annNil a = AnnListG a []</span></span>
+<span class="lineno">  285 </span>
+<span class="lineno">  286 </span>isAnnNothing :: AnnMaybeG e d s -&gt; Bool
+<span class="lineno">  287 </span><span class="decl"><span class="istickedoff">isAnnNothing (AnnMaybeG _ Nothing) = True</span>
+<span class="lineno">  288 </span><span class="spaces"></span><span class="istickedoff">isAnnNothing (AnnMaybeG _ _) = False</span></span>
+<span class="lineno">  289 </span>
+<span class="lineno">  290 </span>isAnnJust :: AnnMaybeG e d s -&gt; Bool
+<span class="lineno">  291 </span><span class="decl"><span class="istickedoff">isAnnJust (AnnMaybeG _ (Just _)) = True</span>
+<span class="lineno">  292 </span><span class="spaces"></span><span class="istickedoff">isAnnJust (AnnMaybeG _ _) = False</span></span>
+<span class="lineno">  293 </span>
+<span class="lineno">  294 </span>annLength :: AnnListG e d s -&gt; Int
+<span class="lineno">  295 </span><span class="decl"><span class="nottickedoff">annLength (AnnListG _ ls) = length ls</span></span>
+<span class="lineno">  296 </span>
+<span class="lineno">  297 </span>-- | A non-existing AST part
+<span class="lineno">  298 </span>annNothing :: NodeInfo (SemanticInfo d (AnnMaybeG e)) (OptionalInfo s) -&gt; AnnMaybeG e d s
+<span class="lineno">  299 </span><span class="decl"><span class="istickedoff">annNothing a = AnnMaybeG a Nothing</span></span>
+<span class="lineno">  300 </span>
+<span class="lineno">  301 </span>-- * Info types
+<span class="lineno">  302 </span>
+<span class="lineno">  303 </span>instance HasRange (SpanInfo RangeStage) where
+<span class="lineno">  304 </span>  <span class="decl"><span class="istickedoff">getRange (NodeSpan sp) = sp</span></span>
+<span class="lineno">  305 </span>  <span class="decl"><span class="istickedoff">setRange sp (NodeSpan _) = NodeSpan sp</span></span>
+<span class="lineno">  306 </span>
+<span class="lineno">  307 </span>instance HasRange (ListInfo RangeStage) where
+<span class="lineno">  308 </span>  <span class="decl"><span class="nottickedoff">getRange ListPos{_listPos = pos} = srcLocSpan pos</span></span>
+<span class="lineno">  309 </span>  <span class="decl"><span class="nottickedoff">setRange sp info = info {_listPos = srcSpanStart sp}</span></span>
+<span class="lineno">  310 </span>
+<span class="lineno">  311 </span>instance HasRange (OptionalInfo RangeStage) where
+<span class="lineno">  312 </span>  <span class="decl"><span class="nottickedoff">getRange OptionalPos{_optionalPos = pos} = srcLocSpan pos</span></span>
+<span class="lineno">  313 </span>  <span class="decl"><span class="nottickedoff">setRange sp info = info {_optionalPos = srcSpanStart sp}</span></span>
+<span class="lineno">  314 </span>
+<span class="lineno">  315 </span>instance HasRange (SpanInfo NormRangeStage) where
+<span class="lineno">  316 </span>  <span class="decl"><span class="istickedoff">getRange (NormNodeInfo sp) = sp</span></span>
+<span class="lineno">  317 </span>  <span class="decl"><span class="istickedoff">setRange sp (NormNodeInfo _) = NormNodeInfo sp</span></span>
+<span class="lineno">  318 </span>
+<span class="lineno">  319 </span>instance HasRange (ListInfo NormRangeStage) where
+<span class="lineno">  320 </span>  <span class="decl"><span class="istickedoff">getRange NormListInfo{_normListSpan = sp} = sp</span></span>
+<span class="lineno">  321 </span>  <span class="decl"><span class="istickedoff">setRange sp info = info { _normListSpan = sp }</span></span>
+<span class="lineno">  322 </span>
+<span class="lineno">  323 </span>instance HasRange (OptionalInfo NormRangeStage) where
+<span class="lineno">  324 </span>  <span class="decl"><span class="istickedoff">getRange NormOptInfo{_normOptSpan = sp} = sp</span></span>
+<span class="lineno">  325 </span>  <span class="decl"><span class="istickedoff">setRange sp info = info {_normOptSpan = sp}</span></span>
+<span class="lineno">  326 </span>
+<span class="lineno">  327 </span>instance SourceInfo stage =&gt; HasRange (Ann elem dom stage) where
+<span class="lineno">  328 </span>  <span class="decl"><span class="istickedoff">getRange (Ann a _) = getRange (a ^. sourceInfo)</span></span>
+<span class="lineno">  329 </span>  <span class="decl"><span class="istickedoff">setRange sp = annotation &amp; sourceInfo .- setRange sp</span></span>
+<span class="lineno">  330 </span>
+<span class="lineno">  331 </span>instance SourceInfo stage =&gt; HasRange (AnnListG elem dom stage) where
+<span class="lineno">  332 </span>  <span class="decl"><span class="istickedoff">getRange (AnnListG a _) = getRange (a ^. sourceInfo)</span></span>
+<span class="lineno">  333 </span>  <span class="decl"><span class="nottickedoff">setRange sp = annListAnnot &amp; sourceInfo .- setRange sp</span></span>
+<span class="lineno">  334 </span>
+<span class="lineno">  335 </span>instance SourceInfo stage =&gt; HasRange (AnnMaybeG elem dom stage) where
+<span class="lineno">  336 </span>  <span class="decl"><span class="istickedoff">getRange (AnnMaybeG a _) = getRange (a ^. sourceInfo)</span></span>
+<span class="lineno">  337 </span>  <span class="decl"><span class="nottickedoff">setRange sp = annMaybeAnnot &amp; sourceInfo .- setRange sp</span></span>
+<span class="lineno">  338 </span>
+<span class="lineno">  339 </span>-- | A class for changing semantic information throught the AST.
+<span class="lineno">  340 </span>class ApplySemaChange cls where
+<span class="lineno">  341 </span>  appSemaChange :: SemaTrf f dom1 dom2 -&gt; SemanticInfo' dom1 cls -&gt; f (SemanticInfo' dom2 cls)
+<span class="lineno">  342 </span>
+<span class="lineno">  343 </span>instance ApplySemaChange SameInfoNameCls where <span class="decl"><span class="istickedoff">appSemaChange = trfSemaNameCls</span></span>
+<span class="lineno">  344 </span>instance ApplySemaChange SameInfoLitCls where <span class="decl"><span class="istickedoff">appSemaChange = trfSemaLitCls</span></span>
+<span class="lineno">  345 </span>instance ApplySemaChange SameInfoExprCls where <span class="decl"><span class="istickedoff">appSemaChange = trfSemaExprCls</span></span>
+<span class="lineno">  346 </span>instance ApplySemaChange SameInfoImportCls where <span class="decl"><span class="istickedoff">appSemaChange = trfSemaImportCls</span></span>
+<span class="lineno">  347 </span>instance ApplySemaChange SameInfoModuleCls where <span class="decl"><span class="istickedoff">appSemaChange = trfSemaModuleCls</span></span>
+<span class="lineno">  348 </span>instance ApplySemaChange SameInfoWildcardCls where <span class="decl"><span class="istickedoff">appSemaChange = trfSemaWildcardCls</span></span>
+<span class="lineno">  349 </span>instance ApplySemaChange SameInfoDefaultCls where <span class="decl"><span class="istickedoff">appSemaChange = trfSemaDefault</span></span>
+<span class="lineno">  350 </span>
+<span class="lineno">  351 </span>-- | A class for traversing semantic information in an AST
+<span class="lineno">  352 </span>class ApplySemaChange (SemaInfoClassify a)
+<span class="lineno">  353 </span>   =&gt; SemanticTraversal a where
+<span class="lineno">  354 </span>  semaTraverse :: Monad f =&gt; SemaTrf f dom1 dom2 -&gt; a dom1 st -&gt; f (a dom2 st)
+<span class="lineno">  355 </span>
+<span class="lineno">  356 </span>-- | A transformation on the possible semantic informations for a given domain
+<span class="lineno">  357 </span>data SemaTrf f dom1 dom2 = SemaTrf { <span class="istickedoff"><span class="decl"><span class="istickedoff">trfSemaNameCls</span></span></span> :: SemanticInfo' dom1 SameInfoNameCls -&gt; f (SemanticInfo' dom2 SameInfoNameCls)
+<span class="lineno">  358 </span>                                   , <span class="istickedoff"><span class="decl"><span class="istickedoff">trfSemaExprCls</span></span></span> :: SemanticInfo' dom1 SameInfoExprCls -&gt; f (SemanticInfo' dom2 SameInfoExprCls)
+<span class="lineno">  359 </span>                                   , <span class="istickedoff"><span class="decl"><span class="istickedoff">trfSemaLitCls</span></span></span> :: SemanticInfo' dom1 SameInfoLitCls -&gt; f (SemanticInfo' dom2 SameInfoLitCls)
+<span class="lineno">  360 </span>                                   , <span class="istickedoff"><span class="decl"><span class="istickedoff">trfSemaImportCls</span></span></span> :: SemanticInfo' dom1 SameInfoImportCls -&gt; f (SemanticInfo' dom2 SameInfoImportCls)
+<span class="lineno">  361 </span>                                   , <span class="istickedoff"><span class="decl"><span class="istickedoff">trfSemaModuleCls</span></span></span> :: SemanticInfo' dom1 SameInfoModuleCls -&gt; f (SemanticInfo' dom2 SameInfoModuleCls)
+<span class="lineno">  362 </span>                                   , <span class="istickedoff"><span class="decl"><span class="istickedoff">trfSemaWildcardCls</span></span></span> :: SemanticInfo' dom1 SameInfoWildcardCls -&gt; f (SemanticInfo' dom2 SameInfoWildcardCls)
+<span class="lineno">  363 </span>                                   , <span class="istickedoff"><span class="decl"><span class="istickedoff">trfSemaDefault</span></span></span> :: SemanticInfo' dom1 SameInfoDefaultCls -&gt; f (SemanticInfo' dom2 SameInfoDefaultCls)
+<span class="lineno">  364 </span>                                   }
+<span class="lineno">  365 </span>
+<span class="lineno">  366 </span>instance forall e . (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) =&gt; SemanticTraversal (Ann e) where
+<span class="lineno">  367 </span>  <span class="decl"><span class="istickedoff">semaTraverse f (Ann (NodeInfo sema src) e) = Ann &lt;$&gt; (NodeInfo &lt;$&gt; appSemaChange @(SemaInfoClassify e) f sema &lt;*&gt; pure src) &lt;*&gt; semaTraverse f e</span></span>
+<span class="lineno">  368 </span>
+<span class="lineno">  369 </span>instance (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) =&gt; SemanticTraversal (AnnListG e) where
+<span class="lineno">  370 </span>  <span class="decl"><span class="istickedoff">semaTraverse f (AnnListG (NodeInfo sema src) e) = AnnListG &lt;$&gt; (NodeInfo &lt;$&gt; trfSemaDefault f <span class="nottickedoff">sema</span> &lt;*&gt; pure src) &lt;*&gt; mapM (semaTraverse f) e</span></span>
+<span class="lineno">  371 </span>
+<span class="lineno">  372 </span>instance (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) =&gt; SemanticTraversal (AnnMaybeG e) where
+<span class="lineno">  373 </span>  <span class="decl"><span class="istickedoff">semaTraverse f (AnnMaybeG (NodeInfo sema src) e) = AnnMaybeG &lt;$&gt; (NodeInfo &lt;$&gt; trfSemaDefault f <span class="nottickedoff">sema</span> &lt;*&gt; pure src) &lt;*&gt; sequence (fmap (semaTraverse f) e)</span></span>
+<span class="lineno">  374 </span>
+<span class="lineno">  375 </span>-- | A class for traversing source information in an AST
+<span class="lineno">  376 </span>class SourceInfoTraversal a where
+<span class="lineno">  377 </span>  sourceInfoTraverseUp :: Monad f =&gt; SourceInfoTrf f st1 st2 -&gt; f () -&gt; f () -&gt; a dom st1 -&gt; f (a dom st2)
+<span class="lineno">  378 </span>  sourceInfoTraverseDown :: Monad f =&gt; SourceInfoTrf f st1 st2 -&gt; f () -&gt; f () -&gt; a dom st1 -&gt; f (a dom st2)
+<span class="lineno">  379 </span>  sourceInfoTraverse :: Monad f =&gt; SourceInfoTrf f st1 st2 -&gt; a dom st1 -&gt; f (a dom st2)
+<span class="lineno">  380 </span>
+<span class="lineno">  381 </span>-- | A transformation on the possible source informations
+<span class="lineno">  382 </span>data SourceInfoTrf f st1 st2 = SourceInfoTrf { <span class="istickedoff"><span class="decl"><span class="istickedoff">trfSpanInfo</span></span></span> :: SpanInfo st1 -&gt; f (SpanInfo st2)
+<span class="lineno">  383 </span>                                             , <span class="istickedoff"><span class="decl"><span class="istickedoff">trfListInfo</span></span></span> :: ListInfo st1 -&gt; f (ListInfo st2)
+<span class="lineno">  384 </span>                                             , <span class="istickedoff"><span class="decl"><span class="istickedoff">trfOptionalInfo</span></span></span> :: OptionalInfo st1 -&gt; f (OptionalInfo st2)
+<span class="lineno">  385 </span>                                             }
+<span class="lineno">  386 </span>
+<span class="lineno">  387 </span>instance SourceInfoTraversal e =&gt; SourceInfoTraversal (Ann e) where
+<span class="lineno">  388 </span>  <span class="decl"><span class="istickedoff">sourceInfoTraverse trf (Ann (NodeInfo sema src) e)</span>
+<span class="lineno">  389 </span><span class="spaces">    </span><span class="istickedoff">= Ann &lt;$&gt; (NodeInfo sema &lt;$&gt; trfSpanInfo trf src) &lt;*&gt; sourceInfoTraverse trf e</span></span>
+<span class="lineno">  390 </span>  <span class="decl"><span class="istickedoff">sourceInfoTraverseDown trf desc asc (Ann (NodeInfo sema src) e)</span>
+<span class="lineno">  391 </span><span class="spaces">    </span><span class="istickedoff">= Ann &lt;$&gt; (NodeInfo sema &lt;$&gt; trfSpanInfo trf src) &lt;*&gt; (desc *&gt; sourceInfoTraverseDown trf desc asc e &lt;* asc)</span></span>
+<span class="lineno">  392 </span>  <span class="decl"><span class="istickedoff">sourceInfoTraverseUp trf desc asc (Ann (NodeInfo sema src) e)</span>
+<span class="lineno">  393 </span><span class="spaces">    </span><span class="istickedoff">= flip Ann &lt;$&gt; (desc *&gt; sourceInfoTraverseUp trf desc asc e &lt;* asc) &lt;*&gt; (NodeInfo sema &lt;$&gt; trfSpanInfo trf src)</span></span>
+<span class="lineno">  394 </span>
+<span class="lineno">  395 </span>instance SourceInfoTraversal e =&gt; SourceInfoTraversal (AnnListG e) where
+<span class="lineno">  396 </span>  <span class="decl"><span class="istickedoff">sourceInfoTraverse trf (AnnListG (NodeInfo sema src) e)</span>
+<span class="lineno">  397 </span><span class="spaces">    </span><span class="istickedoff">= AnnListG &lt;$&gt; (NodeInfo <span class="nottickedoff">sema</span> &lt;$&gt; trfListInfo trf src) &lt;*&gt; mapM (sourceInfoTraverse trf) e</span></span>
+<span class="lineno">  398 </span>  <span class="decl"><span class="istickedoff">sourceInfoTraverseDown trf desc asc (AnnListG (NodeInfo sema src) e)</span>
+<span class="lineno">  399 </span><span class="spaces">    </span><span class="istickedoff">= AnnListG &lt;$&gt; (NodeInfo <span class="nottickedoff">sema</span> &lt;$&gt; trfListInfo trf src) &lt;*&gt; (desc *&gt; mapM (sourceInfoTraverseDown trf desc asc) e &lt;* asc)</span></span>
+<span class="lineno">  400 </span>  <span class="decl"><span class="istickedoff">sourceInfoTraverseUp trf desc asc (AnnListG (NodeInfo sema src) e)</span>
+<span class="lineno">  401 </span><span class="spaces">    </span><span class="istickedoff">= flip AnnListG &lt;$&gt; (desc *&gt; mapM (sourceInfoTraverseUp trf desc asc) e &lt;* asc) &lt;*&gt; (NodeInfo <span class="nottickedoff">sema</span> &lt;$&gt; trfListInfo trf src)</span></span>
+<span class="lineno">  402 </span>
+<span class="lineno">  403 </span>instance SourceInfoTraversal e =&gt; SourceInfoTraversal (AnnMaybeG e) where
+<span class="lineno">  404 </span>  <span class="decl"><span class="istickedoff">sourceInfoTraverse trf (AnnMaybeG (NodeInfo sema src) e)</span>
+<span class="lineno">  405 </span><span class="spaces">    </span><span class="istickedoff">= AnnMaybeG &lt;$&gt; (NodeInfo <span class="nottickedoff">sema</span> &lt;$&gt; trfOptionalInfo trf src) &lt;*&gt; sequence (fmap (sourceInfoTraverse trf) e)</span></span>
+<span class="lineno">  406 </span>  <span class="decl"><span class="istickedoff">sourceInfoTraverseDown trf desc asc (AnnMaybeG (NodeInfo sema src) e)</span>
+<span class="lineno">  407 </span><span class="spaces">    </span><span class="istickedoff">= AnnMaybeG &lt;$&gt; (NodeInfo <span class="nottickedoff">sema</span> &lt;$&gt; trfOptionalInfo trf src) &lt;*&gt; (desc *&gt; sequence (fmap (sourceInfoTraverseDown trf desc asc) e) &lt;* asc)</span></span>
+<span class="lineno">  408 </span>  <span class="decl"><span class="istickedoff">sourceInfoTraverseUp trf desc asc (AnnMaybeG (NodeInfo sema src) e)</span>
+<span class="lineno">  409 </span><span class="spaces">    </span><span class="istickedoff">= flip AnnMaybeG &lt;$&gt; (desc *&gt; sequence (fmap (sourceInfoTraverseUp trf desc asc) e) &lt;* asc) &lt;*&gt; (NodeInfo <span class="nottickedoff">sema</span> &lt;$&gt; trfOptionalInfo trf src)</span></span>
+
+</pre>
+</body>
+</html>

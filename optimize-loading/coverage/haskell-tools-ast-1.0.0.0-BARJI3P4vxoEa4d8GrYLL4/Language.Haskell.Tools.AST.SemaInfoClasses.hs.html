@@ -1,0 +1,211 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE ConstraintKinds, FlexibleContexts, FlexibleInstances, TypeFamilies, UndecidableInstances #-}
+<span class="lineno">    2 </span>module Language.Haskell.Tools.AST.SemaInfoClasses (module Language.Haskell.Tools.AST.SemaInfoClasses, getInstances, UsageSpec(..)) where
+<span class="lineno">    3 </span>
+<span class="lineno">    4 </span>import GHC
+<span class="lineno">    5 </span>import Id as GHC (Id, idName)
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>import Control.Reference
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>import Language.Haskell.Tools.AST.Ann as AST
+<span class="lineno">   10 </span>import Language.Haskell.Tools.AST.Representation.Exprs as AST (UFieldWildcard, UExpr)
+<span class="lineno">   11 </span>import Language.Haskell.Tools.AST.Representation.Modules as AST (UImportDecl, UModule)
+<span class="lineno">   12 </span>import Language.Haskell.Tools.AST.Representation.Names as AST (UQualifiedName)
+<span class="lineno">   13 </span>import Language.Haskell.Tools.AST.Representation.Literals as AST (ULiteral)
+<span class="lineno">   14 </span>import Language.Haskell.Tools.AST.SemaInfoTypes as AST
+<span class="lineno">   15 </span>
+<span class="lineno">   16 </span>semanticsLitType :: Ann ULiteral IdDom st -&gt; GHC.Type
+<span class="lineno">   17 </span><span class="decl"><span class="nottickedoff">semanticsLitType lit = lit ^. annotation &amp; semanticInfo &amp; literalType</span></span>
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>-- * Information about names
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>-- | Domains that have semantic information for names
+<span class="lineno">   22 </span>type HasNameInfo dom = (Domain dom, HasNameInfo' (SemanticInfo dom UQualifiedName))
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>-- | Infos that may have a name that can be extracted
+<span class="lineno">   25 </span>class HasNameInfo' si where
+<span class="lineno">   26 </span>  semanticsName :: si -&gt; Maybe GHC.Name
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>instance HasNameInfo' (NameInfo GHC.Name) where
+<span class="lineno">   29 </span>  <span class="decl"><span class="istickedoff">semanticsName = (^? nameInfo)</span></span>
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span>instance HasNameInfo' CNameInfo where
+<span class="lineno">   32 </span>  <span class="decl"><span class="istickedoff">semanticsName = fmap idName . (^? cnameInfo)</span></span>
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>instance HasNameInfo dom =&gt; HasNameInfo' (Ann UQualifiedName dom st) where
+<span class="lineno">   35 </span>  <span class="decl"><span class="istickedoff">semanticsName = semanticsName . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>-- * Information about typed names
+<span class="lineno">   38 </span>
+<span class="lineno">   39 </span>type HasIdInfo dom = (Domain dom, HasIdInfo' (SemanticInfo dom UQualifiedName))
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>-- | Infos that may have a typed name that can be extracted
+<span class="lineno">   42 </span>class HasNameInfo' si =&gt; HasIdInfo' si where
+<span class="lineno">   43 </span>  semanticsId :: si -&gt; Id
+<span class="lineno">   44 </span>
+<span class="lineno">   45 </span>instance HasIdInfo' CNameInfo where
+<span class="lineno">   46 </span>  <span class="decl"><span class="istickedoff">semanticsId = (^. cnameInfo)</span></span>
+<span class="lineno">   47 </span>
+<span class="lineno">   48 </span>instance HasIdInfo dom =&gt; HasIdInfo' (Ann UQualifiedName dom st) where
+<span class="lineno">   49 </span>  <span class="decl"><span class="istickedoff">semanticsId = semanticsId . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">   50 </span>
+<span class="lineno">   51 </span>-- * Fixity information
+<span class="lineno">   52 </span>
+<span class="lineno">   53 </span>type HasFixityInfo dom = (Domain dom, HasFixityInfo' (SemanticInfo dom UQualifiedName))
+<span class="lineno">   54 </span>
+<span class="lineno">   55 </span>-- | Infos that may have a fixity information
+<span class="lineno">   56 </span>class HasFixityInfo' si where
+<span class="lineno">   57 </span>  semanticsFixity :: si -&gt; Maybe GHC.Fixity
+<span class="lineno">   58 </span>
+<span class="lineno">   59 </span>instance HasFixityInfo' CNameInfo where
+<span class="lineno">   60 </span>  <span class="decl"><span class="istickedoff">semanticsFixity = (^. cnameFixity)</span></span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>instance HasFixityInfo dom =&gt; HasFixityInfo' (Ann UQualifiedName dom st) where
+<span class="lineno">   63 </span>  <span class="decl"><span class="istickedoff">semanticsFixity = semanticsFixity . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>-- * Scope information
+<span class="lineno">   66 </span>
+<span class="lineno">   67 </span>type HasScopeInfo dom = (Domain dom, HasScopeInfo' (SemanticInfo dom UQualifiedName), HasScopeInfo' (SemanticInfo dom UExpr))
+<span class="lineno">   68 </span>
+<span class="lineno">   69 </span>-- | Infos that contain the names that are available in theirs scope
+<span class="lineno">   70 </span>class HasScopeInfo' si where
+<span class="lineno">   71 </span>  semanticsScope :: si -&gt; Scope
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>instance HasScopeInfo' (NameInfo n) where
+<span class="lineno">   74 </span>  <span class="decl"><span class="istickedoff">semanticsScope = (^. nameScopedLocals)</span></span>
+<span class="lineno">   75 </span>
+<span class="lineno">   76 </span>instance HasScopeInfo' CNameInfo where
+<span class="lineno">   77 </span>  <span class="decl"><span class="istickedoff">semanticsScope = (^. cnameScopedLocals)</span></span>
+<span class="lineno">   78 </span>
+<span class="lineno">   79 </span>instance HasScopeInfo' ScopeInfo where
+<span class="lineno">   80 </span>  <span class="decl"><span class="istickedoff">semanticsScope = (^. exprScopedLocals)</span></span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>instance HasScopeInfo dom =&gt; HasScopeInfo' (Ann UExpr dom st) where
+<span class="lineno">   83 </span>  <span class="decl"><span class="istickedoff">semanticsScope = semanticsScope . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>instance HasScopeInfo dom =&gt; HasScopeInfo' (Ann UQualifiedName dom st) where
+<span class="lineno">   86 </span>  <span class="decl"><span class="istickedoff">semanticsScope = semanticsScope . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">   87 </span>
+<span class="lineno">   88 </span>-- * Information about names being defined
+<span class="lineno">   89 </span>
+<span class="lineno">   90 </span>type HasDefiningInfo dom = (Domain dom, HasDefiningInfo' (SemanticInfo dom UQualifiedName))
+<span class="lineno">   91 </span>
+<span class="lineno">   92 </span>-- | Infos that store if they were used to define a name
+<span class="lineno">   93 </span>class HasDefiningInfo' si where
+<span class="lineno">   94 </span>  semanticsDefining :: si -&gt; Bool
+<span class="lineno">   95 </span>
+<span class="lineno">   96 </span>instance HasDefiningInfo' (NameInfo n) where
+<span class="lineno">   97 </span>  <span class="decl"><span class="istickedoff">semanticsDefining = (^. nameIsDefined)</span></span>
+<span class="lineno">   98 </span>
+<span class="lineno">   99 </span>instance HasDefiningInfo' CNameInfo where
+<span class="lineno">  100 </span>  <span class="decl"><span class="istickedoff">semanticsDefining = (^. cnameIsDefined)</span></span>
+<span class="lineno">  101 </span>
+<span class="lineno">  102 </span>instance HasDefiningInfo dom =&gt; HasDefiningInfo' (Ann UQualifiedName dom st) where
+<span class="lineno">  103 </span>  <span class="decl"><span class="istickedoff">semanticsDefining = semanticsDefining . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">  104 </span>
+<span class="lineno">  105 </span>-- * Information about source info in sema
+<span class="lineno">  106 </span>
+<span class="lineno">  107 </span>class HasSourceInfoInSema' si where
+<span class="lineno">  108 </span>  semanticsSourceInfo :: si -&gt; Maybe SrcSpan
+<span class="lineno">  109 </span>
+<span class="lineno">  110 </span>instance HasSourceInfoInSema' (NameInfo n) where
+<span class="lineno">  111 </span>  <span class="decl"><span class="istickedoff">semanticsSourceInfo = (^? nameLocation)</span></span>
+<span class="lineno">  112 </span>
+<span class="lineno">  113 </span>-- * Information about modules
+<span class="lineno">  114 </span>
+<span class="lineno">  115 </span>type HasModuleInfo dom = (Domain dom, HasModuleInfo' (SemanticInfo dom AST.UModule))
+<span class="lineno">  116 </span>
+<span class="lineno">  117 </span>class HasModuleInfo' si where
+<span class="lineno">  118 </span>  semanticsModule :: si -&gt; GHC.Module
+<span class="lineno">  119 </span>  semanticsDynFlags :: si -&gt; GHC.DynFlags
+<span class="lineno">  120 </span>  isBootModule :: si -&gt; Bool
+<span class="lineno">  121 </span>  semanticsImplicitImports :: si -&gt; [GHC.Name]
+<span class="lineno">  122 </span>  semanticsPrelTransMods :: si -&gt; [Module]
+<span class="lineno">  123 </span>
+<span class="lineno">  124 </span>instance HasModuleInfo' (AST.ModuleInfo GHC.Name) where
+<span class="lineno">  125 </span>  <span class="decl"><span class="nottickedoff">semanticsModule = (^. defModuleName)</span></span>
+<span class="lineno">  126 </span>  <span class="decl"><span class="nottickedoff">semanticsDynFlags = (^. defDynFlags)</span></span>
+<span class="lineno">  127 </span>  <span class="decl"><span class="nottickedoff">isBootModule = (^. defIsBootModule)</span></span>
+<span class="lineno">  128 </span>  <span class="decl"><span class="nottickedoff">semanticsImplicitImports = (^? implicitNames&amp;traversal&amp;pName)</span></span>
+<span class="lineno">  129 </span>  <span class="decl"><span class="nottickedoff">semanticsPrelTransMods = (^. prelTransMods)</span></span>
+<span class="lineno">  130 </span>
+<span class="lineno">  131 </span>instance HasModuleInfo' (AST.ModuleInfo GHC.Id) where
+<span class="lineno">  132 </span>  <span class="decl"><span class="istickedoff">semanticsModule = (^. defModuleName)</span></span>
+<span class="lineno">  133 </span>  <span class="decl"><span class="istickedoff">semanticsDynFlags = (^. defDynFlags)</span></span>
+<span class="lineno">  134 </span>  <span class="decl"><span class="istickedoff">isBootModule = (^. defIsBootModule)</span></span>
+<span class="lineno">  135 </span>  <span class="decl"><span class="istickedoff">semanticsImplicitImports = map idName . (^? implicitNames&amp;traversal&amp;pName)</span></span>
+<span class="lineno">  136 </span>  <span class="decl"><span class="istickedoff">semanticsPrelTransMods = (^. prelTransMods)</span></span>
+<span class="lineno">  137 </span>
+<span class="lineno">  138 </span>instance HasModuleInfo dom =&gt; HasModuleInfo' (Ann UModule dom st) where
+<span class="lineno">  139 </span>  <span class="decl"><span class="istickedoff">semanticsModule = semanticsModule . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">  140 </span>  <span class="decl"><span class="istickedoff">semanticsDynFlags = semanticsDynFlags . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">  141 </span>  <span class="decl"><span class="nottickedoff">isBootModule = isBootModule . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">  142 </span>  <span class="decl"><span class="nottickedoff">semanticsImplicitImports = semanticsImplicitImports . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">  143 </span>  <span class="decl"><span class="istickedoff">semanticsPrelTransMods = semanticsPrelTransMods . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">  144 </span>
+<span class="lineno">  145 </span>-- * Information about imports
+<span class="lineno">  146 </span>
+<span class="lineno">  147 </span>type HasImportInfo dom = (Domain dom, HasImportInfo' (SemanticInfo dom AST.UImportDecl))
+<span class="lineno">  148 </span>
+<span class="lineno">  149 </span>class HasImportInfo' si where
+<span class="lineno">  150 </span>  semanticsImportedModule :: si -&gt; GHC.Module
+<span class="lineno">  151 </span>  semanticsAvailable :: si -&gt; [GHC.Name]
+<span class="lineno">  152 </span>  semanticsImported :: si -&gt; [GHC.Name]
+<span class="lineno">  153 </span>  semanticsTransMods :: si -&gt; [Module]
+<span class="lineno">  154 </span>
+<span class="lineno">  155 </span>instance HasImportInfo' (AST.ImportInfo GHC.Name) where
+<span class="lineno">  156 </span>  <span class="decl"><span class="nottickedoff">semanticsImportedModule = (^. importedModule)</span></span>
+<span class="lineno">  157 </span>  <span class="decl"><span class="nottickedoff">semanticsAvailable = (^. availableNames)</span></span>
+<span class="lineno">  158 </span>  <span class="decl"><span class="nottickedoff">semanticsImported = (^? importedNames&amp;traversal&amp;pName)</span></span>
+<span class="lineno">  159 </span>  <span class="decl"><span class="nottickedoff">semanticsTransMods = (^. importTransMods)</span></span>
+<span class="lineno">  160 </span>
+<span class="lineno">  161 </span>instance HasImportInfo' (AST.ImportInfo GHC.Id) where
+<span class="lineno">  162 </span>  <span class="decl"><span class="nottickedoff">semanticsImportedModule = (^. importedModule)</span></span>
+<span class="lineno">  163 </span>  <span class="decl"><span class="nottickedoff">semanticsAvailable = map idName . (^. availableNames)</span></span>
+<span class="lineno">  164 </span>  <span class="decl"><span class="istickedoff">semanticsImported = map idName . (^? importedNames&amp;traversal&amp;pName)</span></span>
+<span class="lineno">  165 </span>  <span class="decl"><span class="istickedoff">semanticsTransMods = (^. importTransMods)</span></span>
+<span class="lineno">  166 </span>
+<span class="lineno">  167 </span>instance HasImportInfo dom =&gt; HasImportInfo' (Ann UImportDecl dom st) where
+<span class="lineno">  168 </span>  <span class="decl"><span class="nottickedoff">semanticsImportedModule = semanticsImportedModule . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">  169 </span>  <span class="decl"><span class="nottickedoff">semanticsAvailable = semanticsAvailable . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">  170 </span>  <span class="decl"><span class="istickedoff">semanticsImported = semanticsImported . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">  171 </span>  <span class="decl"><span class="istickedoff">semanticsTransMods = semanticsTransMods . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">  172 </span>
+<span class="lineno">  173 </span>-- * Information about implicitly bounded fields
+<span class="lineno">  174 </span>
+<span class="lineno">  175 </span>type HasImplicitFieldsInfo dom = (Domain dom, HasImplicitFieldsInfo' (SemanticInfo dom AST.UFieldWildcard))
+<span class="lineno">  176 </span>
+<span class="lineno">  177 </span>class HasImplicitFieldsInfo' si where
+<span class="lineno">  178 </span>  semanticsImplicitFlds :: si -&gt; [(GHC.Name, GHC.Name)]
+<span class="lineno">  179 </span>
+<span class="lineno">  180 </span>instance HasImplicitFieldsInfo' ImplicitFieldInfo where
+<span class="lineno">  181 </span>  <span class="decl"><span class="istickedoff">semanticsImplicitFlds = (^. implicitFieldBindings)</span></span>
+<span class="lineno">  182 </span>
+<span class="lineno">  183 </span>instance HasImplicitFieldsInfo dom =&gt; HasImplicitFieldsInfo' (Ann UFieldWildcard dom st) where
+<span class="lineno">  184 </span>  <span class="decl"><span class="istickedoff">semanticsImplicitFlds = semanticsImplicitFlds . (^. annotation&amp;semanticInfo)</span></span>
+<span class="lineno">  185 </span>
+<span class="lineno">  186 </span>-- * AST elements with no information
+<span class="lineno">  187 </span>
+<span class="lineno">  188 </span>type HasNoSemanticInfo dom si = SemanticInfo dom si ~ NoSemanticInfo
+
+</pre>
+</body>
+</html>
