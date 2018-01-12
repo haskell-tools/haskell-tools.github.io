@@ -1,0 +1,102 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE AllowAmbiguousTypes, ScopedTypeVariables, ViewPatterns #-}
+<span class="lineno">    2 </span>-- | Functions that convert the pattern-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
+<span class="lineno">    3 </span>module Language.Haskell.Tools.BackendGHC.Patterns where
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>import ApiAnnotation as GHC (AnnKeywordId(..))
+<span class="lineno">    6 </span>import BasicTypes as GHC (Boxity(..))
+<span class="lineno">    7 </span>import Data.List
+<span class="lineno">    8 </span>import HsExpr (HsSplice(..))
+<span class="lineno">    9 </span>import HsLit as GHC (HsOverLit(..))
+<span class="lineno">   10 </span>import HsPat as GHC
+<span class="lineno">   11 </span>import HsTypes as GHC (HsWildCardBndrs(..), HsImplicitBndrs(..), HsConDetails(..))
+<span class="lineno">   12 </span>import Language.Haskell.Tools.BackendGHC.GHCUtils (getFieldOccName)
+<span class="lineno">   13 </span>import SrcLoc as GHC
+<span class="lineno">   14 </span>import Control.Monad.Reader
+<span class="lineno">   15 </span>
+<span class="lineno">   16 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.Exprs (trfExpr)
+<span class="lineno">   17 </span>import Language.Haskell.Tools.AST.SemaInfoTypes
+<span class="lineno">   18 </span>import Language.Haskell.Tools.BackendGHC.Literals
+<span class="lineno">   19 </span>import Language.Haskell.Tools.BackendGHC.Monad
+<span class="lineno">   20 </span>import Language.Haskell.Tools.BackendGHC.Names (TransformName(..), trfOperator, trfName)
+<span class="lineno">   21 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.TH (trfSplice, trfQuasiQuotation')
+<span class="lineno">   22 </span>import Language.Haskell.Tools.BackendGHC.Types (trfType)
+<span class="lineno">   23 </span>import Language.Haskell.Tools.BackendGHC.Utils
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>import Language.Haskell.Tools.AST (Ann, Dom, RangeStage)
+<span class="lineno">   26 </span>import qualified Language.Haskell.Tools.AST as AST
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>trfPattern :: TransformName n r =&gt; Located (Pat n) -&gt; Trf (Ann AST.UPattern (Dom r) RangeStage)
+<span class="lineno">   29 </span>-- field wildcards are not directly represented in GHC AST
+<span class="lineno">   30 </span><span class="decl"><span class="istickedoff">trfPattern (L l (ConPatIn name (RecCon (HsRecFields flds _)))) | any ((l ==) . getLoc) flds</span>
+<span class="lineno">   31 </span><span class="spaces">  </span><span class="istickedoff">= focusOn l $ do</span>
+<span class="lineno">   32 </span><span class="spaces">      </span><span class="istickedoff">let (fromWC, notWC) = partition ((l ==) . getLoc) flds</span>
+<span class="lineno">   33 </span><span class="spaces">      </span><span class="istickedoff">normalFields &lt;- mapM (trfLocNoSema trfPatternField') notWC</span>
+<span class="lineno">   34 </span><span class="spaces">      </span><span class="istickedoff">wildc &lt;- annLocNoSema (tokenLocBack AnnDotdot) (AST.UFieldWildcardPattern &lt;$&gt; annCont (createImplicitFldInfo (unLoc . (\(VarPat n) -&gt; n) . unLoc) (map unLoc fromWC)) (pure AST.FldWildcard))</span>
+<span class="lineno">   35 </span><span class="spaces">      </span><span class="istickedoff">annLocNoSema (pure l) (AST.URecPat &lt;$&gt; trfName name &lt;*&gt; makeNonemptyList <span class="nottickedoff">&quot;, &quot;</span> (pure (normalFields ++ [wildc])))</span>
+<span class="lineno">   36 </span><span class="spaces"></span><span class="istickedoff">trfPattern p = trfLocNoSema trfPattern' (correctPatternLoc p)</span></span>
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>-- | Locations for right-associative infix patterns are incorrect in GHC AST
+<span class="lineno">   39 </span>correctPatternLoc :: Located (Pat n) -&gt; Located (Pat n)
+<span class="lineno">   40 </span><span class="decl"><span class="istickedoff">correctPatternLoc (L _ p@(ConPatIn _ (InfixCon left right)))</span>
+<span class="lineno">   41 </span><span class="spaces">  </span><span class="istickedoff">= L (getLoc (correctPatternLoc left) `combineSrcSpans` getLoc (correctPatternLoc right)) p</span>
+<span class="lineno">   42 </span><span class="spaces"></span><span class="istickedoff">correctPatternLoc p = p</span></span>
+<span class="lineno">   43 </span>
+<span class="lineno">   44 </span>trfPattern' :: TransformName n r =&gt; Pat n -&gt; Trf (AST.UPattern (Dom r) RangeStage)
+<span class="lineno">   45 </span><span class="decl"><span class="istickedoff">trfPattern' (WildPat _) = pure AST.UWildPat</span>
+<span class="lineno">   46 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (VarPat name) = define $ AST.UVarPat &lt;$&gt; trfName name</span>
+<span class="lineno">   47 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (LazyPat pat) = <span class="nottickedoff">AST.UIrrefutablePat &lt;$&gt; trfPattern pat</span></span>
+<span class="lineno">   48 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (AsPat name pat) = AST.UAsPat &lt;$&gt; define (trfName name) &lt;*&gt; trfPattern pat</span>
+<span class="lineno">   49 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (ParPat pat) = AST.UParenPat &lt;$&gt; trfPattern pat</span>
+<span class="lineno">   50 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (BangPat pat) = AST.UBangPat &lt;$&gt; trfPattern pat</span>
+<span class="lineno">   51 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (ListPat pats _ _) = AST.UListPat &lt;$&gt; makeList <span class="nottickedoff">&quot;, &quot;</span> atTheEnd (mapM trfPattern pats)</span>
+<span class="lineno">   52 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (TuplePat pats Boxed _) = AST.UTuplePat &lt;$&gt; makeList <span class="nottickedoff">&quot;, &quot;</span> atTheEnd (mapM trfPattern pats)</span>
+<span class="lineno">   53 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (TuplePat pats Unboxed _) = <span class="nottickedoff">AST.UUnboxTuplePat &lt;$&gt; makeList &quot;, &quot; atTheEnd (mapM trfPattern pats)</span></span>
+<span class="lineno">   54 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (PArrPat pats _) = <span class="nottickedoff">AST.UParArrPat &lt;$&gt; makeList &quot;, &quot; atTheEnd (mapM trfPattern pats)</span></span>
+<span class="lineno">   55 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (ConPatIn name (PrefixCon args)) = AST.UAppPat &lt;$&gt; trfName name &lt;*&gt; makeList <span class="nottickedoff">&quot; &quot;</span> atTheEnd (mapM trfPattern args)</span>
+<span class="lineno">   56 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (ConPatIn name (RecCon (HsRecFields flds _))) = AST.URecPat &lt;$&gt; trfName name &lt;*&gt; trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfPatternField' flds</span>
+<span class="lineno">   57 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (ConPatIn name (InfixCon left right)) = AST.UInfixAppPat &lt;$&gt; trfPattern left &lt;*&gt; trfOperator name &lt;*&gt; trfPattern right</span>
+<span class="lineno">   58 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (ViewPat expr pat _) = AST.UViewPat &lt;$&gt; trfExpr expr &lt;*&gt; trfPattern pat</span>
+<span class="lineno">   59 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (SplicePat qq@(HsQuasiQuote {})) = <span class="nottickedoff">AST.UQuasiQuotePat &lt;$&gt; annContNoSema (trfQuasiQuotation' qq)</span></span>
+<span class="lineno">   60 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (SplicePat splice) = <span class="nottickedoff">AST.USplicePat &lt;$&gt; trfSplice splice</span></span>
+<span class="lineno">   61 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (LitPat lit) = AST.ULitPat &lt;$&gt; annCont (pure $ RealLiteralInfo <span class="nottickedoff">(monoLiteralType lit)</span>) (trfLiteral' lit)</span>
+<span class="lineno">   62 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (SigPatIn pat (hsib_body . hswc_body -&gt; typ)) = AST.UTypeSigPat &lt;$&gt; trfPattern pat &lt;*&gt; trfType typ</span>
+<span class="lineno">   63 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (NPat (ol_val . unLoc -&gt; lit) _ _ _) = AST.ULitPat &lt;$&gt; annCont (asks <span class="nottickedoff">contRange</span> &gt;&gt;= pure . PreLiteralInfo) (trfOverloadedLit lit)</span>
+<span class="lineno">   64 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (NPlusKPat id (L l lit) _ _ _ _) = <span class="nottickedoff">AST.UNPlusKPat &lt;$&gt; define (trfName id) &lt;*&gt; annLoc (asks contRange &gt;&gt;= pure . PreLiteralInfo) (pure l) (trfOverloadedLit (ol_val lit))</span></span>
+<span class="lineno">   65 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (CoPat _ pat _) = <span class="nottickedoff">trfPattern' pat</span> -- coercion pattern introduced by GHC</span>
+<span class="lineno">   66 </span><span class="spaces"></span><span class="istickedoff">trfPattern' (SumPat pat tag arity _)</span>
+<span class="lineno">   67 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do sepsBefore &lt;- focusBeforeLoc (srcSpanStart (getLoc pat)) (eachTokenLoc (AnnOpen : replicate (tag - 1) AnnVbar))</span></span>
+<span class="lineno">   68 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">sepsAfter &lt;- focusAfterLoc (srcSpanEnd (getLoc pat)) (eachTokenLoc (replicate (arity - tag) AnnVbar))</span></span>
+<span class="lineno">   69 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">let locsBefore = map srcSpanEnd $ init sepsBefore</span></span>
+<span class="lineno">   70 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">locsAfter = map srcSpanEnd sepsAfter</span></span>
+<span class="lineno">   71 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">AST.UUnboxedSumPat &lt;$&gt; makeList &quot; | &quot; (after AnnOpen) (mapM makePlaceholder locsBefore)</span></span>
+<span class="lineno">   72 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfPattern pat</span></span>
+<span class="lineno">   73 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; makeList &quot; | &quot; (before AnnClose) (mapM makePlaceholder locsAfter)</span></span>
+<span class="lineno">   74 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">makePlaceholder l = annLocNoSema (pure (srcLocSpan l)) (pure AST.UUnboxedSumPlaceHolder)</span></span>
+<span class="lineno">   75 </span><span class="spaces"></span><span class="istickedoff">trfPattern' p = <span class="nottickedoff">unhandledElement &quot;pattern&quot; p</span></span></span>
+<span class="lineno">   76 </span>
+<span class="lineno">   77 </span>trfPatternField' :: TransformName n r =&gt; HsRecField n (LPat n) -&gt; Trf (AST.UPatternField (Dom r) RangeStage)
+<span class="lineno">   78 </span><span class="decl"><span class="istickedoff">trfPatternField' (HsRecField id arg False) = AST.UNormalFieldPattern &lt;$&gt; trfName (getFieldOccName id) &lt;*&gt; trfPattern arg</span>
+<span class="lineno">   79 </span><span class="spaces"></span><span class="istickedoff">trfPatternField' (HsRecField id _ True) = AST.UFieldPunPattern &lt;$&gt; trfName (getFieldOccName id)</span></span>
+
+</pre>
+</body>
+</html>

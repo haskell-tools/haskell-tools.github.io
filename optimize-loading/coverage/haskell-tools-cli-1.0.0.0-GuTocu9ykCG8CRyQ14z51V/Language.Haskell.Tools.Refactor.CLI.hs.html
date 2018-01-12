@@ -1,0 +1,170 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts
+<span class="lineno">    2 </span>           , TypeFamilies
+<span class="lineno">    3 </span>           , RecordWildCards
+<span class="lineno">    4 </span>           , ScopedTypeVariables
+<span class="lineno">    5 </span>           #-}
+<span class="lineno">    6 </span>-- | The command line interface for Haskell-tools. It uses the Haskell-tools daemon package starting
+<span class="lineno">    7 </span>-- the daemon in the same process and communicating with it through a channel.
+<span class="lineno">    8 </span>-- It can be used in a one-shot mode, listing all actions in a command-line parameter or using its
+<span class="lineno">    9 </span>-- standard input to perform a series of refactorings.
+<span class="lineno">   10 </span>module Language.Haskell.Tools.Refactor.CLI
+<span class="lineno">   11 </span>  (refactorSession, normalRefactorSession, CLIOptions(..), SharedDaemonOptions(..)) where
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>import Control.Concurrent
+<span class="lineno">   14 </span>import Control.Exception (BlockedIndefinitelyOnMVar(..), catch)
+<span class="lineno">   15 </span>import Control.Monad.State.Strict
+<span class="lineno">   16 </span>import Data.List
+<span class="lineno">   17 </span>import Data.List.Split (splitOn)
+<span class="lineno">   18 </span>import Data.Maybe
+<span class="lineno">   19 </span>import Data.Version (showVersion)
+<span class="lineno">   20 </span>import System.Directory (getCurrentDirectory)
+<span class="lineno">   21 </span>import System.IO
+<span class="lineno">   22 </span>import System.IO.Error (isEOFError)
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>import Language.Haskell.Tools.Daemon (runDaemon)
+<span class="lineno">   25 </span>import Language.Haskell.Tools.Daemon.Mode (channelMode)
+<span class="lineno">   26 </span>import Language.Haskell.Tools.Daemon.Options (SharedDaemonOptions(..), DaemonOptions(..))
+<span class="lineno">   27 </span>import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg(..), ClientMessage(..))
+<span class="lineno">   28 </span>import Language.Haskell.Tools.Refactor
+<span class="lineno">   29 </span>import Paths_haskell_tools_cli (version)
+<span class="lineno">   30 </span>-- | Normal entry point of the cli.
+<span class="lineno">   31 </span>normalRefactorSession :: [RefactoringChoice] -&gt; Handle -&gt; Handle -&gt; CLIOptions -&gt; IO Bool
+<span class="lineno">   32 </span><span class="decl"><span class="istickedoff">normalRefactorSession refactorings input output options@CLIOptions{..}</span>
+<span class="lineno">   33 </span><span class="spaces">  </span><span class="istickedoff">= do hSetBuffering stdout LineBuffering -- to synch our output with GHC's</span>
+<span class="lineno">   34 </span><span class="spaces">       </span><span class="istickedoff">hSetBuffering stderr LineBuffering -- to synch our output with GHC's</span>
+<span class="lineno">   35 </span><span class="spaces">       </span><span class="istickedoff">refactorSession refactorings</span>
+<span class="lineno">   36 </span><span class="spaces">         </span><span class="istickedoff">(\st -&gt; void $ forkIO $ do runDaemon refactorings channelMode st</span>
+<span class="lineno">   37 </span><span class="spaces">                                      </span><span class="istickedoff">(DaemonOptions False <span class="nottickedoff">0</span> (not cliVerbose) sharedOptions))</span>
+<span class="lineno">   38 </span><span class="spaces">         </span><span class="istickedoff">input output options</span></span>
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>-- | Command-line options for the Haskell-tools CLI
+<span class="lineno">   41 </span>data CLIOptions = CLIOptions { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">displayVersion</span></span></span> :: Bool
+<span class="lineno">   42 </span>                             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">cliVerbose</span></span></span> :: Bool
+<span class="lineno">   43 </span>                             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">executeCommands</span></span></span> :: Maybe String
+<span class="lineno">   44 </span>                             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">sharedOptions</span></span></span> :: SharedDaemonOptions
+<span class="lineno">   45 </span>                             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">packageRoots</span></span></span> :: [FilePath]
+<span class="lineno">   46 </span>                             } deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>
+<span class="lineno">   47 </span>
+<span class="lineno">   48 </span>-- | Entry point with configurable initialization. Mainly for testing, call 'normalRefactorSession'
+<span class="lineno">   49 </span>-- to use the command-line.
+<span class="lineno">   50 </span>refactorSession :: [RefactoringChoice] -&gt; ServerInit -&gt; Handle -&gt; Handle -&gt; CLIOptions -&gt; IO Bool
+<span class="lineno">   51 </span><span class="decl"><span class="istickedoff">refactorSession _ _ _ output CLIOptions{..} | <span class="tickonlyfalse">displayVersion</span></span>
+<span class="lineno">   52 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do hPutStrLn output $ showVersion version</span></span>
+<span class="lineno">   53 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">return True</span></span>
+<span class="lineno">   54 </span><span class="spaces"></span><span class="istickedoff">refactorSession refactorings init input output CLIOptions{..} = do</span>
+<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">connStore &lt;- newEmptyMVar</span>
+<span class="lineno">   56 </span><span class="spaces">  </span><span class="istickedoff">init connStore</span>
+<span class="lineno">   57 </span><span class="spaces">  </span><span class="istickedoff">(recv,send) &lt;- takeMVar connStore -- wait for the server to establish connection</span>
+<span class="lineno">   58 </span><span class="spaces">  </span><span class="istickedoff">wd &lt;- getCurrentDirectory</span>
+<span class="lineno">   59 </span><span class="spaces">  </span><span class="istickedoff">writeChan send (SetWorkingDir wd)</span>
+<span class="lineno">   60 </span><span class="spaces">  </span><span class="istickedoff">writeChan send (AddPackages packageRoots)</span>
+<span class="lineno">   61 </span><span class="spaces">  </span><span class="istickedoff">case executeCommands of</span>
+<span class="lineno">   62 </span><span class="spaces">    </span><span class="istickedoff">Just cmds -&gt; performCmdOptions refactorings <span class="nottickedoff">output</span> send (splitOn &quot;;&quot; cmds)</span>
+<span class="lineno">   63 </span><span class="spaces">    </span><span class="istickedoff">Nothing -&gt; return <span class="nottickedoff">()</span></span>
+<span class="lineno">   64 </span><span class="spaces">  </span><span class="istickedoff">when (isNothing executeCommands) (void $ forkIO $ do processUserInput refactorings input <span class="nottickedoff">output</span> send)</span>
+<span class="lineno">   65 </span><span class="spaces">  </span><span class="istickedoff">readFromSocket <span class="nottickedoff">(isJust executeCommands)</span> output recv</span></span>
+<span class="lineno">   66 </span>
+<span class="lineno">   67 </span>-- | An initialization action for the daemon.
+<span class="lineno">   68 </span>type ServerInit = MVar (Chan ResponseMsg, Chan ClientMessage) -&gt; IO ()
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>-- | Reads commands from standard input and executes them.
+<span class="lineno">   71 </span>processUserInput :: [RefactoringChoice] -&gt; Handle -&gt; Handle -&gt; Chan ClientMessage -&gt; IO ()
+<span class="lineno">   72 </span><span class="decl"><span class="istickedoff">processUserInput refactorings input output chan = do</span>
+<span class="lineno">   73 </span><span class="spaces">    </span><span class="istickedoff">cmd &lt;- hGetLine input</span>
+<span class="lineno">   74 </span><span class="spaces">    </span><span class="istickedoff">continue &lt;- processCommand False refactorings <span class="nottickedoff">output</span> chan cmd</span>
+<span class="lineno">   75 </span><span class="spaces">    </span><span class="istickedoff">when continue $ processUserInput <span class="nottickedoff">refactorings</span> input <span class="nottickedoff">output</span> chan</span>
+<span class="lineno">   76 </span><span class="spaces">  </span><span class="istickedoff">`catch` <span class="nottickedoff">\e -&gt; if isEOFError e then return ()</span></span>
+<span class="lineno">   77 </span><span class="spaces">                                </span><span class="istickedoff"><span class="nottickedoff">else putStrLn (show e) &gt;&gt; return ()</span></span></span>
+<span class="lineno">   78 </span>
+<span class="lineno">   79 </span>-- | Perform a command received from the user. The resulting boolean states if the user may continue
+<span class="lineno">   80 </span>-- (True), or the session is over (False).
+<span class="lineno">   81 </span>processCommand :: Bool -&gt; [RefactoringChoice] -&gt; Handle -&gt; Chan ClientMessage -&gt; String -&gt; IO Bool
+<span class="lineno">   82 </span><span class="decl"><span class="istickedoff">processCommand _ _ _ _ &quot;&quot; = <span class="nottickedoff">return True</span></span>
+<span class="lineno">   83 </span><span class="spaces"></span><span class="istickedoff">processCommand shutdown refactorings output chan cmd = do</span>
+<span class="lineno">   84 </span><span class="spaces">  </span><span class="istickedoff">case splitOn &quot; &quot; cmd of</span>
+<span class="lineno">   85 </span><span class="spaces">    </span><span class="istickedoff">[&quot;Exit&quot;] -&gt; writeChan chan Disconnect &gt;&gt; return False</span>
+<span class="lineno">   86 </span><span class="spaces">    </span><span class="istickedoff">[&quot;AddFile&quot;, fn] -&gt; <span class="nottickedoff">writeChan chan (ReLoad [fn] [] []) &gt;&gt; return True</span></span>
+<span class="lineno">   87 </span><span class="spaces">    </span><span class="istickedoff">[&quot;ChangeFile&quot;, fn] -&gt; <span class="nottickedoff">writeChan chan (ReLoad [] [fn] []) &gt;&gt; return True</span></span>
+<span class="lineno">   88 </span><span class="spaces">    </span><span class="istickedoff">[&quot;RemoveFile&quot;, fn] -&gt; <span class="nottickedoff">writeChan chan (ReLoad [] [] [fn]) &gt;&gt; return True</span></span>
+<span class="lineno">   89 </span><span class="spaces">    </span><span class="istickedoff">[cmd] | <span class="nottickedoff">cmd `elem` [&quot;AddFile&quot;, &quot;ChangeFile&quot;, &quot;RemoveFile&quot;]</span></span>
+<span class="lineno">   90 </span><span class="spaces">      </span><span class="istickedoff">-&gt; <span class="nottickedoff">hPutStrLn output (cmd ++ &quot; needs one argument. None is given.&quot;) &gt;&gt; return False</span></span>
+<span class="lineno">   91 </span><span class="spaces">    </span><span class="istickedoff">cmd:_ | <span class="tickonlyfalse">cmd `elem` [&quot;AddFile&quot;, &quot;ChangeFile&quot;, &quot;RemoveFile&quot;]</span></span>
+<span class="lineno">   92 </span><span class="spaces">      </span><span class="istickedoff">-&gt; <span class="nottickedoff">hPutStrLn output (cmd ++ &quot; needs one argument. Too many arguments given.&quot;) &gt;&gt; return False</span></span>
+<span class="lineno">   93 </span><span class="spaces">    </span><span class="istickedoff">[&quot;Undo&quot;] -&gt; <span class="nottickedoff">writeChan chan UndoLast &gt;&gt; return True</span></span>
+<span class="lineno">   94 </span><span class="spaces">    </span><span class="istickedoff">[&quot;Reset&quot;] -&gt; <span class="nottickedoff">writeChan chan Reset &gt;&gt; return True</span> -- undocumented feature</span>
+<span class="lineno">   95 </span><span class="spaces">    </span><span class="istickedoff">ref : rest | let modPath:selection:details = rest ++ <span class="nottickedoff">(replicate (2 - length rest) &quot;&quot;)</span></span>
+<span class="lineno">   96 </span><span class="spaces">               </span><span class="istickedoff">, <span class="tickonlytrue">ref `elem` refactorCommands refactorings</span></span>
+<span class="lineno">   97 </span><span class="spaces">       </span><span class="istickedoff">-&gt; do writeChan chan (PerformRefactoring ref modPath selection details shutdown False)</span>
+<span class="lineno">   98 </span><span class="spaces">             </span><span class="istickedoff">return (not shutdown)</span>
+<span class="lineno">   99 </span><span class="spaces">    </span><span class="istickedoff">&quot;Try&quot; : ref : rest | let modPath:selection:details = <span class="nottickedoff">rest ++ (replicate (2 - length rest) &quot;&quot;)</span></span>
+<span class="lineno">  100 </span><span class="spaces">                       </span><span class="istickedoff">, <span class="nottickedoff">ref `elem` refactorCommands refactorings</span></span>
+<span class="lineno">  101 </span><span class="spaces">       </span><span class="istickedoff">-&gt; <span class="nottickedoff">do writeChan chan (PerformRefactoring ref modPath selection details shutdown True)</span></span>
+<span class="lineno">  102 </span><span class="spaces">             </span><span class="istickedoff"><span class="nottickedoff">return (not shutdown)</span></span>
+<span class="lineno">  103 </span><span class="spaces">    </span><span class="istickedoff">[&quot;Try&quot;] -&gt; <span class="nottickedoff">hPutStrLn output &quot;The 'Try' modifier requires a refactoring command specified to execute.&quot; &gt;&gt; return False</span></span>
+<span class="lineno">  104 </span><span class="spaces">    </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">do liftIO $ hPutStrLn output $ &quot;'&quot; ++ cmd ++ &quot;' is not a known command. Commands are: Exit, Undo, AddFile, ChangeFile, RemoveFile, Try REFACTOR&quot;</span></span>
+<span class="lineno">  105 </span><span class="spaces">                                            </span><span class="istickedoff"><span class="nottickedoff">++ concat (map (&quot;, &quot; ++) (refactorCommands refactorings))</span></span>
+<span class="lineno">  106 </span><span class="spaces">            </span><span class="istickedoff"><span class="nottickedoff">return True</span></span></span>
+<span class="lineno">  107 </span>
+<span class="lineno">  108 </span>-- | Read the responses of the daemon. The result states if the session exited normally or in an
+<span class="lineno">  109 </span>-- erronous way.
+<span class="lineno">  110 </span>readFromSocket :: Bool -&gt; Handle -&gt; Chan ResponseMsg -&gt; IO Bool
+<span class="lineno">  111 </span><span class="decl"><span class="istickedoff">readFromSocket pedantic output recv = do</span>
+<span class="lineno">  112 </span><span class="spaces">    </span><span class="istickedoff">continue &lt;- readChan recv &gt;&gt;= processMessage <span class="nottickedoff">pedantic</span> output</span>
+<span class="lineno">  113 </span><span class="spaces">    </span><span class="istickedoff">maybe (readFromSocket <span class="nottickedoff">pedantic</span> output recv) return continue -- repeate if not stopping</span>
+<span class="lineno">  114 </span><span class="spaces">  </span><span class="istickedoff">`catch` <span class="nottickedoff">\(_ :: BlockedIndefinitelyOnMVar) -&gt; return False</span></span></span> -- other threads terminated
+<span class="lineno">  115 </span>
+<span class="lineno">  116 </span>-- | Receives a single response from daemon. Returns Nothing if the execution should continue,
+<span class="lineno">  117 </span>-- Just False on erronous termination and Just True on normal termination.
+<span class="lineno">  118 </span>processMessage :: Bool -&gt; Handle -&gt; ResponseMsg -&gt; IO (Maybe Bool)
+<span class="lineno">  119 </span><span class="decl"><span class="istickedoff">processMessage _ output (ErrorMessage msg) = <span class="nottickedoff">hPutStrLn output msg &gt;&gt; return (Just False)</span></span>
+<span class="lineno">  120 </span><span class="spaces"></span><span class="istickedoff">processMessage pedantic output (CompilationProblem marks hints)</span>
+<span class="lineno">  121 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do mapM_ (hPutStrLn output) hints</span></span>
+<span class="lineno">  122 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">mapM_ (hPutStrLn output . show) marks</span></span>
+<span class="lineno">  123 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">return (if pedantic then Just False else Nothing)</span></span>
+<span class="lineno">  124 </span><span class="spaces"></span><span class="istickedoff">processMessage _ output (LoadedModule fp name)</span>
+<span class="lineno">  125 </span><span class="spaces">  </span><span class="istickedoff">= do hPutStrLn output $ &quot;Loaded module: &quot; ++ name ++ &quot;( &quot; ++ fp ++ &quot;) &quot;</span>
+<span class="lineno">  126 </span><span class="spaces">       </span><span class="istickedoff">return Nothing</span>
+<span class="lineno">  127 </span><span class="spaces"></span><span class="istickedoff">processMessage _ output (DiffInfo diff)</span>
+<span class="lineno">  128 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do hPutStrLn output diff</span></span>
+<span class="lineno">  129 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">return Nothing</span></span>
+<span class="lineno">  130 </span><span class="spaces"></span><span class="istickedoff">processMessage _ output (LoadingModules mods)</span>
+<span class="lineno">  131 </span><span class="spaces">  </span><span class="istickedoff">= do hPutStrLn output $ &quot;Found modules: &quot; ++ intercalate <span class="nottickedoff">&quot;, &quot;</span> mods</span>
+<span class="lineno">  132 </span><span class="spaces">       </span><span class="istickedoff">return Nothing</span>
+<span class="lineno">  133 </span><span class="spaces"></span><span class="istickedoff">processMessage _ output (UnusedFlags flags)</span>
+<span class="lineno">  134 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do hPutStrLn output $ &quot;Warning: The following ghc-flags are not recognized: &quot;</span></span>
+<span class="lineno">  135 </span><span class="spaces">                             </span><span class="istickedoff"><span class="nottickedoff">++ intercalate &quot; &quot; flags</span></span>
+<span class="lineno">  136 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">return Nothing</span></span>
+<span class="lineno">  137 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  138 </span><span class="spaces"></span><span class="istickedoff">processMessage _ _ Disconnected = return (Just <span class="nottickedoff">True</span>)</span>
+<span class="lineno">  139 </span><span class="spaces"></span><span class="istickedoff">processMessage _ _ _ = <span class="nottickedoff">return Nothing</span></span></span>
+<span class="lineno">  140 </span>
+<span class="lineno">  141 </span>-- | Perform the commands specified by the user as a command line argument.
+<span class="lineno">  142 </span>performCmdOptions :: [RefactoringChoice] -&gt; Handle -&gt; Chan ClientMessage -&gt; [String] -&gt; IO ()
+<span class="lineno">  143 </span><span class="decl"><span class="istickedoff">performCmdOptions refactorings output chan cmds = do</span>
+<span class="lineno">  144 </span><span class="spaces">    </span><span class="istickedoff">continue &lt;- mapM (\(shutdown, cmd) -&gt; processCommand shutdown refactorings <span class="nottickedoff">output</span> chan cmd)</span>
+<span class="lineno">  145 </span><span class="spaces">                     </span><span class="istickedoff">(zip lastIsShutdown cmds)</span>
+<span class="lineno">  146 </span><span class="spaces">    </span><span class="istickedoff">when (and continue) $ <span class="nottickedoff">writeChan chan Disconnect</span></span>
+<span class="lineno">  147 </span><span class="spaces">  </span><span class="istickedoff">where lastIsShutdown = replicate (length cmds - 1) <span class="nottickedoff">False</span> ++ [True]</span></span>
+
+</pre>
+</body>
+</html>
