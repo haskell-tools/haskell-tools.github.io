@@ -1,0 +1,635 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE LambdaCase, ScopedTypeVariables, ViewPatterns #-}
+<span class="lineno">    2 </span>-- | Functions that convert the declarations of the GHC AST to corresponding elements in the Haskell-tools AST representation
+<span class="lineno">    3 </span>module Language.Haskell.Tools.BackendGHC.Decls where
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>import ApiAnnotation as GHC (AnnKeywordId(..))
+<span class="lineno">    6 </span>import Bag as GHC (bagToList)
+<span class="lineno">    7 </span>import BasicTypes as GHC
+<span class="lineno">    8 </span>import BooleanFormula as GHC (BooleanFormula(..))
+<span class="lineno">    9 </span>import Class as GHC (FunDep)
+<span class="lineno">   10 </span>import ForeignCall as GHC (Safety(..), CExportSpec(..), CCallConv(..))
+<span class="lineno">   11 </span>import qualified GHC
+<span class="lineno">   12 </span>import HsSyn as GHC
+<span class="lineno">   13 </span>import Name as GHC (Name, occNameString, nameOccName, isSymOcc)
+<span class="lineno">   14 </span>import Outputable as GHC (Outputable(..), showSDocUnsafe)
+<span class="lineno">   15 </span>import RdrName as GHC (RdrName, rdrNameOcc)
+<span class="lineno">   16 </span>import SrcLoc as GHC
+<span class="lineno">   17 </span>import TyCon as GHC (Role(..))
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>import Control.Monad.Reader
+<span class="lineno">   20 </span>import Control.Reference
+<span class="lineno">   21 </span>import Data.Generics.Uniplate.Data ()
+<span class="lineno">   22 </span>import Data.List
+<span class="lineno">   23 </span>import Data.Maybe (Maybe(..), fromMaybe)
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>import Language.Haskell.Tools.BackendGHC.Binds
+<span class="lineno">   26 </span>import Language.Haskell.Tools.BackendGHC.Exprs (trfExpr)
+<span class="lineno">   27 </span>import Language.Haskell.Tools.BackendGHC.GHCUtils
+<span class="lineno">   28 </span>import Language.Haskell.Tools.BackendGHC.Kinds (trfKindSig, trfKindSig')
+<span class="lineno">   29 </span>import Language.Haskell.Tools.BackendGHC.Monad
+<span class="lineno">   30 </span>import Language.Haskell.Tools.BackendGHC.Names
+<span class="lineno">   31 </span>import Language.Haskell.Tools.BackendGHC.Patterns (trfPattern)
+<span class="lineno">   32 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.TH (trfSplice)
+<span class="lineno">   33 </span>import Language.Haskell.Tools.BackendGHC.Types
+<span class="lineno">   34 </span>import Language.Haskell.Tools.BackendGHC.Utils
+<span class="lineno">   35 </span>
+<span class="lineno">   36 </span>import Language.Haskell.Tools.AST (Ann, AnnMaybeG, AnnListG, getRange, Dom, RangeStage)
+<span class="lineno">   37 </span>import qualified Language.Haskell.Tools.AST as AST
+<span class="lineno">   38 </span>import Language.Haskell.Tools.AST.SemaInfoTypes as AST (nameInfo, mkNoSemanticInfo)
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>trfDecls :: TransformName n r =&gt; [LHsDecl n] -&gt; Trf (AnnListG AST.UDecl (Dom r) RangeStage)
+<span class="lineno">   41 </span><span class="decl"><span class="istickedoff">trfDecls decls = addToCurrentScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)</span></span>
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>trfDeclsGroup :: forall n r . TransformName n r =&gt; HsGroup n -&gt; Trf (AnnListG AST.UDecl (Dom r) RangeStage)
+<span class="lineno">   44 </span><span class="decl"><span class="istickedoff">trfDeclsGroup g@(HsGroup vals splices tycls derivs fixities defaults foreigns warns anns rules vects _)</span>
+<span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">= do rdrSpls &lt;- asks declSplices -- now we don't want to rename the splices, just interested in their locations to</span>
+<span class="lineno">   46 </span><span class="spaces">                                   </span><span class="istickedoff">-- filter out the declarations that are generated from them</span>
+<span class="lineno">   47 </span><span class="spaces">       </span><span class="istickedoff">let (sigs, bagToList -&gt; binds) = getBindsAndSigs vals</span>
+<span class="lineno">   48 </span><span class="spaces">           </span><span class="istickedoff">-- collect the declarations from the group</span>
+<span class="lineno">   49 </span><span class="spaces">           </span><span class="istickedoff">alldecls :: [Located (HsDecl n)]</span>
+<span class="lineno">   50 </span><span class="spaces">           </span><span class="istickedoff">alldecls = (map <span class="nottickedoff">(fmap SpliceD)</span> splices)</span>
+<span class="lineno">   51 </span><span class="spaces">                        </span><span class="istickedoff">++ (map (fmap ValD) binds)</span>
+<span class="lineno">   52 </span><span class="spaces">                        </span><span class="istickedoff">++ (map (fmap SigD) sigs)</span>
+<span class="lineno">   53 </span><span class="spaces">                        </span><span class="istickedoff">++ (map (fmap TyClD) (concat $ map group_tyclds tycls))</span>
+<span class="lineno">   54 </span><span class="spaces">                        </span><span class="istickedoff">++ (map (fmap DerivD) derivs)</span>
+<span class="lineno">   55 </span><span class="spaces">                        </span><span class="istickedoff">++ (map (fmap (SigD . FixSig)) (mergeFixityDefs fixities))</span>
+<span class="lineno">   56 </span><span class="spaces">                        </span><span class="istickedoff">++ (map (fmap DefD) defaults)</span>
+<span class="lineno">   57 </span><span class="spaces">                        </span><span class="istickedoff">++ (map (fmap ForD) foreigns)</span>
+<span class="lineno">   58 </span><span class="spaces">                        </span><span class="istickedoff">++ (map <span class="nottickedoff">(fmap WarningD)</span> warns)</span>
+<span class="lineno">   59 </span><span class="spaces">                        </span><span class="istickedoff">++ (map (fmap AnnD) anns)</span>
+<span class="lineno">   60 </span><span class="spaces">                        </span><span class="istickedoff">++ (map (fmap RuleD) rules)</span>
+<span class="lineno">   61 </span><span class="spaces">                        </span><span class="istickedoff">++ (map <span class="nottickedoff">(fmap VectD)</span> vects)</span>
+<span class="lineno">   62 </span><span class="spaces">                        </span><span class="istickedoff">++ (map (fmap InstD) (hsGroupInstDecls g))</span>
+<span class="lineno">   63 </span><span class="spaces">       </span><span class="istickedoff">-- Declarations generated from TH should only be in scope after the splice.</span>
+<span class="lineno">   64 </span><span class="spaces">       </span><span class="istickedoff">let (genNames, sourceNames) = partition (\d -&gt; any (\spl -&gt; getLoc spl `containsRealSpan` getLoc d) rdrSpls) alldecls</span>
+<span class="lineno">   65 </span><span class="spaces">       </span><span class="istickedoff">addToCurrentScope sourceNames $ do</span>
+<span class="lineno">   66 </span><span class="spaces">         </span><span class="istickedoff">-- use the definitions generated by previous splices when renaming one</span>
+<span class="lineno">   67 </span><span class="spaces">         </span><span class="istickedoff">spls &lt;- asks declSplices &gt;&gt;= mapM (\(L l e) -&gt; let namesGeneratedBefore = filter ((srcSpanStart l &gt;) . srcSpanEnd . getLoc) genNames</span>
+<span class="lineno">   68 </span><span class="spaces">                                                         </span><span class="istickedoff">in addToCurrentScope namesGeneratedBefore ((L l) &lt;$&gt; transformSplice e))</span>
+<span class="lineno">   69 </span><span class="spaces">         </span><span class="istickedoff">let actualDefinitions = removeContained $ orderElems $ replaceSpliceDecls spls alldecls</span>
+<span class="lineno">   70 </span><span class="spaces">           </span><span class="istickedoff">in makeIndentedListNewlineBefore atTheEnd</span>
+<span class="lineno">   71 </span><span class="spaces">                </span><span class="istickedoff">(orderDefs &lt;$&gt; ((++) &lt;$&gt; getDeclsToInsert &lt;*&gt; (mapM (trfDeclsWithScope genNames) actualDefinitions)))</span>
+<span class="lineno">   72 </span><span class="spaces">  </span><span class="istickedoff">where</span>
+<span class="lineno">   73 </span><span class="spaces">    </span><span class="istickedoff">-- use the definitions generated by previous splices when transforming a definition</span>
+<span class="lineno">   74 </span><span class="spaces">    </span><span class="istickedoff">trfDeclsWithScope genNames d = local (\s -&gt; s {declSplices = []})</span>
+<span class="lineno">   75 </span><span class="spaces">                                     </span><span class="istickedoff">$ addToCurrentScope namesGeneratedBefore (trfDecl d)</span>
+<span class="lineno">   76 </span><span class="spaces">      </span><span class="istickedoff">where namesGeneratedBefore = filter ((srcSpanStart (getLoc d) &gt;) . srcSpanEnd . getLoc) genNames</span>
+<span class="lineno">   77 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   78 </span><span class="spaces">    </span><span class="istickedoff">replaceSpliceDecls :: [Located (HsSplice n)] -&gt; [Located (HsDecl n)] -&gt; [Located (HsDecl n)]</span>
+<span class="lineno">   79 </span><span class="spaces">    </span><span class="istickedoff">replaceSpliceDecls splices decls = foldl mergeSplice decls splices</span>
+<span class="lineno">   80 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   81 </span><span class="spaces">    </span><span class="istickedoff">orderElems :: [Located a] -&gt; [Located a]</span>
+<span class="lineno">   82 </span><span class="spaces">    </span><span class="istickedoff">orderElems = sortOn (srcSpanStart . getLoc)</span>
+<span class="lineno">   83 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   84 </span><span class="spaces">    </span><span class="istickedoff">removeContained :: [Located (HsDecl n)] -&gt; [Located (HsDecl n)]</span>
+<span class="lineno">   85 </span><span class="spaces">    </span><span class="istickedoff">removeContained (fst:snd:rest) | getLoc fst `containsRealSpan` getLoc snd</span>
+<span class="lineno">   86 </span><span class="spaces">      </span><span class="istickedoff">= removeContained (fst:rest)</span>
+<span class="lineno">   87 </span><span class="spaces">    </span><span class="istickedoff">removeContained (fst:rest) = fst : removeContained rest</span>
+<span class="lineno">   88 </span><span class="spaces">    </span><span class="istickedoff">removeContained [] = []</span>
+<span class="lineno">   89 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   90 </span><span class="spaces">    </span><span class="istickedoff">(RealSrcSpan sp1) `containsRealSpan` (RealSrcSpan sp2) = sp1 `containsSpan` sp2</span>
+<span class="lineno">   91 </span><span class="spaces">    </span><span class="istickedoff">_ `containsRealSpan` _ = <span class="nottickedoff">False</span></span>
+<span class="lineno">   92 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   93 </span><span class="spaces">    </span><span class="istickedoff">mergeSplice :: [Located (HsDecl n)] -&gt; Located (HsSplice n) -&gt; [Located (HsDecl n)]</span>
+<span class="lineno">   94 </span><span class="spaces">    </span><span class="istickedoff">mergeSplice decls spl@(L spLoc@(RealSrcSpan rss) _)</span>
+<span class="lineno">   95 </span><span class="spaces">      </span><span class="istickedoff">= L spLoc (SpliceD (SpliceDecl spl <span class="nottickedoff">ExplicitSplice</span>)) : filter (\(L (RealSrcSpan rdsp) _) -&gt; not (rss `containsSpan` rdsp)) decls</span>
+<span class="lineno">   96 </span><span class="spaces">    </span><span class="istickedoff">mergeSplice _ (L (UnhelpfulSpan {}) _) = <span class="nottickedoff">convProblem &quot;mergeSplice: no real span&quot;</span></span>
+<span class="lineno">   97 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   98 </span><span class="spaces">    </span><span class="istickedoff">getDeclsToInsert :: Trf [Ann AST.UDecl (Dom r) RangeStage]</span>
+<span class="lineno">   99 </span><span class="spaces">    </span><span class="istickedoff">getDeclsToInsert = do decls &lt;- asks declsToInsert</span>
+<span class="lineno">  100 </span><span class="spaces">                          </span><span class="istickedoff">allLocals &lt;- asks localsInScope</span>
+<span class="lineno">  101 </span><span class="spaces">                          </span><span class="istickedoff">case allLocals of locals:_ -&gt; liftGhc $ mapM (loadIdsForDecls (map (^. _1) locals)) decls</span>
+<span class="lineno">  102 </span><span class="spaces">                                            </span><span class="istickedoff">[] -&gt; <span class="nottickedoff">convertionProblem &quot;getDeclsToInsert: empty scope&quot;</span></span>
+<span class="lineno">  103 </span><span class="spaces">       </span><span class="istickedoff">where loadIdsForDecls :: [GHC.Name] -&gt; Ann AST.UDecl (Dom RdrName) RangeStage -&gt; GHC.Ghc (Ann AST.UDecl (Dom r) RangeStage)</span>
+<span class="lineno">  104 </span><span class="spaces">             </span><span class="istickedoff">loadIdsForDecls locals = AST.semaTraverse $</span>
+<span class="lineno">  105 </span><span class="spaces">                </span><span class="istickedoff">AST.SemaTrf (AST.nameInfo !~ findName) <span class="nottickedoff">pure</span> <span class="nottickedoff">(traverse findName)</span> <span class="nottickedoff">pure</span> <span class="nottickedoff">pure</span> pure</span>
+<span class="lineno">  106 </span><span class="spaces">               </span><span class="istickedoff">where findName rdr = pure $ fromGHCName $ fromMaybe <span class="nottickedoff">(convProblem $ &quot;Data definition name not found: &quot; ++ showSDocUnsafe (ppr rdr)</span></span>
+<span class="lineno">  107 </span><span class="spaces">                                                                                    </span><span class="istickedoff"><span class="nottickedoff">++ &quot;, locals: &quot; ++ (concat $ intersperse &quot;, &quot; $ map (showSDocUnsafe . ppr) locals))</span></span>
+<span class="lineno">  108 </span><span class="spaces">                                                       </span><span class="istickedoff">$ find ((occNameString (rdrNameOcc rdr) ==) . occNameString . nameOccName) locals</span></span>
+<span class="lineno">  109 </span>
+<span class="lineno">  110 </span>trfDecl :: TransformName n r =&gt; Located (HsDecl n) -&gt; Trf (Ann AST.UDecl (Dom r) RangeStage)
+<span class="lineno">  111 </span><span class="decl"><span class="istickedoff">trfDecl = trfLocNoSema $ \case</span>
+<span class="lineno">  112 </span><span class="spaces">  </span><span class="istickedoff">TyClD (FamDecl (FamilyDecl (ClosedTypeFamily typeEqs) name tyVars _ kindSig inj))</span>
+<span class="lineno">  113 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UClosedTypeFamilyDecl &lt;$&gt; focusAfter AnnType (createDeclHead name tyVars)</span>
+<span class="lineno">  114 </span><span class="spaces">                                </span><span class="istickedoff">&lt;*&gt; trfFamilyResultSig kindSig inj</span>
+<span class="lineno">  115 </span><span class="spaces">                                </span><span class="istickedoff">&lt;*&gt; trfTypeEqs typeEqs</span>
+<span class="lineno">  116 </span><span class="spaces">  </span><span class="istickedoff">TyClD (FamDecl fd) -&gt; AST.UTypeFamilyDecl &lt;$&gt; annContNoSema (trfTypeFam' fd)</span>
+<span class="lineno">  117 </span><span class="spaces">  </span><span class="istickedoff">TyClD (SynDecl name vars _ rhs _)</span>
+<span class="lineno">  118 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UTypeDecl &lt;$&gt; between AnnType AnnEqual (createDeclHead name vars) &lt;*&gt; trfType rhs</span>
+<span class="lineno">  119 </span><span class="spaces">  </span><span class="istickedoff">TyClD (DataDecl name vars _ (HsDataDefn nd ctx _ kind cons derivs) _ _)</span>
+<span class="lineno">  120 </span><span class="spaces">    </span><span class="istickedoff">-&gt; do let ctxTok = case nd of DataType -&gt; AnnData</span>
+<span class="lineno">  121 </span><span class="spaces">                                  </span><span class="istickedoff">NewType -&gt; AnnNewtype</span>
+<span class="lineno">  122 </span><span class="spaces">              </span><span class="istickedoff">consLoc = focusBeforeIfPresent AnnDeriving atTheEnd</span>
+<span class="lineno">  123 </span><span class="spaces">          </span><span class="istickedoff">whereLoc &lt;- tokenLoc AnnWhere</span>
+<span class="lineno">  124 </span><span class="spaces">          </span><span class="istickedoff">if isGoodSrcSpan whereLoc then trfGADT nd name vars ctx kind cons derivs ctxTok consLoc</span>
+<span class="lineno">  125 </span><span class="spaces">                                    </span><span class="istickedoff">else trfDataDef nd name vars ctx cons derivs ctxTok consLoc</span>
+<span class="lineno">  126 </span><span class="spaces">  </span><span class="istickedoff">TyClD (ClassDecl ctx name vars _ funDeps sigs defs typeFuns typeFunDefs _ _)</span>
+<span class="lineno">  127 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UClassDecl &lt;$&gt; trfCtx (after AnnClass) ctx</span>
+<span class="lineno">  128 </span><span class="spaces">                     </span><span class="istickedoff">&lt;*&gt; betweenIfPresent AnnClass AnnWhere (createDeclHead name vars)</span>
+<span class="lineno">  129 </span><span class="spaces">                     </span><span class="istickedoff">&lt;*&gt; trfFunDeps funDeps</span>
+<span class="lineno">  130 </span><span class="spaces">                     </span><span class="istickedoff">&lt;*&gt; createClassBody sigs defs typeFuns typeFunDefs</span>
+<span class="lineno">  131 </span><span class="spaces">  </span><span class="istickedoff">InstD (ClsInstD (ClsInstDecl typ binds sigs typefam datafam overlap))</span>
+<span class="lineno">  132 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UInstDecl &lt;$&gt; trfMaybeDefault <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> trfOverlap (after AnnInstance) overlap</span>
+<span class="lineno">  133 </span><span class="spaces">                    </span><span class="istickedoff">&lt;*&gt; trfInstanceRule (hsib_body typ)</span>
+<span class="lineno">  134 </span><span class="spaces">                    </span><span class="istickedoff">&lt;*&gt; trfInstBody binds sigs typefam datafam</span>
+<span class="lineno">  135 </span><span class="spaces">  </span><span class="istickedoff">InstD (DataFamInstD (DataFamInstDecl con pats _ (HsDataDefn nd _ _ _ cons derivs) _))</span>
+<span class="lineno">  136 </span><span class="spaces">    </span><span class="istickedoff">| all ((\case ConDeclH98{} -&gt; True; _ -&gt; False) . unLoc) cons</span>
+<span class="lineno">  137 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UDataInstDecl &lt;$&gt; trfDataKeyword nd</span>
+<span class="lineno">  138 </span><span class="spaces">                        </span><span class="istickedoff">&lt;*&gt; (focusAfter AnnInstance . focusBeforeIfPresent AnnEqual . focusBeforeIfPresent AnnDeriving)</span>
+<span class="lineno">  139 </span><span class="spaces">                              </span><span class="istickedoff">(makeInstanceRuleTyVars con pats)</span>
+<span class="lineno">  140 </span><span class="spaces">                                                       </span><span class="istickedoff">-- the location is needed when there is no = sign</span>
+<span class="lineno">  141 </span><span class="spaces">                        </span><span class="istickedoff">&lt;*&gt; makeListBefore <span class="nottickedoff">&quot; = &quot;</span> <span class="nottickedoff">&quot; | &quot;</span> (pure $ srcSpanStart $ foldLocs $ getLoc con : map getLoc (hsib_body pats)) (mapM trfConDecl cons)</span>
+<span class="lineno">  142 </span><span class="spaces">                        </span><span class="istickedoff">&lt;*&gt; makeIndentedList atTheEnd (mapM trfDerivings (unLoc derivs))</span>
+<span class="lineno">  143 </span><span class="spaces">  </span><span class="istickedoff">InstD (DataFamInstD (DataFamInstDecl con pats _ (HsDataDefn nd _ _ kind cons _) _))</span>
+<span class="lineno">  144 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UGDataInstDecl &lt;$&gt; trfDataKeyword nd</span>
+<span class="lineno">  145 </span><span class="spaces">                        </span><span class="istickedoff">&lt;*&gt; (focusAfter AnnInstance . focusBeforeIfPresent AnnWhere)</span>
+<span class="lineno">  146 </span><span class="spaces">                              </span><span class="istickedoff">(makeInstanceRuleTyVars con pats)</span>
+<span class="lineno">  147 </span><span class="spaces">                        </span><span class="istickedoff">&lt;*&gt; focusBefore AnnWhere (trfKindSig kind)</span>
+<span class="lineno">  148 </span><span class="spaces">                        </span><span class="istickedoff">&lt;*&gt; makeIndentedListBefore <span class="nottickedoff">&quot; where &quot;</span> atTheEnd (mapM trfGADTConDecl cons)</span>
+<span class="lineno">  149 </span><span class="spaces">  </span><span class="istickedoff">InstD (TyFamInstD (TyFamInstDecl (L _ (TyFamEqn con pats _ rhs)) _))</span>
+<span class="lineno">  150 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UTypeInstDecl &lt;$&gt; between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats) &lt;*&gt; trfType rhs</span>
+<span class="lineno">  151 </span><span class="spaces">  </span><span class="istickedoff">ValD bind -&gt; trfVal bind</span>
+<span class="lineno">  152 </span><span class="spaces">  </span><span class="istickedoff">SigD sig -&gt; trfSig sig</span>
+<span class="lineno">  153 </span><span class="spaces">  </span><span class="istickedoff">DerivD (DerivDecl t strat overlap) -&gt; AST.UDerivDecl &lt;$&gt; trfDerivingStrategy strat &lt;*&gt; trfMaybeDefault <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">trfOverlap</span> (after AnnInstance) overlap &lt;*&gt; trfInstanceRule (hsib_body t)</span>
+<span class="lineno">  154 </span><span class="spaces">  </span><span class="istickedoff">RuleD (HsRules _ rules) -&gt; AST.UPragmaDecl &lt;$&gt; annContNoSema (AST.URulePragma &lt;$&gt; makeIndentedList (before AnnClose) (mapM trfRewriteRule rules))</span>
+<span class="lineno">  155 </span><span class="spaces">  </span><span class="istickedoff">RoleAnnotD (RoleAnnotDecl name roles) -&gt; AST.URoleDecl &lt;$&gt; trfQualifiedName False name &lt;*&gt; makeList <span class="nottickedoff">&quot; &quot;</span> atTheEnd (mapM trfRole roles)</span>
+<span class="lineno">  156 </span><span class="spaces">  </span><span class="istickedoff">DefD (DefaultDecl types) -&gt; AST.UDefaultDecl &lt;$&gt; makeList <span class="nottickedoff">&quot;,&quot;</span> (after AnnOpenP) (mapM <span class="nottickedoff">trfType</span> types)</span>
+<span class="lineno">  157 </span><span class="spaces">  </span><span class="istickedoff">ForD (ForeignImport name (hsib_body -&gt; typ) _ (CImport ccall safe _ _ _))</span>
+<span class="lineno">  158 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UForeignImport &lt;$&gt; trfCallConv ccall &lt;*&gt; trfSafety (getLoc ccall) safe &lt;*&gt; define (trfName name) &lt;*&gt; trfType typ</span>
+<span class="lineno">  159 </span><span class="spaces">  </span><span class="istickedoff">ForD (ForeignExport name (hsib_body -&gt; typ) _ (CExport (L l (CExportStatic _ _ ccall)) _))</span>
+<span class="lineno">  160 </span><span class="spaces">    </span><span class="istickedoff">-&gt; <span class="nottickedoff">AST.UForeignExport &lt;$&gt; annLocNoSema (pure l) (trfCallConv' ccall) &lt;*&gt; trfName name &lt;*&gt; trfType typ</span></span>
+<span class="lineno">  161 </span><span class="spaces">  </span><span class="istickedoff">SpliceD (SpliceDecl (unLoc -&gt; spl) _) -&gt; AST.USpliceDecl &lt;$&gt; trfSplice spl</span>
+<span class="lineno">  162 </span><span class="spaces">  </span><span class="istickedoff">WarningD (Warnings _ [])</span>
+<span class="lineno">  163 </span><span class="spaces">    </span><span class="istickedoff">-&gt; <span class="nottickedoff">AST.UPragmaDecl &lt;$&gt; annContNoSema (AST.UDeprPragma &lt;$&gt; (makeList &quot; &quot; (after AnnOpen) (pure []))</span></span>
+<span class="lineno">  164 </span><span class="spaces">                                                          </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; makeList &quot;, &quot; (before AnnClose) (pure []))</span></span>
+<span class="lineno">  165 </span><span class="spaces">  </span><span class="istickedoff">WarningD (Warnings _ [L _ (Warning names (DeprecatedTxt _ stringLits))])</span>
+<span class="lineno">  166 </span><span class="spaces">    </span><span class="istickedoff">-&gt; <span class="nottickedoff">AST.UPragmaDecl &lt;$&gt; annContNoSema (AST.UDeprPragma &lt;$&gt; (makeList &quot; &quot; (after AnnOpen) $ mapM trfName names)</span></span>
+<span class="lineno">  167 </span><span class="spaces">                                                          </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; makeList &quot;, &quot; (before AnnClose) (mapM (\(L l (StringLiteral _ fs)) -&gt; trfFastString (L l fs)) stringLits))</span></span>
+<span class="lineno">  168 </span><span class="spaces">  </span><span class="istickedoff">WarningD (Warnings _ [L _ (Warning names (WarningTxt _ stringLits))])</span>
+<span class="lineno">  169 </span><span class="spaces">    </span><span class="istickedoff">-&gt; <span class="nottickedoff">AST.UPragmaDecl &lt;$&gt; annContNoSema (AST.UWarningPragma &lt;$&gt; (makeNonemptyList &quot; &quot; $ mapM trfName names)</span></span>
+<span class="lineno">  170 </span><span class="spaces">                                                             </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; makeList &quot;, &quot; (before AnnClose) (mapM (\(L l (StringLiteral _ fs)) -&gt; trfFastString (L l fs)) stringLits))</span></span>
+<span class="lineno">  171 </span><span class="spaces">  </span><span class="istickedoff">AnnD (HsAnnotation stxt subject expr)</span>
+<span class="lineno">  172 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UPragmaDecl &lt;$&gt; annContNoSema (AST.UAnnPragma &lt;$&gt; trfAnnotationSubject stxt subject (srcSpanStart $ getLoc expr) &lt;*&gt; trfExpr expr)</span>
+<span class="lineno">  173 </span><span class="spaces">  </span><span class="istickedoff">d -&gt; <span class="nottickedoff">unhandledElement &quot;declaration&quot; d</span></span></span>
+<span class="lineno">  174 </span>
+<span class="lineno">  175 </span>trfGADT :: TransformName n r =&gt; NewOrData -&gt; Located n -&gt; LHsQTyVars n -&gt; Located (HsContext n)
+<span class="lineno">  176 </span>                                 -&gt; Maybe (Located (HsKind n)) -&gt; [Located (ConDecl n)]
+<span class="lineno">  177 </span>                                 -&gt; Located [LHsDerivingClause n] -&gt; AnnKeywordId -&gt; Trf SrcLoc -&gt; Trf (AST.UDecl (Dom r) RangeStage)
+<span class="lineno">  178 </span><span class="decl"><span class="istickedoff">trfGADT nd name vars ctx kind cons derivs ctxTok consLoc</span>
+<span class="lineno">  179 </span><span class="spaces">  </span><span class="istickedoff">= AST.UGDataDecl &lt;$&gt; trfDataKeyword nd</span>
+<span class="lineno">  180 </span><span class="spaces">                   </span><span class="istickedoff">&lt;*&gt; trfCtx (after ctxTok) ctx</span>
+<span class="lineno">  181 </span><span class="spaces">                   </span><span class="istickedoff">&lt;*&gt; betweenIfPresent ctxTok AnnEqual (createDeclHead name vars)</span>
+<span class="lineno">  182 </span><span class="spaces">                   </span><span class="istickedoff">&lt;*&gt; focusBefore AnnWhere (trfKindSig kind)</span>
+<span class="lineno">  183 </span><span class="spaces">                   </span><span class="istickedoff">&lt;*&gt; makeIndentedListBefore <span class="nottickedoff">&quot; where &quot;</span> consLoc (mapM trfGADTConDecl cons)</span>
+<span class="lineno">  184 </span><span class="spaces">                   </span><span class="istickedoff">&lt;*&gt; makeIndentedList atTheEnd (mapM trfDerivings (unLoc derivs))</span></span>
+<span class="lineno">  185 </span>
+<span class="lineno">  186 </span>trfDataDef :: TransformName n r =&gt; NewOrData -&gt; Located n -&gt; LHsQTyVars n -&gt; Located (HsContext n)
+<span class="lineno">  187 </span>                                     -&gt; [Located (ConDecl n)] -&gt; Located [LHsDerivingClause n]
+<span class="lineno">  188 </span>                                     -&gt; AnnKeywordId -&gt; Trf SrcLoc -&gt; Trf (AST.UDecl (Dom r) RangeStage)
+<span class="lineno">  189 </span><span class="decl"><span class="istickedoff">trfDataDef nd name vars ctx cons derivs ctxTok consLoc</span>
+<span class="lineno">  190 </span><span class="spaces">  </span><span class="istickedoff">= AST.UDataDecl &lt;$&gt; trfDataKeyword nd</span>
+<span class="lineno">  191 </span><span class="spaces">                  </span><span class="istickedoff">&lt;*&gt; trfCtx (after ctxTok) ctx</span>
+<span class="lineno">  192 </span><span class="spaces">                  </span><span class="istickedoff">&lt;*&gt; betweenIfPresent ctxTok AnnEqual (createDeclHead name vars)</span>
+<span class="lineno">  193 </span><span class="spaces">                  </span><span class="istickedoff">&lt;*&gt; makeListBefore <span class="nottickedoff">&quot;=&quot;</span> <span class="nottickedoff">&quot; | &quot;</span> consLoc (mapM trfConDecl cons)</span>
+<span class="lineno">  194 </span><span class="spaces">                  </span><span class="istickedoff">&lt;*&gt; makeIndentedList atTheEnd (mapM trfDerivings (unLoc derivs))</span></span>
+<span class="lineno">  195 </span>
+<span class="lineno">  196 </span>trfVal :: TransformName n r =&gt; HsBindLR n n -&gt; Trf (AST.UDecl (Dom r) RangeStage)
+<span class="lineno">  197 </span><span class="decl"><span class="istickedoff">trfVal (PatSynBind psb) = AST.UPatternSynonymDecl &lt;$&gt; annContNoSema (trfPatternSynonym psb)</span>
+<span class="lineno">  198 </span><span class="spaces"></span><span class="istickedoff">trfVal bind = AST.UValueBinding &lt;$&gt; (annContNoSema $ trfBind' bind)</span></span>
+<span class="lineno">  199 </span>
+<span class="lineno">  200 </span>trfSig :: TransformName n r =&gt; Sig n -&gt; Trf (AST.UDecl (Dom r) RangeStage)
+<span class="lineno">  201 </span><span class="decl"><span class="istickedoff">trfSig (ts @ (TypeSig {})) = AST.UTypeSigDecl &lt;$&gt; defineTypeVars (annContNoSema $ trfTypeSig' ts)</span>
+<span class="lineno">  202 </span><span class="spaces"></span><span class="istickedoff">trfSig (FixSig fs) = AST.UFixityDecl &lt;$&gt; (annContNoSema $ trfFixitySig fs)</span>
+<span class="lineno">  203 </span><span class="spaces"></span><span class="istickedoff">trfSig (PatSynSig ids typ)</span>
+<span class="lineno">  204 </span><span class="spaces">  </span><span class="istickedoff">= AST.UPatTypeSigDecl &lt;$&gt; annContNoSema (AST.UPatternTypeSignature &lt;$&gt; trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfName' ids &lt;*&gt; trfType (hsib_body typ))</span>
+<span class="lineno">  205 </span><span class="spaces"></span><span class="istickedoff">trfSig (InlineSig name prag)</span>
+<span class="lineno">  206 </span><span class="spaces">  </span><span class="istickedoff">= AST.UPragmaDecl &lt;$&gt; annContNoSema (AST.UInlinePragmaDecl &lt;$&gt; trfInlinePragma name prag)</span>
+<span class="lineno">  207 </span><span class="spaces"></span><span class="istickedoff">trfSig (SpecSig name (map hsib_body -&gt; types) (inl_act -&gt; phase))</span>
+<span class="lineno">  208 </span><span class="spaces">  </span><span class="istickedoff">= AST.UPragmaDecl &lt;$&gt; annContNoSema (AST.USpecializeDecl &lt;$&gt; trfSpecializePragma name types phase)</span>
+<span class="lineno">  209 </span><span class="spaces"></span><span class="istickedoff">trfSig (CompleteMatchSig _ names typeConstraint)</span>
+<span class="lineno">  210 </span><span class="spaces">  </span><span class="istickedoff">= AST.UPragmaDecl &lt;$&gt; annContNoSema (AST.UCompletePragma &lt;$&gt; trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfName' (unLoc names)</span>
+<span class="lineno">  211 </span><span class="spaces">                                                           </span><span class="istickedoff">&lt;*&gt; trfMaybe <span class="nottickedoff">&quot; :: &quot;</span> <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">trfName</span> typeConstraint)</span>
+<span class="lineno">  212 </span><span class="spaces"></span><span class="istickedoff">trfSig s = <span class="nottickedoff">unhandledElement &quot;signature&quot; s</span></span></span>
+<span class="lineno">  213 </span>
+<span class="lineno">  214 </span>trfSpecializePragma :: TransformName n r
+<span class="lineno">  215 </span>                    =&gt; Located n -&gt; [Located (HsType n)] -&gt; Activation -&gt; Trf (Ann AST.USpecializePragma (Dom r) RangeStage)
+<span class="lineno">  216 </span><span class="decl"><span class="istickedoff">trfSpecializePragma name types phase</span>
+<span class="lineno">  217 </span><span class="spaces">  </span><span class="istickedoff">= annContNoSema $ AST.USpecializePragma &lt;$&gt; trfPhase (pure $ srcSpanStart (getLoc name)) phase</span>
+<span class="lineno">  218 </span><span class="spaces">                                          </span><span class="istickedoff">&lt;*&gt; trfName name</span>
+<span class="lineno">  219 </span><span class="spaces">                                          </span><span class="istickedoff">&lt;*&gt; (orderAnnList &lt;$&gt; trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfType' types)</span></span>
+<span class="lineno">  220 </span>
+<span class="lineno">  221 </span>trfConDecl :: TransformName n r =&gt; Located (ConDecl n) -&gt; Trf (Ann AST.UConDecl (Dom r) RangeStage)
+<span class="lineno">  222 </span><span class="decl"><span class="istickedoff">trfConDecl = trfLocNoSema trfConDecl'</span></span>
+<span class="lineno">  223 </span>
+<span class="lineno">  224 </span>trfConDecl' :: TransformName n r =&gt; ConDecl n -&gt; Trf (AST.UConDecl (Dom r) RangeStage)
+<span class="lineno">  225 </span><span class="decl"><span class="istickedoff">trfConDecl' (ConDeclH98 { con_name = name, con_qvars = tyVars, con_cxt = ctx, con_details = PrefixCon args })</span>
+<span class="lineno">  226 </span><span class="spaces">  </span><span class="istickedoff">= AST.UConDecl &lt;$&gt; trfConTyVars tyVars &lt;*&gt; trfConCtx ctx &lt;*&gt; define (trfName name) &lt;*&gt; makeList <span class="nottickedoff">&quot; &quot;</span> atTheEnd (mapM trfType args)</span>
+<span class="lineno">  227 </span><span class="spaces"></span><span class="istickedoff">trfConDecl' (ConDeclH98 { con_name = name, con_qvars = tyVars, con_cxt = ctx, con_details = RecCon (unLoc -&gt; flds) })</span>
+<span class="lineno">  228 </span><span class="spaces">  </span><span class="istickedoff">= AST.URecordDecl &lt;$&gt; trfConTyVars tyVars &lt;*&gt; trfConCtx ctx &lt;*&gt; define (trfName name) &lt;*&gt; (between AnnOpenC AnnCloseC $ trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfFieldDecl' flds)</span>
+<span class="lineno">  229 </span><span class="spaces"></span><span class="istickedoff">trfConDecl' (ConDeclH98 { con_name = name, con_qvars = tyVars, con_cxt = ctx, con_details = InfixCon t1 t2 })</span>
+<span class="lineno">  230 </span><span class="spaces">  </span><span class="istickedoff">= AST.UInfixConDecl &lt;$&gt; trfConTyVars tyVars &lt;*&gt; trfConCtx ctx &lt;*&gt; trfType t1 &lt;*&gt; define (trfOperator name) &lt;*&gt; trfType t2</span>
+<span class="lineno">  231 </span><span class="spaces"></span><span class="istickedoff">trfConDecl' gadt@(ConDeclGADT {}) = <span class="nottickedoff">unhandledElement &quot;normal constructor declaration&quot; gadt</span></span></span>
+<span class="lineno">  232 </span>
+<span class="lineno">  233 </span>trfConTyVars :: TransformName n r =&gt; Maybe (LHsQTyVars n) -&gt; Trf (AnnListG AST.UTyVar (Dom r) RangeStage)
+<span class="lineno">  234 </span><span class="decl"><span class="istickedoff">trfConTyVars Nothing = makeListAfter <span class="nottickedoff">&quot;.&quot;</span> <span class="nottickedoff">&quot; &quot;</span> atTheStart (return [])</span>
+<span class="lineno">  235 </span><span class="spaces"></span><span class="istickedoff">trfConTyVars (Just vars) = <span class="nottickedoff">trfBindings $ hsq_explicit vars</span></span></span>
+<span class="lineno">  236 </span>
+<span class="lineno">  237 </span>trfConCtx :: TransformName n r =&gt; Maybe (LHsContext n) -&gt; Trf (AnnMaybeG AST.UContext (Dom r) RangeStage)
+<span class="lineno">  238 </span><span class="decl"><span class="istickedoff">trfConCtx Nothing = <span class="nottickedoff">nothing &quot;&quot; &quot; =&gt; &quot; atTheStart</span></span>
+<span class="lineno">  239 </span><span class="spaces"></span><span class="istickedoff">trfConCtx (Just ctx) = trfCtx atTheStart ctx</span></span>
+<span class="lineno">  240 </span>
+<span class="lineno">  241 </span>trfGADTConDecl :: TransformName n r =&gt; Located (ConDecl n) -&gt; Trf (Ann AST.UGadtConDecl (Dom r) RangeStage)
+<span class="lineno">  242 </span><span class="decl"><span class="istickedoff">trfGADTConDecl = trfLocNoSema trfGADTConDecl'</span></span>
+<span class="lineno">  243 </span>
+<span class="lineno">  244 </span>trfGADTConDecl' :: TransformName n r =&gt; ConDecl n -&gt; Trf (AST.UGadtConDecl (Dom r) RangeStage)
+<span class="lineno">  245 </span><span class="decl"><span class="istickedoff">trfGADTConDecl' (ConDeclGADT { con_names = names, con_type = hsib_body -&gt; typ })</span>
+<span class="lineno">  246 </span><span class="spaces">  </span><span class="istickedoff">= let nameLoc = collectLocs names</span>
+<span class="lineno">  247 </span><span class="spaces">        </span><span class="istickedoff">typLoc = getLoc typ</span>
+<span class="lineno">  248 </span><span class="spaces">        </span><span class="istickedoff">(vars, ctx, t) = getTypeVarsAndCtx typ</span>
+<span class="lineno">  249 </span><span class="spaces">     </span><span class="istickedoff">in AST.UGadtConDecl &lt;$&gt; define (trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfName' names)</span>
+<span class="lineno">  250 </span><span class="spaces">                         </span><span class="istickedoff">&lt;*&gt; focusOn (mkSrcSpan (srcSpanEnd nameLoc) (srcSpanStart typLoc)) (trfBindings vars)</span>
+<span class="lineno">  251 </span><span class="spaces">                         </span><span class="istickedoff">&lt;*&gt; updateFocus (return . updateEnd (\_ -&gt; srcSpanStart typLoc)) (focusAfterIfPresent AnnDot (trfCtx atTheStart ctx))</span>
+<span class="lineno">  252 </span><span class="spaces">                         </span><span class="istickedoff">&lt;*&gt; trfGadtConType t</span>
+<span class="lineno">  253 </span><span class="spaces">  </span><span class="istickedoff">where getTypeVarsAndCtx :: LHsType n -&gt; ([LHsTyVarBndr n], LHsContext n, LHsType n)</span>
+<span class="lineno">  254 </span><span class="spaces">        </span><span class="istickedoff">getTypeVarsAndCtx (L _ (HsForAllTy [] typ)) = <span class="nottickedoff">getTypeVarsAndCtx typ</span></span>
+<span class="lineno">  255 </span><span class="spaces">        </span><span class="istickedoff">getTypeVarsAndCtx (L _ (HsForAllTy bndrs typ)) = <span class="nottickedoff">let (_,ctx,t) = getTypeVarsAndCtx typ in (bndrs, ctx, t)</span></span>
+<span class="lineno">  256 </span><span class="spaces">        </span><span class="istickedoff">getTypeVarsAndCtx (L _ (HsQualTy ctx typ)) = let (vars,_,t) = getTypeVarsAndCtx typ in (vars, ctx, t)</span>
+<span class="lineno">  257 </span><span class="spaces">        </span><span class="istickedoff">getTypeVarsAndCtx t = ([], L <span class="nottickedoff">noSrcSpan</span> [], t)</span></span>
+<span class="lineno">  258 </span>
+<span class="lineno">  259 </span>trfGadtConType :: TransformName n r =&gt; Located (HsType n) -&gt; Trf (Ann AST.UGadtConType (Dom r) RangeStage)
+<span class="lineno">  260 </span><span class="decl"><span class="istickedoff">trfGadtConType = trfLocNoSema $ \case</span>
+<span class="lineno">  261 </span><span class="spaces">  </span><span class="istickedoff">HsFunTy (cleanHsType . unLoc -&gt; HsRecTy flds) resType</span>
+<span class="lineno">  262 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UGadtRecordType &lt;$&gt; between AnnOpenC AnnCloseC (trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfFieldDecl' flds)</span>
+<span class="lineno">  263 </span><span class="spaces">                           </span><span class="istickedoff">&lt;*&gt; trfType resType</span>
+<span class="lineno">  264 </span><span class="spaces">  </span><span class="istickedoff">typ -&gt; AST.UGadtNormalType &lt;$&gt; annContNoSema (trfType' typ)</span></span>
+<span class="lineno">  265 </span>
+<span class="lineno">  266 </span>trfFieldDecl :: TransformName n r =&gt; Located (ConDeclField n) -&gt; Trf (Ann AST.UFieldDecl (Dom r) RangeStage)
+<span class="lineno">  267 </span><span class="decl"><span class="nottickedoff">trfFieldDecl = trfLocNoSema trfFieldDecl'</span></span>
+<span class="lineno">  268 </span>
+<span class="lineno">  269 </span>trfFieldDecl' :: TransformName n r =&gt; ConDeclField n -&gt; Trf (AST.UFieldDecl (Dom r) RangeStage)
+<span class="lineno">  270 </span><span class="decl"><span class="istickedoff">trfFieldDecl' (ConDeclField names typ _) = AST.UFieldDecl &lt;$&gt; (define $ nonemptyAnnList &lt;$&gt; mapM (trfName . getFieldOccName) names) &lt;*&gt; trfType typ</span></span>
+<span class="lineno">  271 </span>
+<span class="lineno">  272 </span>trfDerivings :: TransformName n r =&gt; Located (HsDerivingClause n) -&gt; Trf (Ann AST.UDeriving (Dom r) RangeStage)
+<span class="lineno">  273 </span><span class="decl"><span class="istickedoff">trfDerivings = trfLocNoSema $ \case</span>
+<span class="lineno">  274 </span><span class="spaces">  </span><span class="istickedoff">HsDerivingClause strat (unLoc-&gt;[hsib_body -&gt; typ@(unLoc -&gt; HsTyVar {})])</span>
+<span class="lineno">  275 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UDerivingOne &lt;$&gt; trfDerivingStrategy strat &lt;*&gt; trfInstanceHead typ</span>
+<span class="lineno">  276 </span><span class="spaces">  </span><span class="istickedoff">HsDerivingClause strat derivs</span>
+<span class="lineno">  277 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UDerivings &lt;$&gt; trfDerivingStrategy strat &lt;*&gt; focusOn <span class="nottickedoff">(getLoc derivs)</span> (trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfInstanceHead' (map hsib_body (unLoc derivs)))</span></span>
+<span class="lineno">  278 </span>
+<span class="lineno">  279 </span>trfDerivingStrategy :: Maybe (Located DerivStrategy) -&gt; Trf (AnnMaybeG AST.UDeriveStrategy (Dom r) RangeStage)
+<span class="lineno">  280 </span><span class="decl"><span class="istickedoff">trfDerivingStrategy = trfMaybeDefault <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span></span>
+<span class="lineno">  281 </span><span class="spaces">                        </span><span class="istickedoff">(trfLocNoSema $ \case StockStrategy -&gt; return AST.UStockStrategy</span>
+<span class="lineno">  282 </span><span class="spaces">                                              </span><span class="istickedoff">AnyclassStrategy -&gt; return AST.UAnyClassStrategy</span>
+<span class="lineno">  283 </span><span class="spaces">                                              </span><span class="istickedoff">NewtypeStrategy -&gt; return AST.UNewtypeStrategy)</span>
+<span class="lineno">  284 </span><span class="spaces">                        </span><span class="istickedoff">atTheStart</span></span>
+<span class="lineno">  285 </span>
+<span class="lineno">  286 </span>trfInstanceRule :: TransformName n r =&gt; Located (HsType n) -&gt; Trf (Ann AST.UInstanceRule (Dom r) RangeStage)
+<span class="lineno">  287 </span><span class="decl"><span class="istickedoff">trfInstanceRule = trfLocNoSema (trfInstanceRule' . cleanHsType)</span></span>
+<span class="lineno">  288 </span>
+<span class="lineno">  289 </span>trfInstanceRule' :: TransformName n r =&gt; HsType n -&gt; Trf (AST.UInstanceRule (Dom r) RangeStage)
+<span class="lineno">  290 </span><span class="decl"><span class="istickedoff">trfInstanceRule' (HsForAllTy bndrs (unLoc -&gt; HsQualTy ctx typ))</span>
+<span class="lineno">  291 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UInstanceRule &lt;$&gt; (makeJust &lt;$&gt; annLocNoSema (pure $ collectLocs bndrs) (trfBindings bndrs))</span></span>
+<span class="lineno">  292 </span><span class="spaces">                      </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfCtx (after AnnDot) ctx</span></span>
+<span class="lineno">  293 </span><span class="spaces">                      </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfInstanceHead typ</span></span>
+<span class="lineno">  294 </span><span class="spaces"></span><span class="istickedoff">trfInstanceRule' (HsQualTy ctx typ) = AST.UInstanceRule &lt;$&gt; nothing <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">&quot; . &quot;</span> atTheStart</span>
+<span class="lineno">  295 </span><span class="spaces">                                                        </span><span class="istickedoff">&lt;*&gt; trfCtx <span class="nottickedoff">atTheStart</span> ctx</span>
+<span class="lineno">  296 </span><span class="spaces">                                                        </span><span class="istickedoff">&lt;*&gt; trfInstanceHead typ</span>
+<span class="lineno">  297 </span><span class="spaces"></span><span class="istickedoff">trfInstanceRule' (HsParTy typ) = instanceHead $ annContNoSema (AST.UInstanceHeadParen &lt;$&gt; trfInstanceHead typ)</span>
+<span class="lineno">  298 </span><span class="spaces"></span><span class="istickedoff">trfInstanceRule' (HsTyVar _ tv) = <span class="nottickedoff">instanceHead $ annContNoSema (AST.UInstanceHeadCon &lt;$&gt; trfName tv)</span></span>
+<span class="lineno">  299 </span><span class="spaces"></span><span class="istickedoff">trfInstanceRule' (HsAppTy t1 t2) = instanceHead $ annContNoSema (AST.UInstanceHeadApp &lt;$&gt; trfInstanceHead t1 &lt;*&gt; trfType t2)</span>
+<span class="lineno">  300 </span><span class="spaces"></span><span class="istickedoff">trfInstanceRule' (HsOpTy t1 op t2) = instanceHead $ annContNoSema (AST.UInstanceHeadApp &lt;$&gt; annLocNoSema (pure $ getLoc t1 `combineSrcSpans` getLoc op) (AST.UInstanceHeadInfix &lt;$&gt; trfType t1 &lt;*&gt; trfOperator op) &lt;*&gt; trfType t2)</span>
+<span class="lineno">  301 </span><span class="spaces"></span><span class="istickedoff">trfInstanceRule' t = <span class="nottickedoff">unhandledElement &quot;instance rule&quot; t</span></span></span>
+<span class="lineno">  302 </span>
+<span class="lineno">  303 </span>instanceHead :: Trf (Ann AST.UInstanceHead (Dom r) RangeStage) -&gt; Trf (AST.UInstanceRule (Dom r) RangeStage)
+<span class="lineno">  304 </span><span class="decl"><span class="istickedoff">instanceHead hd = AST.UInstanceRule &lt;$&gt; (nothing <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">&quot; . &quot;</span> atTheStart) &lt;*&gt; (nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> atTheStart) &lt;*&gt; hd</span></span>
+<span class="lineno">  305 </span>
+<span class="lineno">  306 </span>makeInstanceRuleTyVars :: TransformName n r =&gt; Located n -&gt; HsImplicitBndrs n [LHsType n] -&gt; Trf (Ann AST.UInstanceRule (Dom r) RangeStage)
+<span class="lineno">  307 </span><span class="decl"><span class="istickedoff">makeInstanceRuleTyVars n vars</span>
+<span class="lineno">  308 </span><span class="spaces">  </span><span class="istickedoff">| isSymOcc (occName (unLoc n))</span>
+<span class="lineno">  309 </span><span class="spaces">  </span><span class="istickedoff">, leftOp:rest &lt;- hsib_body vars</span>
+<span class="lineno">  310 </span><span class="spaces">  </span><span class="istickedoff">, <span class="tickonlytrue">srcSpanStart (getLoc n) &gt; srcSpanEnd (getLoc leftOp)</span></span>
+<span class="lineno">  311 </span><span class="spaces">  </span><span class="istickedoff">= annContNoSema</span>
+<span class="lineno">  312 </span><span class="spaces">      </span><span class="istickedoff">$ AST.UInstanceRule &lt;$&gt; nothing <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">&quot; . &quot;</span> atTheStart</span>
+<span class="lineno">  313 </span><span class="spaces">                          </span><span class="istickedoff">&lt;*&gt; nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> atTheStart</span>
+<span class="lineno">  314 </span><span class="spaces">                          </span><span class="istickedoff">&lt;*&gt; foldl foldTypeArgs</span>
+<span class="lineno">  315 </span><span class="spaces">                                    </span><span class="istickedoff">(annLocNoSema (pure $ combineSrcSpans (getLoc leftOp) (getLoc n))</span>
+<span class="lineno">  316 </span><span class="spaces">                                      </span><span class="istickedoff">(AST.UInstanceHeadInfix &lt;$&gt; trfType leftOp &lt;*&gt; trfOperator n)) rest</span>
+<span class="lineno">  317 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span></span>
+<span class="lineno">  318 </span><span class="spaces">  </span><span class="istickedoff">= annContNoSema</span>
+<span class="lineno">  319 </span><span class="spaces">      </span><span class="istickedoff">$ AST.UInstanceRule &lt;$&gt; nothing <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">&quot; . &quot;</span> atTheStart</span>
+<span class="lineno">  320 </span><span class="spaces">                          </span><span class="istickedoff">&lt;*&gt; nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> atTheStart</span>
+<span class="lineno">  321 </span><span class="spaces">                          </span><span class="istickedoff">&lt;*&gt; foldl foldTypeArgs (copyAnnot AST.UInstanceHeadCon (trfName n)) (hsib_body vars)</span>
+<span class="lineno">  322 </span><span class="spaces">  </span><span class="istickedoff">where foldTypeArgs base typ = annLocNoSema (pure $ combineSrcSpans (getLoc n) (getLoc typ)) $ AST.UInstanceHeadApp &lt;$&gt; base &lt;*&gt; (trfType typ)</span></span>
+<span class="lineno">  323 </span>
+<span class="lineno">  324 </span>
+<span class="lineno">  325 </span>trfInstanceHead :: TransformName n r =&gt; Located (HsType n) -&gt; Trf (Ann AST.UInstanceHead (Dom r) RangeStage)
+<span class="lineno">  326 </span><span class="decl"><span class="istickedoff">trfInstanceHead = trfLocNoSema trfInstanceHead'</span></span>
+<span class="lineno">  327 </span>
+<span class="lineno">  328 </span>trfInstanceHead' :: TransformName n r =&gt; HsType n -&gt; Trf (AST.UInstanceHead (Dom r) RangeStage)
+<span class="lineno">  329 </span><span class="decl"><span class="istickedoff">trfInstanceHead' = trfInstanceHead'' . cleanHsType where</span>
+<span class="lineno">  330 </span><span class="spaces">  </span><span class="istickedoff">trfInstanceHead'' (HsForAllTy [] (unLoc -&gt; t)) = <span class="nottickedoff">trfInstanceHead' t</span></span>
+<span class="lineno">  331 </span><span class="spaces">  </span><span class="istickedoff">trfInstanceHead'' (HsTyVar _ tv) = AST.UInstanceHeadCon &lt;$&gt; trfName tv</span>
+<span class="lineno">  332 </span><span class="spaces">  </span><span class="istickedoff">trfInstanceHead'' (HsAppTy t1 t2) = AST.UInstanceHeadApp &lt;$&gt; trfInstanceHead t1 &lt;*&gt; trfType t2</span>
+<span class="lineno">  333 </span><span class="spaces">  </span><span class="istickedoff">trfInstanceHead'' (HsParTy typ) = AST.UInstanceHeadParen &lt;$&gt; trfInstanceHead typ</span>
+<span class="lineno">  334 </span><span class="spaces">  </span><span class="istickedoff">trfInstanceHead'' (HsOpTy t1 op t2)</span>
+<span class="lineno">  335 </span><span class="spaces">    </span><span class="istickedoff">= <span class="nottickedoff">AST.UInstanceHeadApp &lt;$&gt; (annLocNoSema (pure $ combineSrcSpans (getLoc t1) (getLoc op))</span></span>
+<span class="lineno">  336 </span><span class="spaces">                                             </span><span class="istickedoff"><span class="nottickedoff">(AST.UInstanceHeadInfix &lt;$&gt; trfType t1 &lt;*&gt; trfOperator op))</span></span>
+<span class="lineno">  337 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfType t2</span></span>
+<span class="lineno">  338 </span><span class="spaces">  </span><span class="istickedoff">trfInstanceHead'' t = <span class="nottickedoff">unhandledElement &quot;instance head&quot; t</span></span></span>
+<span class="lineno">  339 </span>
+<span class="lineno">  340 </span>trfTypeEqs :: TransformName n r =&gt; Maybe [Located (TyFamInstEqn n)] -&gt; Trf (AnnListG AST.UTypeEqn (Dom r) RangeStage)
+<span class="lineno">  341 </span><span class="decl"><span class="istickedoff">trfTypeEqs eqs =</span>
+<span class="lineno">  342 </span><span class="spaces">  </span><span class="istickedoff">do toks &lt;- tokensAfter AnnWhere</span>
+<span class="lineno">  343 </span><span class="spaces">     </span><span class="istickedoff">case toks of [] -&gt; <span class="nottickedoff">convertionProblem &quot;trfTypeEqs: no where found after closed type family&quot;</span></span>
+<span class="lineno">  344 </span><span class="spaces">                  </span><span class="istickedoff">loc:_ -&gt; makeList <span class="nottickedoff">&quot;\n&quot;</span> (pure $ srcSpanStart loc) (mapM trfTypeEq (fromMaybe <span class="nottickedoff">[]</span> eqs))</span></span>
+<span class="lineno">  345 </span>
+<span class="lineno">  346 </span>trfTypeEq :: TransformName n r =&gt; Located (TyFamInstEqn n) -&gt; Trf (Ann AST.UTypeEqn (Dom r) RangeStage)
+<span class="lineno">  347 </span><span class="decl"><span class="istickedoff">trfTypeEq = trfLocNoSema $ \(TyFamEqn name pats _ rhs)</span>
+<span class="lineno">  348 </span><span class="spaces">  </span><span class="istickedoff">-&gt; AST.UTypeEqn &lt;$&gt; defineTypeVars (focusBefore AnnEqual (combineTypes name (hsib_body pats))) &lt;*&gt; trfType rhs</span>
+<span class="lineno">  349 </span><span class="spaces">  </span><span class="istickedoff">where combineTypes :: TransformName n r =&gt; Located n -&gt; [LHsType n] -&gt; Trf (Ann AST.UType (Dom r) RangeStage)</span>
+<span class="lineno">  350 </span><span class="spaces">        </span><span class="istickedoff">combineTypes name [lhs, rhs] | srcSpanStart (getLoc name) &gt; srcSpanEnd (getLoc lhs)</span>
+<span class="lineno">  351 </span><span class="spaces">          </span><span class="istickedoff">= annContNoSema $ AST.UTyInfix &lt;$&gt; trfType lhs &lt;*&gt; trfOperator name &lt;*&gt; trfType rhs</span>
+<span class="lineno">  352 </span><span class="spaces">        </span><span class="istickedoff">combineTypes name pats = wrapTypes (annLocNoSema (pure $ getLoc name) (AST.UTyVar &lt;$&gt; trfName name)) pats</span>
+<span class="lineno">  353 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  354 </span><span class="spaces">        </span><span class="istickedoff">wrapTypes :: TransformName n r =&gt; Trf (Ann AST.UType (Dom r) RangeStage) -&gt; [LHsType n] -&gt; Trf (Ann AST.UType (Dom r) RangeStage)</span>
+<span class="lineno">  355 </span><span class="spaces">        </span><span class="istickedoff">wrapTypes base pats</span>
+<span class="lineno">  356 </span><span class="spaces">          </span><span class="istickedoff">= foldl (\t p -&gt; do typ &lt;- t</span>
+<span class="lineno">  357 </span><span class="spaces">                              </span><span class="istickedoff">annLocNoSema (pure $ combineSrcSpans (getRange typ) (getLoc p))</span>
+<span class="lineno">  358 </span><span class="spaces">                                     </span><span class="istickedoff">(AST.UTyApp &lt;$&gt; pure typ &lt;*&gt; trfType p)) base pats</span></span>
+<span class="lineno">  359 </span>
+<span class="lineno">  360 </span>trfFunDeps :: TransformName n r =&gt; [Located (FunDep (Located n))] -&gt; Trf (AnnMaybeG AST.UFunDeps (Dom r) RangeStage)
+<span class="lineno">  361 </span><span class="decl"><span class="istickedoff">trfFunDeps [] = do whereToken &lt;- tokenLoc AnnWhere</span>
+<span class="lineno">  362 </span><span class="spaces">                   </span><span class="istickedoff">nothing <span class="nottickedoff">&quot;| &quot;</span> <span class="nottickedoff">&quot;&quot;</span> (if isGoodSrcSpan whereToken then pure $ srcSpanStart whereToken else atTheEnd)</span>
+<span class="lineno">  363 </span><span class="spaces"></span><span class="istickedoff">trfFunDeps fundeps = makeJust &lt;$&gt; annLocNoSema (combineSrcSpans (collectLocs fundeps) &lt;$&gt; tokenLoc AnnVbar)</span>
+<span class="lineno">  364 </span><span class="spaces">                                         </span><span class="istickedoff">(AST.UFunDeps &lt;$&gt; trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfFunDep' fundeps)</span></span>
+<span class="lineno">  365 </span>
+<span class="lineno">  366 </span>trfFunDep' :: TransformName n r =&gt; FunDep (Located n) -&gt; Trf (AST.UFunDep (Dom r) RangeStage)
+<span class="lineno">  367 </span><span class="decl"><span class="istickedoff">trfFunDep' (lhs, rhs) = AST.UFunDep &lt;$&gt; trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfName' lhs &lt;*&gt; trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfName' rhs</span></span>
+<span class="lineno">  368 </span>
+<span class="lineno">  369 </span>createDeclHead :: TransformName n r =&gt; Located n -&gt; LHsQTyVars n -&gt; Trf (Ann AST.UDeclHead (Dom r) RangeStage)
+<span class="lineno">  370 </span><span class="decl"><span class="istickedoff">createDeclHead name (hsq_explicit -&gt; lhs : rhs : rest)</span>
+<span class="lineno">  371 </span><span class="spaces">  </span><span class="istickedoff">| srcSpanStart (getLoc name) &gt; srcSpanEnd (getLoc lhs)</span>
+<span class="lineno">  372 </span><span class="spaces">  </span><span class="istickedoff">-- infix declaration</span>
+<span class="lineno">  373 </span><span class="spaces">  </span><span class="istickedoff">= wrapDeclHead rest</span>
+<span class="lineno">  374 </span><span class="spaces">      </span><span class="istickedoff">$ annLocNoSema (addParenLocs $ getLoc lhs `combineSrcSpans` getLoc rhs)</span>
+<span class="lineno">  375 </span><span class="spaces">                     </span><span class="istickedoff">(AST.UDHInfix &lt;$&gt; defineTypeVars (trfTyVar lhs) &lt;*&gt; define (trfOperator name) &lt;*&gt; defineTypeVars (trfTyVar rhs))</span>
+<span class="lineno">  376 </span><span class="spaces"></span><span class="istickedoff">createDeclHead name vars = defineTypeVars $ wrapDeclHead (hsq_explicit vars) (define $ copyAnnot AST.UDeclHead (trfName name))</span></span>
+<span class="lineno">  377 </span>
+<span class="lineno">  378 </span>wrapDeclHead :: TransformName n r =&gt; [LHsTyVarBndr n] -&gt; Trf (Ann AST.UDeclHead (Dom r) RangeStage) -&gt; Trf (Ann AST.UDeclHead (Dom r) RangeStage)
+<span class="lineno">  379 </span><span class="decl"><span class="istickedoff">wrapDeclHead vars base</span>
+<span class="lineno">  380 </span><span class="spaces">  </span><span class="istickedoff">= foldl (\t p -&gt; do typ &lt;- t</span>
+<span class="lineno">  381 </span><span class="spaces">                      </span><span class="istickedoff">annLocNoSema (addParenLocs $ combineSrcSpans (getRange typ) (getLoc p))</span>
+<span class="lineno">  382 </span><span class="spaces">                             </span><span class="istickedoff">(AST.UDHApp typ &lt;$&gt; trfTyVar p)</span>
+<span class="lineno">  383 </span><span class="spaces">          </span><span class="istickedoff">) base vars</span></span>
+<span class="lineno">  384 </span>
+<span class="lineno">  385 </span>-- | Get the parentheses directly before and after (for parenthesized application)
+<span class="lineno">  386 </span>addParenLocs :: SrcSpan -&gt; Trf SrcSpan
+<span class="lineno">  387 </span><span class="decl"><span class="istickedoff">addParenLocs sp</span>
+<span class="lineno">  388 </span><span class="spaces">  </span><span class="istickedoff">= let possibleSpan = mkSrcSpan (updateCol (subtract 1) (srcSpanStart sp)) (updateCol (+1) (srcSpanEnd sp))</span>
+<span class="lineno">  389 </span><span class="spaces">     </span><span class="istickedoff">in local (\s -&gt; s { contRange = possibleSpan })</span>
+<span class="lineno">  390 </span><span class="spaces">              </span><span class="istickedoff">(combineSrcSpans &lt;$&gt; (combineSrcSpans sp &lt;$&gt; tokenLoc AnnOpenP) &lt;*&gt; tokenLocBack AnnCloseP)</span></span>
+<span class="lineno">  391 </span>
+<span class="lineno">  392 </span>
+<span class="lineno">  393 </span>createClassBody :: TransformName n r =&gt; [LSig n] -&gt; LHsBinds n -&gt; [LFamilyDecl n]
+<span class="lineno">  394 </span>                               -&gt; [LTyFamDefltEqn n] -&gt; Trf (AnnMaybeG AST.UClassBody (Dom r) RangeStage)
+<span class="lineno">  395 </span><span class="decl"><span class="istickedoff">createClassBody sigs binds typeFams typeFamDefs</span>
+<span class="lineno">  396 </span><span class="spaces">  </span><span class="istickedoff">= do isThereWhere &lt;- isGoodSrcSpan &lt;$&gt; (tokenLoc AnnWhere)</span>
+<span class="lineno">  397 </span><span class="spaces">       </span><span class="istickedoff">if isThereWhere</span>
+<span class="lineno">  398 </span><span class="spaces">         </span><span class="istickedoff">then makeJust &lt;$&gt; annLocNoSema (combinedLoc &lt;$&gt; tokenLoc AnnWhere)</span>
+<span class="lineno">  399 </span><span class="spaces">                                        </span><span class="istickedoff">(AST.UClassBody &lt;$&gt; makeList <span class="nottickedoff">&quot;&quot;</span> (after AnnWhere)</span>
+<span class="lineno">  400 </span><span class="spaces">                                                                       </span><span class="istickedoff">(orderDefs . concat &lt;$&gt; sequenceA allDefs))</span>
+<span class="lineno">  401 </span><span class="spaces">         </span><span class="istickedoff">else nothing <span class="nottickedoff">&quot; where &quot;</span> <span class="nottickedoff">&quot;&quot;</span> atTheEnd</span>
+<span class="lineno">  402 </span><span class="spaces">  </span><span class="istickedoff">where combinedLoc wh = foldl combineSrcSpans wh allLocs</span>
+<span class="lineno">  403 </span><span class="spaces">        </span><span class="istickedoff">allLocs = map getLoc sigs ++ map getLoc (bagToList binds) ++ map getLoc typeFams ++ map getLoc typeFamDefs</span>
+<span class="lineno">  404 </span><span class="spaces">        </span><span class="istickedoff">allDefs = [getSigs, getBinds, getFams, getFamDefs]</span>
+<span class="lineno">  405 </span><span class="spaces">        </span><span class="istickedoff">getSigs = mapM trfClassElemSig sigs</span>
+<span class="lineno">  406 </span><span class="spaces">        </span><span class="istickedoff">getBinds = mapM (copyAnnot AST.UClsDef . trfBind) (bagToList binds)</span>
+<span class="lineno">  407 </span><span class="spaces">        </span><span class="istickedoff">getFams = mapM (copyAnnot AST.UClsTypeFam . trfTypeFam) typeFams</span>
+<span class="lineno">  408 </span><span class="spaces">        </span><span class="istickedoff">getFamDefs = mapM trfTypeFamDef typeFamDefs</span></span>
+<span class="lineno">  409 </span>
+<span class="lineno">  410 </span>trfClassElemSig :: TransformName n r =&gt; Located (Sig n) -&gt; Trf (Ann AST.UClassElement (Dom r) RangeStage)
+<span class="lineno">  411 </span><span class="decl"><span class="istickedoff">trfClassElemSig = trfLocNoSema $ \case</span>
+<span class="lineno">  412 </span><span class="spaces">  </span><span class="istickedoff">TypeSig names typ -&gt; <span class="nottickedoff">AST.UClsSig &lt;$&gt; (annContNoSema $ AST.UTypeSignature &lt;$&gt; define (makeNonemptyList &quot;, &quot; (mapM trfName names))</span></span>
+<span class="lineno">  413 </span><span class="spaces">                                  </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfType (hsib_body $ hswc_body typ))</span></span>
+<span class="lineno">  414 </span><span class="spaces">  </span><span class="istickedoff">ClassOpSig True [name] typ -&gt; AST.UClsDefSig &lt;$&gt; trfName name &lt;*&gt; trfType (hsib_body typ)</span>
+<span class="lineno">  415 </span><span class="spaces">  </span><span class="istickedoff">ClassOpSig False names typ -&gt; AST.UClsSig &lt;$&gt; (annContNoSema $ AST.UTypeSignature &lt;$&gt; define (makeNonemptyList <span class="nottickedoff">&quot;, &quot;</span> (mapM trfName names))</span>
+<span class="lineno">  416 </span><span class="spaces">                                           </span><span class="istickedoff">&lt;*&gt; trfType (hsib_body typ))</span>
+<span class="lineno">  417 </span><span class="spaces">  </span><span class="istickedoff">MinimalSig _ formula -&gt; AST.UClsMinimal &lt;$&gt; trfMinimalFormula formula</span>
+<span class="lineno">  418 </span><span class="spaces">  </span><span class="istickedoff">InlineSig name prag -&gt; <span class="nottickedoff">AST.UClsInline &lt;$&gt; trfInlinePragma name prag</span></span>
+<span class="lineno">  419 </span><span class="spaces">  </span><span class="istickedoff">FixSig fixity -&gt; AST.UClsFixity &lt;$&gt; annContNoSema (trfFixitySig fixity)</span>
+<span class="lineno">  420 </span><span class="spaces">  </span><span class="istickedoff">s -&gt; <span class="nottickedoff">unhandledElement &quot;signature in class&quot; s</span></span></span>
+<span class="lineno">  421 </span>
+<span class="lineno">  422 </span>trfTypeFam :: TransformName n r =&gt; Located (FamilyDecl n) -&gt; Trf (Ann AST.UTypeFamily (Dom r) RangeStage)
+<span class="lineno">  423 </span><span class="decl"><span class="istickedoff">trfTypeFam = trfLocNoSema trfTypeFam'</span></span>
+<span class="lineno">  424 </span>
+<span class="lineno">  425 </span>trfTypeFam' :: TransformName n r =&gt; FamilyDecl n -&gt; Trf (AST.UTypeFamily (Dom r) RangeStage)
+<span class="lineno">  426 </span><span class="decl"><span class="istickedoff">trfTypeFam' (FamilyDecl DataFamily name tyVars _ kindSig _)</span>
+<span class="lineno">  427 </span><span class="spaces">  </span><span class="istickedoff">= AST.UDataFamily &lt;$&gt; (case unLoc kindSig of KindSig _ -&gt; between AnnData AnnDcolon; _ -&gt; id) (createDeclHead name tyVars)</span>
+<span class="lineno">  428 </span><span class="spaces">                    </span><span class="istickedoff">&lt;*&gt; trfFamilyKind kindSig</span>
+<span class="lineno">  429 </span><span class="spaces"></span><span class="istickedoff">trfTypeFam' (FamilyDecl OpenTypeFamily name tyVars _ kindSig injectivity)</span>
+<span class="lineno">  430 </span><span class="spaces">  </span><span class="istickedoff">= AST.UTypeFamily &lt;$&gt; (case unLoc kindSig of KindSig _ -&gt; between AnnType AnnDcolon; _ -&gt; id) (createDeclHead name tyVars)</span>
+<span class="lineno">  431 </span><span class="spaces">                   </span><span class="istickedoff">&lt;*&gt; trfFamilyResultSig kindSig injectivity</span>
+<span class="lineno">  432 </span><span class="spaces"></span><span class="istickedoff">trfTypeFam' (FamilyDecl (ClosedTypeFamily {}) _ _ _ _ _) = <span class="nottickedoff">convertionProblem &quot;trfTypeFam': closed type family received&quot;</span></span></span>
+<span class="lineno">  433 </span>
+<span class="lineno">  434 </span>trfTypeFamDef :: TransformName n r =&gt; Located (TyFamDefltEqn n) -&gt; Trf (Ann AST.UClassElement (Dom r) RangeStage)
+<span class="lineno">  435 </span><span class="decl"><span class="istickedoff">trfTypeFamDef = trfLocNoSema $ \(TyFamEqn con pats _ rhs)</span>
+<span class="lineno">  436 </span><span class="spaces">  </span><span class="istickedoff">-&gt; AST.UClsTypeDef &lt;$&gt; between AnnType AnnEqual (createDeclHead con pats) &lt;*&gt; trfType rhs</span></span>
+<span class="lineno">  437 </span>
+<span class="lineno">  438 </span>trfInstBody :: TransformName n r =&gt; LHsBinds n -&gt; [LSig n] -&gt; [LTyFamInstDecl n] -&gt; [LDataFamInstDecl n] -&gt; Trf (AnnMaybeG AST.UInstBody (Dom r) RangeStage)
+<span class="lineno">  439 </span><span class="decl"><span class="istickedoff">trfInstBody binds sigs fams dats = do</span>
+<span class="lineno">  440 </span><span class="spaces">    </span><span class="istickedoff">wh &lt;- tokenLoc AnnWhere</span>
+<span class="lineno">  441 </span><span class="spaces">    </span><span class="istickedoff">if isGoodSrcSpan wh then</span>
+<span class="lineno">  442 </span><span class="spaces">      </span><span class="istickedoff">makeJust &lt;$&gt; annLocNoSema (combinedLoc &lt;$&gt; tokenLoc AnnWhere)</span>
+<span class="lineno">  443 </span><span class="spaces">                                </span><span class="istickedoff">(AST.UInstBody &lt;$&gt; (makeList <span class="nottickedoff">&quot;&quot;</span> (after AnnWhere)</span>
+<span class="lineno">  444 </span><span class="spaces">                                                      </span><span class="istickedoff">(orderDefs . concat &lt;$&gt; sequenceA allDefs)))</span>
+<span class="lineno">  445 </span><span class="spaces">    </span><span class="istickedoff">else nothing <span class="nottickedoff">&quot; where &quot;</span> <span class="nottickedoff">&quot;&quot;</span> atTheEnd</span>
+<span class="lineno">  446 </span><span class="spaces">  </span><span class="istickedoff">where combinedLoc wh = foldl combineSrcSpans wh allLocs</span>
+<span class="lineno">  447 </span><span class="spaces">        </span><span class="istickedoff">allLocs = map getLoc sigs ++ map getLoc (bagToList binds) ++ map getLoc fams ++ map getLoc dats</span>
+<span class="lineno">  448 </span><span class="spaces">        </span><span class="istickedoff">allDefs = [getSigs, getBinds, getFams, getDats]</span>
+<span class="lineno">  449 </span><span class="spaces">        </span><span class="istickedoff">getSigs = mapM trfClassInstSig sigs</span>
+<span class="lineno">  450 </span><span class="spaces">        </span><span class="istickedoff">getBinds = mapM (copyAnnot AST.UInstBodyNormalDecl . trfBind) (bagToList binds)</span>
+<span class="lineno">  451 </span><span class="spaces">        </span><span class="istickedoff">getFams = mapM trfInstTypeFam fams</span>
+<span class="lineno">  452 </span><span class="spaces">        </span><span class="istickedoff">getDats = mapM trfInstDataFam dats</span></span>
+<span class="lineno">  453 </span>
+<span class="lineno">  454 </span>trfClassInstSig :: TransformName n r =&gt; Located (Sig n) -&gt; Trf (Ann AST.UInstBodyDecl (Dom r) RangeStage)
+<span class="lineno">  455 </span><span class="decl"><span class="istickedoff">trfClassInstSig = trfLocNoSema $ \case</span>
+<span class="lineno">  456 </span><span class="spaces">  </span><span class="istickedoff">TypeSig names typ -&gt; <span class="nottickedoff">AST.UInstBodyTypeSig &lt;$&gt; (annContNoSema $ AST.UTypeSignature &lt;$&gt; makeNonemptyList &quot;, &quot; (mapM trfName names)</span></span>
+<span class="lineno">  457 </span><span class="spaces">                                           </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfType (hsib_body $ hswc_body typ))</span></span>
+<span class="lineno">  458 </span><span class="spaces">  </span><span class="istickedoff">ClassOpSig _ names typ -&gt; AST.UInstBodyTypeSig &lt;$&gt; (annContNoSema $ AST.UTypeSignature &lt;$&gt; define (makeNonemptyList <span class="nottickedoff">&quot;, &quot;</span> (mapM trfName names))</span>
+<span class="lineno">  459 </span><span class="spaces">                                                </span><span class="istickedoff">&lt;*&gt; trfType (hsib_body typ))</span>
+<span class="lineno">  460 </span><span class="spaces">  </span><span class="istickedoff">SpecInstSig _ typ -&gt; AST.USpecializeInstance &lt;$&gt; trfType (hsib_body typ)</span>
+<span class="lineno">  461 </span><span class="spaces">  </span><span class="istickedoff">SpecSig name (map hsib_body -&gt; tys) (inl_act -&gt; phase) -&gt; <span class="nottickedoff">AST.UInstanceSpecialize &lt;$&gt; trfSpecializePragma name tys phase</span></span>
+<span class="lineno">  462 </span><span class="spaces">  </span><span class="istickedoff">InlineSig name prag -&gt; <span class="nottickedoff">AST.UInlineInstance &lt;$&gt; trfInlinePragma name prag</span></span>
+<span class="lineno">  463 </span><span class="spaces">  </span><span class="istickedoff">s -&gt; <span class="nottickedoff">unhandledElement &quot;class instance signature&quot; s</span></span></span>
+<span class="lineno">  464 </span>
+<span class="lineno">  465 </span>trfInstTypeFam :: TransformName n r =&gt; Located (TyFamInstDecl n) -&gt; Trf (Ann AST.UInstBodyDecl (Dom r) RangeStage)
+<span class="lineno">  466 </span><span class="decl"><span class="istickedoff">trfInstTypeFam (unLoc -&gt; TyFamInstDecl eqn _) = copyAnnot AST.UInstBodyTypeDecl (trfTypeEq eqn)</span></span>
+<span class="lineno">  467 </span>
+<span class="lineno">  468 </span>trfInstDataFam :: TransformName n r =&gt; Located (DataFamInstDecl n) -&gt; Trf (Ann AST.UInstBodyDecl (Dom r) RangeStage)
+<span class="lineno">  469 </span><span class="decl"><span class="istickedoff">trfInstDataFam = trfLocNoSema $ \case</span>
+<span class="lineno">  470 </span><span class="spaces">  </span><span class="istickedoff">(DataFamInstDecl tc (hsib_body -&gt; pats) _ (HsDataDefn dn ctx _ ks cons derivs) _)</span>
+<span class="lineno">  471 </span><span class="spaces">    </span><span class="istickedoff">| <span class="tickonlytrue">all ((\case ConDeclH98{} -&gt; True; _ -&gt; <span class="nottickedoff">False</span>) . unLoc) cons</span></span>
+<span class="lineno">  472 </span><span class="spaces">    </span><span class="istickedoff">-&gt; AST.UInstBodyDataDecl</span>
+<span class="lineno">  473 </span><span class="spaces">         </span><span class="istickedoff">&lt;$&gt; trfDataKeyword dn</span>
+<span class="lineno">  474 </span><span class="spaces">         </span><span class="istickedoff">&lt;*&gt; annLocNoSema (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)</span>
+<span class="lineno">  475 </span><span class="spaces">                          </span><span class="istickedoff">(AST.UInstanceRule &lt;$&gt; nothing <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">&quot; . &quot;</span> atTheStart</span>
+<span class="lineno">  476 </span><span class="spaces">                                             </span><span class="istickedoff">&lt;*&gt; trfCtx atTheStart ctx</span>
+<span class="lineno">  477 </span><span class="spaces">                                             </span><span class="istickedoff">&lt;*&gt; transformNameAndPats tc pats)</span>
+<span class="lineno">  478 </span><span class="spaces">         </span><span class="istickedoff">&lt;*&gt; trfAnnList <span class="nottickedoff">&quot;&quot;</span> trfConDecl' cons</span>
+<span class="lineno">  479 </span><span class="spaces">         </span><span class="istickedoff">&lt;*&gt; makeIndentedList atTheEnd (mapM <span class="nottickedoff">trfDerivings</span> (unLoc derivs))</span>
+<span class="lineno">  480 </span><span class="spaces">    </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span></span>
+<span class="lineno">  481 </span><span class="spaces">    </span><span class="istickedoff">-&gt; <span class="nottickedoff">AST.UInstBodyGadtDataDecl</span></span>
+<span class="lineno">  482 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&lt;$&gt; trfDataKeyword dn</span></span>
+<span class="lineno">  483 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; annLocNoSema (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)</span></span>
+<span class="lineno">  484 </span><span class="spaces">                         </span><span class="istickedoff"><span class="nottickedoff">(AST.UInstanceRule &lt;$&gt; nothing &quot;&quot; &quot; . &quot; atTheStart</span></span>
+<span class="lineno">  485 </span><span class="spaces">                                            </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfCtx atTheStart ctx</span></span>
+<span class="lineno">  486 </span><span class="spaces">                                            </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; transformNameAndPats tc pats)</span></span>
+<span class="lineno">  487 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfKindSig ks</span></span>
+<span class="lineno">  488 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfAnnList &quot;&quot; trfGADTConDecl' cons</span></span>
+<span class="lineno">  489 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; makeIndentedList atTheEnd (mapM trfDerivings (unLoc derivs))</span></span>
+<span class="lineno">  490 </span><span class="spaces">  </span><span class="istickedoff">where transformNameAndPats tc pats -- TODO: this is simpler with lexical fixity</span>
+<span class="lineno">  491 </span><span class="spaces">          </span><span class="istickedoff">| all (\p -&gt; srcSpanEnd (getLoc tc) &lt; srcSpanStart (getLoc p)) pats -- prefix instance head application</span>
+<span class="lineno">  492 </span><span class="spaces">          </span><span class="istickedoff">= foldl (\r t -&gt; annLocNoSema (combineSrcSpans (getLoc t) . getRange &lt;$&gt; r)</span>
+<span class="lineno">  493 </span><span class="spaces">                                          </span><span class="istickedoff">(AST.UInstanceHeadApp &lt;$&gt; r &lt;*&gt; (trfType t)))</span>
+<span class="lineno">  494 </span><span class="spaces">                  </span><span class="istickedoff">(copyAnnot AST.UInstanceHeadCon (trfName tc)) pats</span>
+<span class="lineno">  495 </span><span class="spaces">        </span><span class="istickedoff">transformNameAndPats tc (p:rest)</span>
+<span class="lineno">  496 </span><span class="spaces">          </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> -- infix instance head application</span>
+<span class="lineno">  497 </span><span class="spaces">          </span><span class="istickedoff">= foldl (\r t -&gt; annLocNoSema (combineSrcSpans (getLoc t) . getRange &lt;$&gt; r)</span>
+<span class="lineno">  498 </span><span class="spaces">                                          </span><span class="istickedoff">(AST.UInstanceHeadApp &lt;$&gt; r &lt;*&gt; (trfType t)))</span>
+<span class="lineno">  499 </span><span class="spaces">                  </span><span class="istickedoff">(annLocNoSema (pure $ getLoc p `combineSrcSpans` getLoc tc)</span>
+<span class="lineno">  500 </span><span class="spaces">                          </span><span class="istickedoff">(AST.UInstanceHeadInfix &lt;$&gt; trfType p &lt;*&gt; trfOperator tc)) rest</span></span>
+<span class="lineno">  501 </span>
+<span class="lineno">  502 </span>trfPatternSynonym :: forall n r . TransformName n r =&gt; PatSynBind n n -&gt; Trf (AST.UPatternSynonym (Dom r) RangeStage)
+<span class="lineno">  503 </span><span class="decl"><span class="istickedoff">trfPatternSynonym (PSB id _ lhs def dir)</span>
+<span class="lineno">  504 </span><span class="spaces">  </span><span class="istickedoff">= let sep = case dir of ImplicitBidirectional -&gt; AnnEqual</span>
+<span class="lineno">  505 </span><span class="spaces">                          </span><span class="istickedoff">_                     -&gt; AnnLarrow</span>
+<span class="lineno">  506 </span><span class="spaces">        </span><span class="istickedoff">rhsLoc = combineSrcSpans (getLoc def) &lt;$&gt; tokenLoc sep</span>
+<span class="lineno">  507 </span><span class="spaces">        </span><span class="istickedoff">-- we use the selector name instead of the pattern variable name</span>
+<span class="lineno">  508 </span><span class="spaces">        </span><span class="istickedoff">rewrites = case lhs of RecordPatSyn flds -&gt; map (\r -&gt; (unLoc (recordPatSynPatVar r), unLoc (recordPatSynSelectorId r))) flds</span>
+<span class="lineno">  509 </span><span class="spaces">                               </span><span class="istickedoff">_                 -&gt; []</span>
+<span class="lineno">  510 </span><span class="spaces">        </span><span class="istickedoff">changedRhs = biplateRef .- (\n -&gt; case lookup n rewrites of Just x -&gt; x; Nothing -&gt; n) $ def</span>
+<span class="lineno">  511 </span><span class="spaces">     </span><span class="istickedoff">in AST.UPatternSynonym &lt;$&gt; trfPatSynLhs id lhs sep</span>
+<span class="lineno">  512 </span><span class="spaces">                            </span><span class="istickedoff">&lt;*&gt; annLocNoSema rhsLoc (trfPatSynRhs dir changedRhs)</span>
+<span class="lineno">  513 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  514 </span><span class="spaces">  </span><span class="istickedoff">where trfPatSynLhs :: Located n -&gt; HsPatSynDetails (Located n) -&gt; AnnKeywordId -&gt; Trf (Ann AST.UPatSynLhs (Dom r) RangeStage)</span>
+<span class="lineno">  515 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynLhs id (PrefixPatSyn args) _</span>
+<span class="lineno">  516 </span><span class="spaces">          </span><span class="istickedoff">= annLocNoSema (pure $ foldLocs (getLoc id : map getLoc args)) $ AST.UNormalPatSyn &lt;$&gt; define (trfName id) &lt;*&gt; trfAnnList <span class="nottickedoff">&quot; &quot;</span> trfName' args</span>
+<span class="lineno">  517 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynLhs op (InfixPatSyn lhs rhs) _</span>
+<span class="lineno">  518 </span><span class="spaces">          </span><span class="istickedoff">= annLocNoSema (pure $ getLoc lhs `combineSrcSpans` getLoc rhs) $ AST.UInfixPatSyn &lt;$&gt; define (trfName lhs) &lt;*&gt; trfOperator op &lt;*&gt; trfName rhs</span>
+<span class="lineno">  519 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynLhs id (RecordPatSyn flds) kw</span>
+<span class="lineno">  520 </span><span class="spaces">          </span><span class="istickedoff">= annLocNoSema (mkSrcSpan (srcSpanStart (getLoc id)) &lt;$&gt; before kw)</span>
+<span class="lineno">  521 </span><span class="spaces">              </span><span class="istickedoff">$ AST.URecordPatSyn &lt;$&gt; define (trfName id) &lt;*&gt; trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfName' (map recordPatSynSelectorId flds)</span>
+<span class="lineno">  522 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  523 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynRhs :: HsPatSynDir n -&gt; Located (Pat n) -&gt; Trf (AST.UPatSynRhs (Dom r) RangeStage)</span>
+<span class="lineno">  524 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynRhs ImplicitBidirectional pat = AST.UBidirectionalPatSyn &lt;$&gt; trfPattern pat &lt;*&gt; nothing <span class="nottickedoff">&quot; where &quot;</span> <span class="nottickedoff">&quot;&quot;</span> atTheEnd</span>
+<span class="lineno">  525 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynRhs (ExplicitBidirectional mg) pat = AST.UBidirectionalPatSyn &lt;$&gt; trfPattern pat &lt;*&gt; (makeJust &lt;$&gt; trfPatSynWhere mg)</span>
+<span class="lineno">  526 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynRhs Unidirectional pat = AST.UOneDirectionalPatSyn &lt;$&gt; trfPattern pat</span>
+<span class="lineno">  527 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  528 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynWhere :: MatchGroup n (LHsExpr n) -&gt; Trf (Ann AST.UPatSynWhere (Dom r) RangeStage)</span>
+<span class="lineno">  529 </span><span class="spaces">        </span><span class="istickedoff">trfPatSynWhere (MG { mg_alts = alts }) = annLocNoSema (pure $ getLoc alts) (AST.UPatSynWhere &lt;$&gt; makeIndentedList (after AnnWhere) (mapM (trfMatch <span class="nottickedoff">(unLoc id)</span>) (unLoc alts)))</span></span>
+<span class="lineno">  530 </span>
+<span class="lineno">  531 </span>trfFamilyKind :: TransformName n r =&gt; Located (FamilyResultSig n) -&gt; Trf (AnnMaybeG AST.UKindConstraint (Dom r) RangeStage)
+<span class="lineno">  532 </span><span class="decl"><span class="istickedoff">trfFamilyKind (unLoc -&gt; fr) = case fr of</span>
+<span class="lineno">  533 </span><span class="spaces">  </span><span class="istickedoff">NoSig -&gt; nothing <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">&quot; &quot;</span> atTheEnd</span>
+<span class="lineno">  534 </span><span class="spaces">  </span><span class="istickedoff">KindSig k -&gt; trfKindSig (Just k)</span>
+<span class="lineno">  535 </span><span class="spaces">  </span><span class="istickedoff">TyVarSig _ -&gt; <span class="nottickedoff">convertionProblem &quot;trfFamilyKind: TyVarSig not supported&quot;</span></span></span>
+<span class="lineno">  536 </span>
+<span class="lineno">  537 </span>trfFamilyResultSig :: TransformName n r =&gt; Located (FamilyResultSig n) -&gt; Maybe (LInjectivityAnn n) -&gt; Trf (AnnMaybeG AST.UTypeFamilySpec (Dom r) RangeStage)
+<span class="lineno">  538 </span><span class="decl"><span class="istickedoff">trfFamilyResultSig (L l fr) Nothing = case fr of</span>
+<span class="lineno">  539 </span><span class="spaces">  </span><span class="istickedoff">NoSig -&gt; nothing <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">&quot; &quot;</span> atTheEnd</span>
+<span class="lineno">  540 </span><span class="spaces">  </span><span class="istickedoff">KindSig k -&gt; makeJust &lt;$&gt; (annLocNoSema (pure l) $ AST.UTypeFamilyKind &lt;$&gt; trfKindSig' k)</span>
+<span class="lineno">  541 </span><span class="spaces">  </span><span class="istickedoff">TyVarSig tv -&gt; <span class="nottickedoff">makeJust &lt;$&gt; (annLocNoSema (pure l) $ AST.UTypeFamilyTyVar &lt;$&gt; trfTyVar tv)</span></span>
+<span class="lineno">  542 </span><span class="spaces"></span><span class="istickedoff">trfFamilyResultSig (L _ sig) (Just (L l (InjectivityAnn n deps)))</span>
+<span class="lineno">  543 </span><span class="spaces">  </span><span class="istickedoff">= makeJust &lt;$&gt; (annLocNoSema (pure l) $ AST.UTypeFamilyInjectivity &lt;$&gt; (annContNoSema $ AST.UInjectivityAnn &lt;$&gt; tv &lt;*&gt; trfAnnList <span class="nottickedoff">&quot;, &quot;</span> trfName' deps))</span>
+<span class="lineno">  544 </span><span class="spaces">    </span><span class="istickedoff">where tv = case sig of TyVarSig tv -&gt; trfTyVar tv</span>
+<span class="lineno">  545 </span><span class="spaces">                           </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">annLocNoSema (pure $ getLoc n) (AST.UTyVarDecl &lt;$&gt; trfName n &lt;*&gt; nothing &quot;&quot; &quot;&quot; (pure $ srcSpanEnd (getLoc n)))</span></span></span>
+<span class="lineno">  546 </span>
+<span class="lineno">  547 </span>trfAnnotationSubject :: TransformName n r =&gt; SourceText -&gt; AnnProvenance n -&gt; SrcLoc -&gt; Trf (Ann AST.UAnnotationSubject (Dom r) RangeStage)
+<span class="lineno">  548 </span><span class="decl"><span class="istickedoff">trfAnnotationSubject (fromSrcText -&gt; stxt) subject payloadEnd</span>
+<span class="lineno">  549 </span><span class="spaces">  </span><span class="istickedoff">= do payloadStart &lt;- advanceStr stxt &lt;$&gt; atTheStart</span>
+<span class="lineno">  550 </span><span class="spaces">       </span><span class="istickedoff">case subject of ValueAnnProvenance name@(L l _) -&gt; annLocNoSema (pure l) (AST.UNameAnnotation &lt;$&gt; trfName name)</span>
+<span class="lineno">  551 </span><span class="spaces">                       </span><span class="istickedoff">TypeAnnProvenance name@(L l _) -&gt; annLocNoSema (pure $ mkSrcSpan payloadStart (srcSpanEnd l))</span>
+<span class="lineno">  552 </span><span class="spaces">                                                                      </span><span class="istickedoff">(AST.UTypeAnnotation &lt;$&gt; trfName name)</span>
+<span class="lineno">  553 </span><span class="spaces">                       </span><span class="istickedoff">ModuleAnnProvenance -&gt; annLocNoSema (pure $ mkSrcSpan payloadStart payloadEnd) (pure AST.UModuleAnnotation)</span></span>
+<span class="lineno">  554 </span>
+<span class="lineno">  555 </span>trfDataKeyword ::  NewOrData -&gt; Trf (Ann AST.UDataOrNewtypeKeyword (Dom r) RangeStage)
+<span class="lineno">  556 </span><span class="decl"><span class="istickedoff">trfDataKeyword NewType = annLocNoSema (tokenLoc AnnNewtype) (pure AST.UNewtypeKeyword)</span>
+<span class="lineno">  557 </span><span class="spaces"></span><span class="istickedoff">trfDataKeyword DataType = annLocNoSema (tokenLoc AnnData) (pure AST.UDataKeyword)</span></span>
+<span class="lineno">  558 </span>
+<span class="lineno">  559 </span>trfCallConv :: Located CCallConv -&gt; Trf (Ann AST.UCallConv (Dom r) RangeStage)
+<span class="lineno">  560 </span><span class="decl"><span class="istickedoff">trfCallConv = trfLocNoSema trfCallConv'</span></span>
+<span class="lineno">  561 </span>
+<span class="lineno">  562 </span>trfCallConv' :: CCallConv -&gt; Trf (AST.UCallConv (Dom r) RangeStage)
+<span class="lineno">  563 </span><span class="decl"><span class="istickedoff">trfCallConv' CCallConv = pure AST.UCCall</span>
+<span class="lineno">  564 </span><span class="spaces"></span><span class="istickedoff">trfCallConv' CApiConv = <span class="nottickedoff">pure AST.UCApi</span></span>
+<span class="lineno">  565 </span><span class="spaces"></span><span class="istickedoff">trfCallConv' StdCallConv = <span class="nottickedoff">pure AST.UStdCall</span></span>
+<span class="lineno">  566 </span><span class="spaces"></span><span class="istickedoff">trfCallConv' JavaScriptCallConv = <span class="nottickedoff">pure AST.UJavaScript</span></span>
+<span class="lineno">  567 </span><span class="spaces"></span><span class="istickedoff">trfCallConv' PrimCallConv = <span class="nottickedoff">convertionProblem &quot;trfCallConv: PrimCallConv not supported&quot;</span></span></span>
+<span class="lineno">  568 </span>
+<span class="lineno">  569 </span>trfSafety :: SrcSpan -&gt; Located Safety -&gt; Trf (AnnMaybeG AST.USafety (Dom r) RangeStage)
+<span class="lineno">  570 </span><span class="decl"><span class="istickedoff">trfSafety ccLoc lsaf@(L l _) | isGoodSrcSpan l</span>
+<span class="lineno">  571 </span><span class="spaces">  </span><span class="istickedoff">= makeJust &lt;$&gt; trfLocNoSema (pure . \case</span>
+<span class="lineno">  572 </span><span class="spaces">      </span><span class="istickedoff">PlaySafe -&gt; <span class="nottickedoff">AST.USafe</span></span>
+<span class="lineno">  573 </span><span class="spaces">      </span><span class="istickedoff">PlayInterruptible -&gt; <span class="nottickedoff">AST.UInterruptible</span></span>
+<span class="lineno">  574 </span><span class="spaces">      </span><span class="istickedoff">PlayRisky -&gt; AST.UUnsafe) lsaf</span>
+<span class="lineno">  575 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> (pure $ srcSpanEnd ccLoc)</span></span>
+<span class="lineno">  576 </span>
+<span class="lineno">  577 </span>trfOverlap :: Located OverlapMode -&gt; Trf (Ann AST.UOverlapPragma (Dom r) RangeStage)
+<span class="lineno">  578 </span><span class="decl"><span class="istickedoff">trfOverlap = trfLocNoSema $ pure . \case</span>
+<span class="lineno">  579 </span><span class="spaces">  </span><span class="istickedoff">NoOverlap _ -&gt; <span class="nottickedoff">AST.UDisableOverlap</span></span>
+<span class="lineno">  580 </span><span class="spaces">  </span><span class="istickedoff">Overlappable _ -&gt; AST.UOverlappable</span>
+<span class="lineno">  581 </span><span class="spaces">  </span><span class="istickedoff">Overlapping _ -&gt; AST.UOverlapping</span>
+<span class="lineno">  582 </span><span class="spaces">  </span><span class="istickedoff">Overlaps _ -&gt; AST.UOverlaps</span>
+<span class="lineno">  583 </span><span class="spaces">  </span><span class="istickedoff">Incoherent _ -&gt; <span class="nottickedoff">AST.UIncoherentOverlap</span></span></span>
+<span class="lineno">  584 </span>
+<span class="lineno">  585 </span>trfRole :: Located (Maybe Role) -&gt; Trf (Ann AST.URole (Dom r) RangeStage)
+<span class="lineno">  586 </span><span class="decl"><span class="istickedoff">trfRole = trfLocNoSema $ \case Just Nominal -&gt; pure AST.UNominal</span>
+<span class="lineno">  587 </span><span class="spaces">                               </span><span class="istickedoff">Just Representational -&gt; pure AST.URepresentational</span>
+<span class="lineno">  588 </span><span class="spaces">                               </span><span class="istickedoff">Just GHC.Phantom -&gt; <span class="nottickedoff">pure AST.UPhantom</span></span>
+<span class="lineno">  589 </span><span class="spaces">                               </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">convertionProblem &quot;trfRole: no role&quot;</span></span></span>
+<span class="lineno">  590 </span>
+<span class="lineno">  591 </span>trfRewriteRule :: TransformName n r =&gt; Located (RuleDecl n) -&gt; Trf (Ann AST.URule (Dom r) RangeStage)
+<span class="lineno">  592 </span><span class="decl"><span class="istickedoff">trfRewriteRule = trfLocNoSema $ \(HsRule (L nameLoc (_, ruleName)) act bndrs left _ right _) -&gt;</span>
+<span class="lineno">  593 </span><span class="spaces">  </span><span class="istickedoff">AST.URule &lt;$&gt; trfFastString (L nameLoc <span class="nottickedoff">ruleName</span>)</span>
+<span class="lineno">  594 </span><span class="spaces">            </span><span class="istickedoff">&lt;*&gt; trfPhase (pure $ srcSpanEnd nameLoc) act</span>
+<span class="lineno">  595 </span><span class="spaces">            </span><span class="istickedoff">&lt;*&gt; makeListAfter <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot; &quot;</span> (pure $ srcSpanStart $ getLoc left) (mapM trfRuleBndr bndrs)</span>
+<span class="lineno">  596 </span><span class="spaces">            </span><span class="istickedoff">&lt;*&gt; trfExpr left</span>
+<span class="lineno">  597 </span><span class="spaces">            </span><span class="istickedoff">&lt;*&gt; trfExpr right</span></span>
+<span class="lineno">  598 </span>
+<span class="lineno">  599 </span>trfRuleBndr :: TransformName n r =&gt; Located (RuleBndr n) -&gt; Trf (Ann AST.URuleVar (Dom r) RangeStage)
+<span class="lineno">  600 </span><span class="decl"><span class="istickedoff">trfRuleBndr = trfLocNoSema $ \case (RuleBndr n) -&gt; AST.URuleVar &lt;$&gt; trfName n</span>
+<span class="lineno">  601 </span><span class="spaces">                                   </span><span class="istickedoff">(RuleBndrSig n k) -&gt; <span class="nottickedoff">AST.USigRuleVar &lt;$&gt; trfName n &lt;*&gt; trfType (hsib_body $ hswc_body k)</span></span></span>
+<span class="lineno">  602 </span>
+<span class="lineno">  603 </span>trfMinimalFormula :: TransformName n r =&gt; Located (BooleanFormula (Located n)) -&gt; Trf (Ann AST.UMinimalFormula (Dom r) RangeStage)
+<span class="lineno">  604 </span><span class="decl"><span class="istickedoff">trfMinimalFormula = trfLocCorrect (pure <span class="nottickedoff">mkNoSemanticInfo</span>)</span>
+<span class="lineno">  605 </span><span class="spaces">                      </span><span class="istickedoff">(\sp -&gt; if isGoodSrcSpan sp then pure sp else srcLocSpan &lt;$&gt; before AnnClose) trfMinimalFormula'</span></span>
+<span class="lineno">  606 </span>
+<span class="lineno">  607 </span>trfMinimalFormula' :: TransformName n r =&gt; BooleanFormula (Located n) -&gt; Trf (AST.UMinimalFormula (Dom r) RangeStage)
+<span class="lineno">  608 </span><span class="decl"><span class="istickedoff">trfMinimalFormula' (Var name) = AST.UMinimalName &lt;$&gt; trfName name</span>
+<span class="lineno">  609 </span><span class="spaces"></span><span class="istickedoff">trfMinimalFormula' (And formulas) -- empty Minimal pragma is mapped to an empty list</span>
+<span class="lineno">  610 </span><span class="spaces">  </span><span class="istickedoff">= AST.UMinimalAnd &lt;$&gt; makeListBefore <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot; , &quot;</span> atTheEnd (mapM (trfLocNoSema trfMinimalFormula') formulas)</span>
+<span class="lineno">  611 </span><span class="spaces"></span><span class="istickedoff">trfMinimalFormula' (Or formulas) = AST.UMinimalOr &lt;$&gt; trfAnnList <span class="nottickedoff">&quot; | &quot;</span> trfMinimalFormula' formulas</span>
+<span class="lineno">  612 </span><span class="spaces"></span><span class="istickedoff">trfMinimalFormula' (Parens formula) = AST.UMinimalParen &lt;$&gt; trfMinimalFormula formula</span></span>
+
+</pre>
+</body>
+</html>

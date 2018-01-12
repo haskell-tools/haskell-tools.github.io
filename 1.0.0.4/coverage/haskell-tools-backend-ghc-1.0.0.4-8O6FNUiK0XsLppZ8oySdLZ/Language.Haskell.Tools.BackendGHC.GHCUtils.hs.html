@@ -1,0 +1,298 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts, FlexibleInstances, LambdaCase, MultiParamTypeClasses, RecordWildCards, ScopedTypeVariables #-}
+<span class="lineno">    2 </span>-- | Utility functions defined on the GHC AST representation.
+<span class="lineno">    3 </span>module Language.Haskell.Tools.BackendGHC.GHCUtils where
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>import Data.Generics.Uniplate.Data ()
+<span class="lineno">    6 </span>import Data.List
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>import Bag (Bag, bagToList, unionManyBags)
+<span class="lineno">    9 </span>import BasicTypes (SourceText(..))
+<span class="lineno">   10 </span>import ConLike (ConLike(..))
+<span class="lineno">   11 </span>import Data.Maybe (Maybe(..), listToMaybe)
+<span class="lineno">   12 </span>import GHC
+<span class="lineno">   13 </span>import Id (Id, mkVanillaGlobal)
+<span class="lineno">   14 </span>import OccName (OccName)
+<span class="lineno">   15 </span>import Outputable (Outputable(..), showSDocUnsafe)
+<span class="lineno">   16 </span>import PatSyn (patSynSig)
+<span class="lineno">   17 </span>import RdrName (RdrName, rdrNameOcc, nameRdrName)
+<span class="lineno">   18 </span>import SrcLoc
+<span class="lineno">   19 </span>import Type (TyThing(..), mkFunTys)
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>class OutputableBndrId name =&gt; GHCName name where
+<span class="lineno">   22 </span>  rdrName :: name -&gt; RdrName
+<span class="lineno">   23 </span>  getFromNameUsing :: Applicative f =&gt; (Name -&gt; Ghc (f Id)) -&gt; Name -&gt; Ghc (f name)
+<span class="lineno">   24 </span>  getBindsAndSigs :: HsValBinds name -&gt; ([LSig name], LHsBinds name)
+<span class="lineno">   25 </span>  nameFromId :: Id -&gt; name
+<span class="lineno">   26 </span>  unpackPostRn :: RdrName -&gt; PostRn name name -&gt; name
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>  gunpackPostRn :: a -&gt; (name -&gt; a) -&gt; PostRn name name -&gt; a
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>instance GHCName RdrName where
+<span class="lineno">   31 </span>  <span class="decl"><span class="istickedoff">rdrName = id</span></span>
+<span class="lineno">   32 </span>  <span class="decl"><span class="istickedoff">getFromNameUsing _ n = return $ pure (nameRdrName <span class="nottickedoff">n</span>)</span></span>
+<span class="lineno">   33 </span>  <span class="decl"><span class="nottickedoff">getBindsAndSigs (ValBindsIn binds sigs) = (sigs, binds)</span>
+<span class="lineno">   34 </span><span class="spaces">  </span><span class="nottickedoff">getBindsAndSigs _ = error &quot;ValBindsOut: ValBindsOut in parsed source&quot;</span></span>
+<span class="lineno">   35 </span>  <span class="decl"><span class="nottickedoff">nameFromId = nameRdrName . getName</span></span>
+<span class="lineno">   36 </span>  <span class="decl"><span class="istickedoff">unpackPostRn rdr _ = rdr</span></span>
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>  <span class="decl"><span class="nottickedoff">gunpackPostRn a _ _ = a</span></span>
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>occName :: GHCName n =&gt; n -&gt; OccName
+<span class="lineno">   41 </span><span class="decl"><span class="istickedoff">occName = rdrNameOcc . rdrName</span></span>
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>instance GHCName GHC.Name where
+<span class="lineno">   44 </span>  <span class="decl"><span class="istickedoff">rdrName = nameRdrName</span></span>
+<span class="lineno">   45 </span>  <span class="decl"><span class="istickedoff">getFromNameUsing f n = fmap nameFromId &lt;$&gt; f n</span></span>
+<span class="lineno">   46 </span>  <span class="decl"><span class="istickedoff">getBindsAndSigs (ValBindsOut bindGroups sigs) = (sigs, unionManyBags (map snd bindGroups))</span>
+<span class="lineno">   47 </span><span class="spaces">  </span><span class="istickedoff">getBindsAndSigs _ = <span class="nottickedoff">error &quot;getBindsAndSigs: ValBindsIn in renamed source&quot;</span></span></span>
+<span class="lineno">   48 </span>  <span class="decl"><span class="istickedoff">nameFromId = getName</span></span>
+<span class="lineno">   49 </span>  <span class="decl"><span class="istickedoff">unpackPostRn _ a = a</span></span>
+<span class="lineno">   50 </span>
+<span class="lineno">   51 </span>  <span class="decl"><span class="istickedoff">gunpackPostRn _ f pr = f pr</span></span>
+<span class="lineno">   52 </span>
+<span class="lineno">   53 </span>getFieldOccName :: GHCName n =&gt; Located (FieldOcc n) -&gt; Located n
+<span class="lineno">   54 </span><span class="decl"><span class="istickedoff">getFieldOccName (L l (FieldOcc (L _ rdr) postRn)) = L l (unpackPostRn rdr postRn)</span></span>
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>getFieldOccName' :: GHCName n =&gt; FieldOcc n -&gt; n
+<span class="lineno">   57 </span><span class="decl"><span class="nottickedoff">getFieldOccName' (FieldOcc (L _ rdr) postRn) = unpackPostRn rdr postRn</span></span>
+<span class="lineno">   58 </span>
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>
+<span class="lineno">   61 </span>-- | Loading ids for top-level ghc names
+<span class="lineno">   62 </span>getTopLevelId :: GHC.Name -&gt; Ghc (Maybe GHC.Id)
+<span class="lineno">   63 </span><span class="decl"><span class="istickedoff">getTopLevelId name =</span>
+<span class="lineno">   64 </span><span class="spaces">    </span><span class="istickedoff">lookupName name &gt;&gt;= \case</span>
+<span class="lineno">   65 </span><span class="spaces">      </span><span class="istickedoff">Just (AnId id) -&gt; return (Just id)</span>
+<span class="lineno">   66 </span><span class="spaces">      </span><span class="istickedoff">Just (AConLike (RealDataCon dc)) -&gt; return $ Just $ mkVanillaGlobal name (dataConUserType dc)</span>
+<span class="lineno">   67 </span><span class="spaces">      </span><span class="istickedoff">Just (AConLike (PatSynCon ps)) -&gt; return $ Just $ mkVanillaGlobal name <span class="nottickedoff">(createPatSynType ps)</span></span>
+<span class="lineno">   68 </span><span class="spaces">      </span><span class="istickedoff">Just (ATyCon tc) -&gt; return $ Just $ mkVanillaGlobal name <span class="nottickedoff">(tyConKind tc)</span></span>
+<span class="lineno">   69 </span><span class="spaces">      </span><span class="istickedoff">_ -&gt; return Nothing</span>
+<span class="lineno">   70 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">createPatSynType patSyn = case patSynSig patSyn of (_, _, _, _, args, res) -&gt; mkFunTys args res</span></span></span>
+<span class="lineno">   71 </span>
+<span class="lineno">   72 </span>hsGetNames' :: HsHasName a =&gt; a -&gt; [GHC.Name]
+<span class="lineno">   73 </span><span class="decl"><span class="istickedoff">hsGetNames' = map fst . hsGetNames <span class="nottickedoff">Nothing</span></span></span>
+<span class="lineno">   74 </span>
+<span class="lineno">   75 </span>-- | Get names from the GHC AST
+<span class="lineno">   76 </span>class HsHasName a where
+<span class="lineno">   77 </span>  hsGetNames :: Maybe GHC.Name -&gt; a -&gt; [(GHC.Name, Maybe GHC.Name)]
+<span class="lineno">   78 </span>
+<span class="lineno">   79 </span>instance HsHasName RdrName where
+<span class="lineno">   80 </span>  <span class="decl"><span class="istickedoff">hsGetNames _ _ = []</span></span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>instance HsHasName Name where
+<span class="lineno">   83 </span>  <span class="decl"><span class="istickedoff">hsGetNames p n = [(n, p)]</span></span>
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>instance HsHasName Id where
+<span class="lineno">   86 </span>  <span class="decl"><span class="nottickedoff">hsGetNames p n = [(getName n, p)]</span></span>
+<span class="lineno">   87 </span>
+<span class="lineno">   88 </span>instance HsHasName e =&gt; HsHasName [e] where
+<span class="lineno">   89 </span>  <span class="decl"><span class="istickedoff">hsGetNames p es = concatMap (hsGetNames p) es</span></span>
+<span class="lineno">   90 </span>
+<span class="lineno">   91 </span>instance HsHasName e =&gt; HsHasName (Located e) where
+<span class="lineno">   92 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (L _ e) = hsGetNames p e</span></span>
+<span class="lineno">   93 </span>
+<span class="lineno">   94 </span>instance HsHasName n =&gt; HsHasName (HsLocalBinds n) where
+<span class="lineno">   95 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (HsValBinds bnds) = hsGetNames <span class="nottickedoff">p</span> bnds</span>
+<span class="lineno">   96 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames _ _ = []</span></span>
+<span class="lineno">   97 </span>
+<span class="lineno">   98 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (HsDecl n) where
+<span class="lineno">   99 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (TyClD tycl) = hsGetNames p tycl</span>
+<span class="lineno">  100 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (ValD vald) = hsGetNames p vald</span>
+<span class="lineno">  101 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (ForD ford) = <span class="nottickedoff">hsGetNames p ford</span></span>
+<span class="lineno">  102 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (InstD inst) = <span class="nottickedoff">hsGetNames p inst</span></span>
+<span class="lineno">  103 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames _ _ = []</span></span>
+<span class="lineno">  104 </span>
+<span class="lineno">  105 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (InstDecl n) where
+<span class="lineno">  106 </span>  <span class="decl"><span class="nottickedoff">hsGetNames p (ClsInstD clsInst) = hsGetNames p (cid_datafam_insts clsInst)</span>
+<span class="lineno">  107 </span><span class="spaces">  </span><span class="nottickedoff">hsGetNames p (DataFamInstD dataFamInst) = hsGetNames p dataFamInst</span>
+<span class="lineno">  108 </span><span class="spaces">  </span><span class="nottickedoff">hsGetNames _ _ = []</span></span>
+<span class="lineno">  109 </span>
+<span class="lineno">  110 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (DataFamInstDecl n) where
+<span class="lineno">  111 </span>  <span class="decl"><span class="nottickedoff">hsGetNames p dfid = hsGetNames p (dfid_defn dfid)</span></span>
+<span class="lineno">  112 </span>
+<span class="lineno">  113 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (TyClGroup n) where
+<span class="lineno">  114 </span>  <span class="decl"><span class="nottickedoff">hsGetNames p (TyClGroup tycls _ _) = hsGetNames p tycls</span></span>
+<span class="lineno">  115 </span>
+<span class="lineno">  116 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (TyClDecl n) where
+<span class="lineno">  117 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (FamDecl fd) = hsGetNames <span class="nottickedoff">p</span> fd</span>
+<span class="lineno">  118 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (SynDecl {tcdLName = name}) = hsGetNames <span class="nottickedoff">p</span> name</span>
+<span class="lineno">  119 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (DataDecl {tcdLName = name, tcdDataDefn = datadef})</span>
+<span class="lineno">  120 </span><span class="spaces">    </span><span class="istickedoff">= let n = hsGetNames p name in n ++ hsGetNames <span class="nottickedoff">(listToMaybe (map fst n))</span> datadef</span>
+<span class="lineno">  121 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (ClassDecl {tcdLName = name, tcdSigs = sigs, tcdATs = typeAssocs})</span>
+<span class="lineno">  122 </span><span class="spaces">    </span><span class="istickedoff">= let n = hsGetNames p name in n ++ hsGetNames (listToMaybe (map fst n)) sigs</span>
+<span class="lineno">  123 </span><span class="spaces">                                     </span><span class="istickedoff">++ hsGetNames <span class="nottickedoff">(listToMaybe (map fst n))</span> typeAssocs</span></span>
+<span class="lineno">  124 </span>
+<span class="lineno">  125 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (FamilyDecl n) where
+<span class="lineno">  126 </span> <span class="decl"><span class="istickedoff">hsGetNames p (FamilyDecl { fdLName = name }) = hsGetNames <span class="nottickedoff">p</span> name</span></span>
+<span class="lineno">  127 </span>
+<span class="lineno">  128 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (HsDataDefn n) where
+<span class="lineno">  129 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (HsDataDefn {dd_cons = ctors}) = hsGetNames <span class="nottickedoff">p</span> ctors</span></span>
+<span class="lineno">  130 </span>
+<span class="lineno">  131 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (ConDecl n) where
+<span class="lineno">  132 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsFunTy (L _ (HsRecTy flds)) _)) _)})</span>
+<span class="lineno">  133 </span><span class="spaces">    </span><span class="istickedoff">= hsGetNames <span class="nottickedoff">p</span> names ++ hsGetNames <span class="nottickedoff">p</span> flds</span>
+<span class="lineno">  134 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsRecTy flds)) _)})</span>
+<span class="lineno">  135 </span><span class="spaces">    </span><span class="istickedoff">= <span class="nottickedoff">hsGetNames p names ++ hsGetNames p flds</span></span>
+<span class="lineno">  136 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (ConDeclGADT {con_names = names}) = <span class="nottickedoff">hsGetNames p names</span></span>
+<span class="lineno">  137 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (ConDeclH98 {con_name = name, con_details = details})</span>
+<span class="lineno">  138 </span><span class="spaces">    </span><span class="istickedoff">= hsGetNames <span class="nottickedoff">p</span> name ++ hsGetNames <span class="nottickedoff">p</span> details</span></span>
+<span class="lineno">  139 </span>
+<span class="lineno">  140 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (HsConDeclDetails n) where
+<span class="lineno">  141 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (RecCon rec) = hsGetNames <span class="nottickedoff">p</span> rec</span>
+<span class="lineno">  142 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames _ _ = []</span></span>
+<span class="lineno">  143 </span>
+<span class="lineno">  144 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (ConDeclField n) where
+<span class="lineno">  145 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (ConDeclField name _ _) = hsGetNames <span class="nottickedoff">p</span> name</span></span>
+<span class="lineno">  146 </span>
+<span class="lineno">  147 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (FieldOcc n) where
+<span class="lineno">  148 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (FieldOcc _ pr) = gunpackPostRn <span class="nottickedoff">[]</span> (hsGetNames <span class="nottickedoff">p</span> :: n -&gt; [(Name, Maybe Name)]) pr</span></span>
+<span class="lineno">  149 </span>
+<span class="lineno">  150 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (Sig n) where
+<span class="lineno">  151 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (TypeSig n _) = <span class="nottickedoff">hsGetNames p n</span></span>
+<span class="lineno">  152 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (ClassOpSig _ n _) = hsGetNames p n</span>
+<span class="lineno">  153 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (PatSynSig n _) = <span class="nottickedoff">hsGetNames p n</span></span>
+<span class="lineno">  154 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames _ _ = <span class="nottickedoff">[]</span></span></span>
+<span class="lineno">  155 </span>
+<span class="lineno">  156 </span>instance HsHasName n =&gt; HsHasName (ForeignDecl n) where
+<span class="lineno">  157 </span>  <span class="decl"><span class="nottickedoff">hsGetNames p (ForeignImport n _ _ _) = hsGetNames p n</span>
+<span class="lineno">  158 </span><span class="spaces">  </span><span class="nottickedoff">hsGetNames _ _ = []</span></span>
+<span class="lineno">  159 </span>
+<span class="lineno">  160 </span>instance HsHasName n =&gt; HsHasName (HsValBinds n) where
+<span class="lineno">  161 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (ValBindsIn bnds _) = <span class="nottickedoff">hsGetNames p bnds</span></span>
+<span class="lineno">  162 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (ValBindsOut bnds _) = hsGetNames <span class="nottickedoff">p</span> $ map snd bnds</span></span>
+<span class="lineno">  163 </span>
+<span class="lineno">  164 </span>instance HsHasName n =&gt; HsHasName (Bag n) where
+<span class="lineno">  165 </span>  <span class="decl"><span class="istickedoff">hsGetNames p = hsGetNames <span class="nottickedoff">p</span> . bagToList</span></span>
+<span class="lineno">  166 </span>
+<span class="lineno">  167 </span>instance HsHasName n =&gt; HsHasName (HsBind n) where
+<span class="lineno">  168 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (FunBind {fun_id = lname}) = hsGetNames p lname</span>
+<span class="lineno">  169 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (PatBind {pat_lhs = pat}) = hsGetNames <span class="nottickedoff">p</span> pat</span>
+<span class="lineno">  170 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (VarBind {var_id = id}) = <span class="nottickedoff">hsGetNames p id</span></span>
+<span class="lineno">  171 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (PatSynBind (PSB {psb_id = id})) = hsGetNames <span class="nottickedoff">p</span> id</span>
+<span class="lineno">  172 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames _ _ = <span class="nottickedoff">error &quot;hsGetNames: called on compiler-generated binding&quot;</span></span></span>
+<span class="lineno">  173 </span>
+<span class="lineno">  174 </span>instance HsHasName n =&gt; HsHasName (ParStmtBlock l n) where
+<span class="lineno">  175 </span>  <span class="decl"><span class="nottickedoff">hsGetNames p (ParStmtBlock _ binds _) = hsGetNames p binds</span></span>
+<span class="lineno">  176 </span>
+<span class="lineno">  177 </span>--instance HsHasName n =&gt; HsHasName (LHsTyVarBndrs n) where
+<span class="lineno">  178 </span>--  hsGetNames (HsQTvs kvs tvs) = hsGetNames kvs ++ hsGetNames tvs
+<span class="lineno">  179 </span>
+<span class="lineno">  180 </span>instance HsHasName n =&gt; HsHasName (HsTyVarBndr n) where
+<span class="lineno">  181 </span>  <span class="decl"><span class="nottickedoff">hsGetNames p (UserTyVar n) = hsGetNames p n</span>
+<span class="lineno">  182 </span><span class="spaces">  </span><span class="nottickedoff">hsGetNames p (KindedTyVar n _) = hsGetNames p n</span></span>
+<span class="lineno">  183 </span>
+<span class="lineno">  184 </span>instance HsHasName n =&gt; HsHasName (Match n b) where
+<span class="lineno">  185 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (Match _ pats _ _) = concatMap (hsGetNames <span class="nottickedoff">p</span>) pats</span></span>
+<span class="lineno">  186 </span>
+<span class="lineno">  187 </span>instance HsHasName n =&gt; HsHasName (Stmt n b) where
+<span class="lineno">  188 </span>  <span class="decl"><span class="istickedoff">hsGetNames p (LetStmt binds) = <span class="nottickedoff">hsGetNames p binds</span></span>
+<span class="lineno">  189 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (BindStmt pat _ _ _ _) = hsGetNames <span class="nottickedoff">p</span> pat</span>
+<span class="lineno">  190 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames p (RecStmt {recS_rec_ids = ids}) = <span class="nottickedoff">hsGetNames p ids</span></span>
+<span class="lineno">  191 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames _ _ = <span class="nottickedoff">[]</span></span></span>
+<span class="lineno">  192 </span>
+<span class="lineno">  193 </span>instance HsHasName n =&gt; HsHasName (Pat n) where
+<span class="lineno">  194 </span>  <span class="decl"><span class="istickedoff">hsGetNames x (VarPat id) = hsGetNames x id</span>
+<span class="lineno">  195 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (LazyPat p) = <span class="nottickedoff">hsGetNames x p</span></span>
+<span class="lineno">  196 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (AsPat lname p) = <span class="nottickedoff">hsGetNames x lname ++ hsGetNames x p</span></span>
+<span class="lineno">  197 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (ParPat p) = hsGetNames <span class="nottickedoff">x</span> p</span>
+<span class="lineno">  198 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (BangPat p) = <span class="nottickedoff">hsGetNames x p</span></span>
+<span class="lineno">  199 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (ListPat pats _ _) = <span class="nottickedoff">concatMap (hsGetNames x) pats</span></span>
+<span class="lineno">  200 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (TuplePat pats _ _) = concatMap (hsGetNames <span class="nottickedoff">x</span>) pats</span>
+<span class="lineno">  201 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (PArrPat pats _) = <span class="nottickedoff">concatMap (hsGetNames x) pats</span></span>
+<span class="lineno">  202 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (ConPatIn _ details) = concatMap (hsGetNames x) (hsConPatArgs details)</span>
+<span class="lineno">  203 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (ConPatOut {pat_args = details}) = <span class="nottickedoff">concatMap (hsGetNames x) (hsConPatArgs details)</span></span>
+<span class="lineno">  204 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (ViewPat _ p _) = <span class="nottickedoff">hsGetNames x p</span></span>
+<span class="lineno">  205 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (NPlusKPat lname _ _ _ _ _) = <span class="nottickedoff">hsGetNames x lname</span></span>
+<span class="lineno">  206 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (SigPatIn p _) = <span class="nottickedoff">hsGetNames x p</span></span>
+<span class="lineno">  207 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames x (SigPatOut p _) = <span class="nottickedoff">hsGetNames x p</span></span>
+<span class="lineno">  208 </span><span class="spaces">  </span><span class="istickedoff">hsGetNames _ _ = <span class="nottickedoff">[]</span></span></span>
+<span class="lineno">  209 </span>
+<span class="lineno">  210 </span>instance (GHCName n, HsHasName n) =&gt; HsHasName (HsGroup n) where
+<span class="lineno">  211 </span>  <span class="decl"><span class="nottickedoff">hsGetNames p g@(HsGroup vals _ clds _ _ _ foreigns _ _ _ _ _)</span>
+<span class="lineno">  212 </span><span class="spaces">    </span><span class="nottickedoff">= hsGetNames p vals ++ hsGetNames p clds ++ hsGetNames p (hsGroupInstDecls g) ++ hsGetNames p foreigns</span></span>
+<span class="lineno">  213 </span>
+<span class="lineno">  214 </span>-- | Get the original form of a name
+<span class="lineno">  215 </span>rdrNameStr :: RdrName -&gt; String
+<span class="lineno">  216 </span><span class="decl"><span class="istickedoff">rdrNameStr name = showSDocUnsafe $ ppr name</span></span>
+<span class="lineno">  217 </span>
+<span class="lineno">  218 </span>
+<span class="lineno">  219 </span>class FromGHCName n where
+<span class="lineno">  220 </span>  fromGHCName :: GHC.Name -&gt; n
+<span class="lineno">  221 </span>
+<span class="lineno">  222 </span>instance FromGHCName RdrName where
+<span class="lineno">  223 </span>  <span class="decl"><span class="nottickedoff">fromGHCName = rdrName</span></span>
+<span class="lineno">  224 </span>
+<span class="lineno">  225 </span>instance FromGHCName GHC.Name where
+<span class="lineno">  226 </span>  <span class="decl"><span class="istickedoff">fromGHCName = id</span></span>
+<span class="lineno">  227 </span>
+<span class="lineno">  228 </span>-- | Tries to simplify the type that has HsAppsTy before renaming. Does not always provide the correct form.
+<span class="lineno">  229 </span>-- Treats each operator as if they are of equivalent precedence and always left-associative.
+<span class="lineno">  230 </span>cleanHsType :: forall n . (OutputableBndrId n) =&gt; HsType n -&gt; HsType n
+<span class="lineno">  231 </span>-- for some reason * is considered infix
+<span class="lineno">  232 </span><span class="decl"><span class="istickedoff">cleanHsType (HsAppsTy apps) = unLoc $ guessType apps</span>
+<span class="lineno">  233 </span><span class="spaces">  </span><span class="istickedoff">where guessType :: OutputableBndrId n =&gt; [LHsAppType n] -&gt; LHsType n</span>
+<span class="lineno">  234 </span><span class="spaces">        </span><span class="istickedoff">guessType (L l (HsAppInfix n) : rest) -- must be a prefix actually</span>
+<span class="lineno">  235 </span><span class="spaces">          </span><span class="istickedoff">= guessType' (L <span class="nottickedoff">l</span> (HsTyVar <span class="nottickedoff">NotPromoted</span> n)) rest</span>
+<span class="lineno">  236 </span><span class="spaces">        </span><span class="istickedoff">guessType (L _ (HsAppPrefix t) : rest) = guessType' t rest</span>
+<span class="lineno">  237 </span><span class="spaces">        </span><span class="istickedoff">guessType [] = <span class="nottickedoff">error $ &quot;guessType: empty: &quot; ++ showSDocUnsafe (ppr apps)</span></span>
+<span class="lineno">  238 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  239 </span><span class="spaces">        </span><span class="istickedoff">guessType' :: LHsType n -&gt; [LHsAppType n] -&gt; LHsType n</span>
+<span class="lineno">  240 </span><span class="spaces">        </span><span class="istickedoff">guessType' fun (L _ (HsAppPrefix t) : rest) = guessType' (hsAppTy fun t) rest</span>
+<span class="lineno">  241 </span><span class="spaces">        </span><span class="istickedoff">guessType' fun (L l (HsAppInfix n) : rest)</span>
+<span class="lineno">  242 </span><span class="spaces">          </span><span class="istickedoff">-- TODO: find a better check</span>
+<span class="lineno">  243 </span><span class="spaces">          </span><span class="istickedoff">| <span class="tickonlyfalse">showSDocUnsafe (ppr n) == &quot;*&quot;</span> = <span class="nottickedoff">guessType' (hsAppTy fun (L l (HsTyVar NotPromoted n))) rest</span></span>
+<span class="lineno">  244 </span><span class="spaces">        </span><span class="istickedoff">guessType' left (L _ (HsAppInfix n) : right) = hsOpTy left n (guessType right)</span>
+<span class="lineno">  245 </span><span class="spaces">        </span><span class="istickedoff">guessType' t [] = t</span>
+<span class="lineno">  246 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  247 </span><span class="spaces">        </span><span class="istickedoff">hsAppTy :: LHsType n -&gt; LHsType n -&gt; LHsType n</span>
+<span class="lineno">  248 </span><span class="spaces">        </span><span class="istickedoff">hsAppTy t1 t2 = L (getLoc t1 `combineSrcSpans` getLoc t2) $ HsAppTy t1 t2</span>
+<span class="lineno">  249 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  250 </span><span class="spaces">        </span><span class="istickedoff">hsOpTy :: LHsType n -&gt; Located n -&gt; LHsType n -&gt; LHsType n</span>
+<span class="lineno">  251 </span><span class="spaces">        </span><span class="istickedoff">hsOpTy t1 n t2 = L (getLoc t1 `combineSrcSpans` getLoc t2) $ HsOpTy t1 n t2</span>
+<span class="lineno">  252 </span><span class="spaces"></span><span class="istickedoff">cleanHsType t = t</span></span>
+<span class="lineno">  253 </span>
+<span class="lineno">  254 </span>mergeFixityDefs :: [Located (FixitySig n)] -&gt; [Located (FixitySig n)]
+<span class="lineno">  255 </span><span class="decl"><span class="istickedoff">mergeFixityDefs (s@(L l _) : rest)</span>
+<span class="lineno">  256 </span><span class="spaces">  </span><span class="istickedoff">= let (same, different) = partition ((== l) . getLoc) rest</span>
+<span class="lineno">  257 </span><span class="spaces">     </span><span class="istickedoff">in foldl mergeWith s (map unLoc same) : mergeFixityDefs different</span>
+<span class="lineno">  258 </span><span class="spaces">  </span><span class="istickedoff">where mergeWith (L l (FixitySig names fixity)) (FixitySig otherNames _) = L l (FixitySig (names ++ otherNames) fixity)</span>
+<span class="lineno">  259 </span><span class="spaces"></span><span class="istickedoff">mergeFixityDefs [] = []</span></span>
+<span class="lineno">  260 </span>
+<span class="lineno">  261 </span>getGroupRange :: HsGroup n -&gt; SrcSpan
+<span class="lineno">  262 </span><span class="decl"><span class="nottickedoff">getGroupRange (HsGroup {..})</span>
+<span class="lineno">  263 </span><span class="spaces">  </span><span class="nottickedoff">= foldr combineSrcSpans noSrcSpan locs</span>
+<span class="lineno">  264 </span><span class="spaces">  </span><span class="nottickedoff">where locs = [getHsValRange hs_valds] ++ map getLoc hs_splcds ++ map getLoc (concatMap group_tyclds hs_tyclds) ++ map getLoc (concatMap group_roles hs_tyclds)</span>
+<span class="lineno">  265 </span><span class="spaces">                 </span><span class="nottickedoff">++ map getLoc hs_derivds ++ map getLoc hs_fixds ++ map getLoc hs_defds</span>
+<span class="lineno">  266 </span><span class="spaces">                 </span><span class="nottickedoff">++ map getLoc hs_fords ++ map getLoc hs_warnds ++ map getLoc hs_annds ++ map getLoc hs_ruleds ++ map getLoc hs_vects</span>
+<span class="lineno">  267 </span><span class="spaces">                 </span><span class="nottickedoff">++ map getLoc hs_docs</span></span>
+<span class="lineno">  268 </span>
+<span class="lineno">  269 </span>getHsValRange :: HsValBinds n -&gt; SrcSpan
+<span class="lineno">  270 </span><span class="decl"><span class="nottickedoff">getHsValRange (ValBindsIn vals sig) = foldr combineSrcSpans noSrcSpan $ map getLoc (bagToList vals) ++ map getLoc sig</span>
+<span class="lineno">  271 </span><span class="spaces"></span><span class="nottickedoff">getHsValRange (ValBindsOut vals sig) = foldr combineSrcSpans noSrcSpan $ concatMap (map getLoc . bagToList . snd) vals ++ map getLoc sig</span></span>
+<span class="lineno">  272 </span>
+<span class="lineno">  273 </span>fromSrcText :: SourceText -&gt; String
+<span class="lineno">  274 </span><span class="decl"><span class="istickedoff">fromSrcText (SourceText s) = s</span>
+<span class="lineno">  275 </span><span class="spaces"></span><span class="istickedoff">fromSrcText NoSourceText = <span class="nottickedoff">&quot;&quot;</span></span></span>
+
+</pre>
+</body>
+</html>
