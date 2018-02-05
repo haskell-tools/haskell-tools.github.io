@@ -368,6 +368,13 @@ type HasNameInfo dom = (Domain dom, HasNameInfo' (SemanticInfo dom UQualifiedNam
 -- | Infos that may have a name that can be extracted
 class HasNameInfo' si
 semanticsName :: HasNameInfo' si => si -> Maybe Name
+
+-- | Domains that have semantic information for literals
+type HasLiteralInfo dom = (Domain dom, HasLiteralInfo' (SemanticInfo dom ULiteral))
+
+-- | Info of types
+class HasLiteralInfo' si
+semanticsLiteralType :: HasLiteralInfo' si => si -> Type
 type HasIdInfo dom = (Domain dom, HasIdInfo' (SemanticInfo dom UQualifiedName))
 
 -- | Infos that may have a typed name that can be extracted
@@ -436,6 +443,8 @@ instance Language.Haskell.Tools.AST.SemaInfoClasses.HasFixityInfo dom => Languag
 instance Language.Haskell.Tools.AST.SemaInfoClasses.HasFixityInfo' Language.Haskell.Tools.AST.SemaInfoTypes.CNameInfo
 instance Language.Haskell.Tools.AST.SemaInfoClasses.HasIdInfo dom => Language.Haskell.Tools.AST.SemaInfoClasses.HasIdInfo' (Language.Haskell.Tools.AST.Ann.Ann Language.Haskell.Tools.AST.Representation.Names.UQualifiedName dom st)
 instance Language.Haskell.Tools.AST.SemaInfoClasses.HasIdInfo' Language.Haskell.Tools.AST.SemaInfoTypes.CNameInfo
+instance Language.Haskell.Tools.AST.SemaInfoClasses.HasLiteralInfo dom => Language.Haskell.Tools.AST.SemaInfoClasses.HasLiteralInfo' (Language.Haskell.Tools.AST.Ann.Ann Language.Haskell.Tools.AST.Representation.Literals.ULiteral dom st)
+instance Language.Haskell.Tools.AST.SemaInfoClasses.HasLiteralInfo' Language.Haskell.Tools.AST.SemaInfoTypes.LiteralInfo
 instance Language.Haskell.Tools.AST.SemaInfoClasses.HasNameInfo dom => Language.Haskell.Tools.AST.SemaInfoClasses.HasNameInfo' (Language.Haskell.Tools.AST.Ann.Ann Language.Haskell.Tools.AST.Representation.Names.UQualifiedName dom st)
 instance Language.Haskell.Tools.AST.SemaInfoClasses.HasNameInfo' (Language.Haskell.Tools.AST.SemaInfoTypes.NameInfo Name.Name)
 instance Language.Haskell.Tools.AST.SemaInfoClasses.HasNameInfo' Language.Haskell.Tools.AST.SemaInfoTypes.CNameInfo
@@ -450,13 +459,13 @@ filePragmas :: forall dom_a18he stage_a18hf. Lens (Ann UModule dom_a18he stage_a
 mhPragma :: forall dom_a18hc stage_a18hd. Lens (Ann UModuleHead dom_a18hc stage_a18hd) (Ann UModuleHead dom_a18hc stage_a18hd) (AnnMaybeG UModulePragma dom_a18hc stage_a18hd) (AnnMaybeG UModulePragma dom_a18hc stage_a18hd)
 mhName :: forall dom_a18hc stage_a18hd. Lens (Ann UModuleHead dom_a18hc stage_a18hd) (Ann UModuleHead dom_a18hc stage_a18hd) (Ann UModuleName dom_a18hc stage_a18hd) (Ann UModuleName dom_a18hc stage_a18hd)
 mhExports :: forall dom_a18hc stage_a18hd. Lens (Ann UModuleHead dom_a18hc stage_a18hd) (Ann UModuleHead dom_a18hc stage_a18hd) (AnnMaybeG UExportSpecs dom_a18hc stage_a18hd) (AnnMaybeG UExportSpecs dom_a18hc stage_a18hd)
-espExports :: forall dom_a18ha stage_a18hb dom'_a289A stage'_a289B. Lens (Ann UExportSpecs dom_a18ha stage_a18hb) (Ann UExportSpecs dom_a18ha stage_a18hb) (AnnListG UExportSpec dom_a18ha stage_a18hb) (AnnListG UExportSpec dom_a18ha stage_a18hb)
+espExports :: forall dom_a18ha stage_a18hb dom'_a28kO stage'_a28kP. Lens (Ann UExportSpecs dom_a18ha stage_a18hb) (Ann UExportSpecs dom_a18ha stage_a18hb) (AnnListG UExportSpec dom_a18ha stage_a18hb) (AnnListG UExportSpec dom_a18ha stage_a18hb)
 exportModuleName :: forall dom_a18h8 stage_a18h9. Partial (Ann UExportSpec dom_a18h8 stage_a18h9) (Ann UExportSpec dom_a18h8 stage_a18h9) (Ann UModuleName dom_a18h8 stage_a18h9) (Ann UModuleName dom_a18h8 stage_a18h9)
 exportDecl :: forall dom_a18h8 stage_a18h9. Partial (Ann UExportSpec dom_a18h8 stage_a18h9) (Ann UExportSpec dom_a18h8 stage_a18h9) (Ann UIESpec dom_a18h8 stage_a18h9) (Ann UIESpec dom_a18h8 stage_a18h9)
 ieSubspec :: forall dom_a18h6 stage_a18h7. Lens (Ann UIESpec dom_a18h6 stage_a18h7) (Ann UIESpec dom_a18h6 stage_a18h7) (AnnMaybeG USubSpec dom_a18h6 stage_a18h7) (AnnMaybeG USubSpec dom_a18h6 stage_a18h7)
 ieName :: forall dom_a18h6 stage_a18h7. Lens (Ann UIESpec dom_a18h6 stage_a18h7) (Ann UIESpec dom_a18h6 stage_a18h7) (Ann UName dom_a18h6 stage_a18h7) (Ann UName dom_a18h6 stage_a18h7)
 ieModifier :: forall dom_a18h6 stage_a18h7. Lens (Ann UIESpec dom_a18h6 stage_a18h7) (Ann UIESpec dom_a18h6 stage_a18h7) (AnnMaybeG UImportModifier dom_a18h6 stage_a18h7) (AnnMaybeG UImportModifier dom_a18h6 stage_a18h7)
-essList :: forall dom_a18h2 stage_a18h3 dom'_a28iL stage'_a28iM. Partial (Ann USubSpec dom_a18h2 stage_a18h3) (Ann USubSpec dom_a18h2 stage_a18h3) (AnnListG UName dom_a18h2 stage_a18h3) (AnnListG UName dom_a18h2 stage_a18h3)
+essList :: forall dom_a18h2 stage_a18h3 dom'_a28tZ stage'_a28u0. Partial (Ann USubSpec dom_a18h2 stage_a18h3) (Ann USubSpec dom_a18h2 stage_a18h3) (AnnListG UName dom_a18h2 stage_a18h3) (AnnListG UName dom_a18h2 stage_a18h3)
 modWarningStr :: forall dom_a18gY stage_a18gZ. Partial (Ann UModulePragma dom_a18gY stage_a18gZ) (Ann UModulePragma dom_a18gY stage_a18gZ) (AnnListG UStringNode dom_a18gY stage_a18gZ) (AnnListG UStringNode dom_a18gY stage_a18gZ)
 modDeprecatedPragma :: forall dom_a18gY stage_a18gZ. Partial (Ann UModulePragma dom_a18gY stage_a18gZ) (Ann UModulePragma dom_a18gY stage_a18gZ) (AnnListG UStringNode dom_a18gY stage_a18gZ) (AnnListG UStringNode dom_a18gY stage_a18gZ)
 opStr :: forall dom_a18h0 stage_a18h1. Partial (Ann UFilePragma dom_a18h0 stage_a18h1) (Ann UFilePragma dom_a18h0 stage_a18h1) (Ann UStringNode dom_a18h0 stage_a18h1) (Ann UStringNode dom_a18h0 stage_a18h1)
@@ -470,7 +479,7 @@ importModule :: forall dom_a18gU stage_a18gV. Lens (Ann UImportDecl dom_a18gU st
 importAs :: forall dom_a18gU stage_a18gV. Lens (Ann UImportDecl dom_a18gU stage_a18gV) (Ann UImportDecl dom_a18gU stage_a18gV) (AnnMaybeG UImportRenaming dom_a18gU stage_a18gV) (AnnMaybeG UImportRenaming dom_a18gU stage_a18gV)
 importSpecList :: forall dom_a18gS stage_a18gT. Partial (Ann UImportSpec dom_a18gS stage_a18gT) (Ann UImportSpec dom_a18gS stage_a18gT) (AnnListG UIESpec dom_a18gS stage_a18gT) (AnnListG UIESpec dom_a18gS stage_a18gT)
 importSpecHiding :: forall dom_a18gS stage_a18gT. Partial (Ann UImportSpec dom_a18gS stage_a18gT) (Ann UImportSpec dom_a18gS stage_a18gT) (AnnListG UIESpec dom_a18gS stage_a18gT) (AnnListG UIESpec dom_a18gS stage_a18gT)
-importRename :: forall dom_a18gI stage_a18gJ dom'_a28FY stage'_a28FZ. Lens (Ann UImportRenaming dom_a18gI stage_a18gJ) (Ann UImportRenaming dom_a18gI stage_a18gJ) (Ann UModuleName dom_a18gI stage_a18gJ) (Ann UModuleName dom_a18gI stage_a18gJ)
+importRename :: forall dom_a18gI stage_a18gJ dom'_a28Rc stage'_a28Rd. Lens (Ann UImportRenaming dom_a18gI stage_a18gJ) (Ann UImportRenaming dom_a18gI stage_a18gJ) (Ann UModuleName dom_a18gI stage_a18gJ) (Ann UModuleName dom_a18gI stage_a18gJ)
 moduleNameString :: forall dom_a18gG stage_a18gH. Lens (Ann UModuleName dom_a18gG stage_a18gH) (Ann UModuleName dom_a18gG stage_a18gH) String String
 langExt :: forall dom_a18gW stage_a18gX. Lens (Ann ULanguageExtension dom_a18gW stage_a18gX) (Ann ULanguageExtension dom_a18gW stage_a18gX) String String
 declValBind :: forall dom_a12hh stage_a12hi. Partial (Ann UDecl dom_a12hh stage_a12hi) (Ann UDecl dom_a12hh stage_a12hi) (Ann UValueBind dom_a12hh stage_a12hi) (Ann UValueBind dom_a12hh stage_a12hi)
@@ -506,7 +515,7 @@ declCons :: forall dom_a12hh stage_a12hi. Partial (Ann UDecl dom_a12hh stage_a12
 declCallConv :: forall dom_a12hh stage_a12hi. Partial (Ann UDecl dom_a12hh stage_a12hi) (Ann UDecl dom_a12hh stage_a12hi) (Ann UCallConv dom_a12hh stage_a12hi) (Ann UCallConv dom_a12hh stage_a12hi)
 declBody :: forall dom_a12hh stage_a12hi. Partial (Ann UDecl dom_a12hh stage_a12hi) (Ann UDecl dom_a12hh stage_a12hi) (AnnMaybeG UClassBody dom_a12hh stage_a12hi) (AnnMaybeG UClassBody dom_a12hh stage_a12hi)
 declAssignedType :: forall dom_a12hh stage_a12hi. Partial (Ann UDecl dom_a12hh stage_a12hi) (Ann UDecl dom_a12hh stage_a12hi) (Ann UType dom_a12hh stage_a12hi) (Ann UType dom_a12hh stage_a12hi)
-cbElements :: forall dom_a12hd stage_a12he dom'_a2aYg stage'_a2aYh. Lens (Ann UClassBody dom_a12hd stage_a12he) (Ann UClassBody dom_a12hd stage_a12he) (AnnListG UClassElement dom_a12hd stage_a12he) (AnnListG UClassElement dom_a12hd stage_a12he)
+cbElements :: forall dom_a12hd stage_a12he dom'_a2b9u stage'_a2b9v. Lens (Ann UClassBody dom_a12hd stage_a12he) (Ann UClassBody dom_a12hd stage_a12he) (AnnListG UClassElement dom_a12hd stage_a12he) (AnnListG UClassElement dom_a12hd stage_a12he)
 pragmaFormula :: forall dom_a12hb stage_a12hc. Partial (Ann UClassElement dom_a12hb stage_a12hc) (Ann UClassElement dom_a12hb stage_a12hc) (Ann UMinimalFormula dom_a12hb stage_a12hc) (Ann UMinimalFormula dom_a12hb stage_a12hc)
 clsInline :: forall dom_a12hb stage_a12hc. Partial (Ann UClassElement dom_a12hb stage_a12hc) (Ann UClassElement dom_a12hb stage_a12hc) (Ann UInlinePragma dom_a12hb stage_a12hc) (Ann UInlinePragma dom_a12hb stage_a12hc)
 clsFixity :: forall dom_a12hb stage_a12hc. Partial (Ann UClassElement dom_a12hb stage_a12hc) (Ann UClassElement dom_a12hb stage_a12hc) (Ann UFixitySignature dom_a12hb stage_a12hc) (Ann UFixitySignature dom_a12hb stage_a12hc)
@@ -524,7 +533,7 @@ dhLeft :: forall dom_a12hf stage_a12hg. Partial (Ann UDeclHead dom_a12hf stage_a
 dhBody :: forall dom_a12hf stage_a12hg. Partial (Ann UDeclHead dom_a12hf stage_a12hg) (Ann UDeclHead dom_a12hf stage_a12hg) (Ann UDeclHead dom_a12hf stage_a12hg) (Ann UDeclHead dom_a12hf stage_a12hg)
 dhAppOperand :: forall dom_a12hf stage_a12hg. Partial (Ann UDeclHead dom_a12hf stage_a12hg) (Ann UDeclHead dom_a12hf stage_a12hg) (Ann UTyVar dom_a12hf stage_a12hg) (Ann UTyVar dom_a12hf stage_a12hg)
 dhAppFun :: forall dom_a12hf stage_a12hg. Partial (Ann UDeclHead dom_a12hf stage_a12hg) (Ann UDeclHead dom_a12hf stage_a12hg) (Ann UDeclHead dom_a12hf stage_a12hg) (Ann UDeclHead dom_a12hf stage_a12hg)
-instBodyDecls :: forall dom_a12h5 stage_a12h6 dom'_a2bE5 stage'_a2bE6. Lens (Ann UInstBody dom_a12h5 stage_a12h6) (Ann UInstBody dom_a12h5 stage_a12h6) (AnnListG UInstBodyDecl dom_a12h5 stage_a12h6) (AnnListG UInstBodyDecl dom_a12h5 stage_a12h6)
+instBodyDecls :: forall dom_a12h5 stage_a12h6 dom'_a2bPj stage'_a2bPk. Lens (Ann UInstBody dom_a12h5 stage_a12h6) (Ann UInstBody dom_a12h5 stage_a12h6) (AnnListG UInstBodyDecl dom_a12h5 stage_a12h6) (AnnListG UInstBodyDecl dom_a12h5 stage_a12h6)
 specializeInstanceType :: forall dom_a12h3 stage_a12h4. Partial (Ann UInstBodyDecl dom_a12h3 stage_a12h4) (Ann UInstBodyDecl dom_a12h3 stage_a12h4) (Ann UType dom_a12h3 stage_a12h4) (Ann UType dom_a12h3 stage_a12h4)
 specializeInstance :: forall dom_a12h3 stage_a12h4. Partial (Ann UInstBodyDecl dom_a12h3 stage_a12h4) (Ann UInstBodyDecl dom_a12h3 stage_a12h4) (Ann USpecializePragma dom_a12h3 stage_a12h4) (Ann USpecializePragma dom_a12h3 stage_a12h4)
 instanceInline :: forall dom_a12h3 stage_a12h4. Partial (Ann UInstBodyDecl dom_a12h3 stage_a12h4) (Ann UInstBodyDecl dom_a12h3 stage_a12h4) (Ann UInlinePragma dom_a12h3 stage_a12h4) (Ann UInlinePragma dom_a12h3 stage_a12h4)
@@ -561,10 +570,10 @@ patSynOp :: forall dom_a12gv stage_a12gw. Partial (Ann UPatSynLhs dom_a12gv stag
 patSynLhs :: forall dom_a12gv stage_a12gw. Partial (Ann UPatSynLhs dom_a12gv stage_a12gw) (Ann UPatSynLhs dom_a12gv stage_a12gw) (Ann UName dom_a12gv stage_a12gw) (Ann UName dom_a12gv stage_a12gw)
 patName :: forall dom_a12gv stage_a12gw. Partial (Ann UPatSynLhs dom_a12gv stage_a12gw) (Ann UPatSynLhs dom_a12gv stage_a12gw) (Ann UName dom_a12gv stage_a12gw) (Ann UName dom_a12gv stage_a12gw)
 patArgs :: forall dom_a12gv stage_a12gw. Partial (Ann UPatSynLhs dom_a12gv stage_a12gw) (Ann UPatSynLhs dom_a12gv stage_a12gw) (AnnListG UName dom_a12gv stage_a12gw) (AnnListG UName dom_a12gv stage_a12gw)
-patOpposite :: forall dom_a12gr stage_a12gs dom'_a2cQx stage'_a2cQy. Lens (Ann UPatSynWhere dom_a12gr stage_a12gs) (Ann UPatSynWhere dom_a12gr stage_a12gs) (AnnListG UMatch dom_a12gr stage_a12gs) (AnnListG UMatch dom_a12gr stage_a12gs)
+patOpposite :: forall dom_a12gr stage_a12gs dom'_a2d1L stage'_a2d1M. Lens (Ann UPatSynWhere dom_a12gr stage_a12gs) (Ann UPatSynWhere dom_a12gr stage_a12gs) (AnnListG UMatch dom_a12gr stage_a12gs) (AnnListG UMatch dom_a12gr stage_a12gs)
 patSigType :: forall dom_a12gz stage_a12gA. Lens (Ann UPatternTypeSignature dom_a12gz stage_a12gA) (Ann UPatternTypeSignature dom_a12gz stage_a12gA) (Ann UType dom_a12gz stage_a12gA) (Ann UType dom_a12gz stage_a12gA)
 patSigName :: forall dom_a12gz stage_a12gA. Lens (Ann UPatternTypeSignature dom_a12gz stage_a12gA) (Ann UPatternTypeSignature dom_a12gz stage_a12gA) (AnnListG UName dom_a12gz stage_a12gA) (AnnListG UName dom_a12gz stage_a12gA)
-funDeps :: forall dom_a12gL stage_a12gM dom'_a2cUB stage'_a2cUC. Lens (Ann UFunDeps dom_a12gL stage_a12gM) (Ann UFunDeps dom_a12gL stage_a12gM) (AnnListG UFunDep dom_a12gL stage_a12gM) (AnnListG UFunDep dom_a12gL stage_a12gM)
+funDeps :: forall dom_a12gL stage_a12gM dom'_a2d5P stage'_a2d5Q. Lens (Ann UFunDeps dom_a12gL stage_a12gM) (Ann UFunDeps dom_a12gL stage_a12gM) (AnnListG UFunDep dom_a12gL stage_a12gM) (AnnListG UFunDep dom_a12gL stage_a12gM)
 funDepRhs :: forall dom_a12gJ stage_a12gK. Lens (Ann UFunDep dom_a12gJ stage_a12gK) (Ann UFunDep dom_a12gJ stage_a12gK) (AnnListG UName dom_a12gJ stage_a12gK) (AnnListG UName dom_a12gJ stage_a12gK)
 funDepLhs :: forall dom_a12gJ stage_a12gK. Lens (Ann UFunDep dom_a12gJ stage_a12gK) (Ann UFunDep dom_a12gJ stage_a12gK) (AnnListG UName dom_a12gJ stage_a12gK) (AnnListG UName dom_a12gJ stage_a12gK)
 conDeclRhs :: forall dom_a12gH stage_a12gI. Partial (Ann UConDecl dom_a12gH stage_a12gI) (Ann UConDecl dom_a12gH stage_a12gI) (Ann UType dom_a12gH stage_a12gI) (Ann UType dom_a12gH stage_a12gI)
@@ -612,7 +621,7 @@ pragmaFileName :: forall dom_a12gj stage_a12gk. Partial (Ann UTopLevelPragma dom
 deprMessage :: forall dom_a12gj stage_a12gk. Partial (Ann UTopLevelPragma dom_a12gj stage_a12gk) (Ann UTopLevelPragma dom_a12gj stage_a12gk) (AnnListG UStringNode dom_a12gj stage_a12gk) (AnnListG UStringNode dom_a12gj stage_a12gk)
 annotationSubject :: forall dom_a12gj stage_a12gk. Partial (Ann UTopLevelPragma dom_a12gj stage_a12gk) (Ann UTopLevelPragma dom_a12gj stage_a12gk) (Ann UAnnotationSubject dom_a12gj stage_a12gk) (Ann UAnnotationSubject dom_a12gj stage_a12gk)
 annotateExpr :: forall dom_a12gj stage_a12gk. Partial (Ann UTopLevelPragma dom_a12gj stage_a12gk) (Ann UTopLevelPragma dom_a12gj stage_a12gk) (Ann UExpr dom_a12gj stage_a12gk) (Ann UExpr dom_a12gj stage_a12gk)
-annotateName :: forall dom_a12gb stage_a12gc dom'_a2el9 stage'_a2ela. Partial (Ann UAnnotationSubject dom_a12gb stage_a12gc) (Ann UAnnotationSubject dom_a12gb stage_a12gc) (Ann UName dom_a12gb stage_a12gc) (Ann UName dom_a12gb stage_a12gc)
+annotateName :: forall dom_a12gb stage_a12gc dom'_a2ewn stage'_a2ewo. Partial (Ann UAnnotationSubject dom_a12gb stage_a12gc) (Ann UAnnotationSubject dom_a12gb stage_a12gc) (Ann UName dom_a12gb stage_a12gc) (Ann UName dom_a12gb stage_a12gc)
 minimalOrs :: forall dom_a12g9 stage_a12ga. Partial (Ann UMinimalFormula dom_a12g9 stage_a12ga) (Ann UMinimalFormula dom_a12g9 stage_a12ga) (AnnListG UMinimalFormula dom_a12g9 stage_a12ga) (AnnListG UMinimalFormula dom_a12g9 stage_a12ga)
 minimalName :: forall dom_a12g9 stage_a12ga. Partial (Ann UMinimalFormula dom_a12g9 stage_a12ga) (Ann UMinimalFormula dom_a12g9 stage_a12ga) (Ann UName dom_a12g9 stage_a12ga) (Ann UName dom_a12g9 stage_a12ga)
 minimalInner :: forall dom_a12g9 stage_a12ga. Partial (Ann UMinimalFormula dom_a12g9 stage_a12ga) (Ann UMinimalFormula dom_a12g9 stage_a12ga) (Ann UMinimalFormula dom_a12g9 stage_a12ga) (Ann UMinimalFormula dom_a12g9 stage_a12ga)
@@ -641,7 +650,7 @@ localVal :: forall dom_a10Iv stage_a10Iw. Partial (Ann ULocalBind dom_a10Iv stag
 localSig :: forall dom_a10Iv stage_a10Iw. Partial (Ann ULocalBind dom_a10Iv stage_a10Iw) (Ann ULocalBind dom_a10Iv stage_a10Iw) (Ann UTypeSignature dom_a10Iv stage_a10Iw) (Ann UTypeSignature dom_a10Iv stage_a10Iw)
 localInline :: forall dom_a10Iv stage_a10Iw. Partial (Ann ULocalBind dom_a10Iv stage_a10Iw) (Ann ULocalBind dom_a10Iv stage_a10Iw) (Ann UInlinePragma dom_a10Iv stage_a10Iw) (Ann UInlinePragma dom_a10Iv stage_a10Iw)
 localFixity :: forall dom_a10Iv stage_a10Iw. Partial (Ann ULocalBind dom_a10Iv stage_a10Iw) (Ann ULocalBind dom_a10Iv stage_a10Iw) (Ann UFixitySignature dom_a10Iv stage_a10Iw) (Ann UFixitySignature dom_a10Iv stage_a10Iw)
-localBinds :: forall dom_a10Ix stage_a10Iy dom'_a2f8p stage'_a2f8q. Lens (Ann ULocalBinds dom_a10Ix stage_a10Iy) (Ann ULocalBinds dom_a10Ix stage_a10Iy) (AnnListG ULocalBind dom_a10Ix stage_a10Iy) (AnnListG ULocalBind dom_a10Ix stage_a10Iy)
+localBinds :: forall dom_a10Ix stage_a10Iy dom'_a2fjD stage'_a2fjE. Lens (Ann ULocalBinds dom_a10Ix stage_a10Iy) (Ann ULocalBinds dom_a10Ix stage_a10Iy) (AnnListG ULocalBind dom_a10Ix stage_a10Iy) (AnnListG ULocalBind dom_a10Ix stage_a10Iy)
 fixityPrecedence :: forall dom_a10Ir stage_a10Is. Lens (Ann UFixitySignature dom_a10Ir stage_a10Is) (Ann UFixitySignature dom_a10Ir stage_a10Is) (AnnMaybeG Precedence dom_a10Ir stage_a10Is) (AnnMaybeG Precedence dom_a10Ir stage_a10Is)
 fixityOperators :: forall dom_a10Ir stage_a10Is. Lens (Ann UFixitySignature dom_a10Ir stage_a10Is) (Ann UFixitySignature dom_a10Ir stage_a10Is) (AnnListG UOperator dom_a10Ir stage_a10Is) (AnnListG UOperator dom_a10Ir stage_a10Is)
 fixityAssoc :: forall dom_a10Ir stage_a10Is. Lens (Ann UFixitySignature dom_a10Ir stage_a10Is) (Ann UFixitySignature dom_a10Ir stage_a10Is) (Ann Assoc dom_a10Ir stage_a10Is) (Ann Assoc dom_a10Ir stage_a10Is)
@@ -653,7 +662,7 @@ matchLhsOperator :: forall dom_a10Iz stage_a10IA. Partial (Ann UMatchLhs dom_a10
 matchLhsName :: forall dom_a10Iz stage_a10IA. Partial (Ann UMatchLhs dom_a10Iz stage_a10IA) (Ann UMatchLhs dom_a10Iz stage_a10IA) (Ann UName dom_a10Iz stage_a10IA) (Ann UName dom_a10Iz stage_a10IA)
 matchLhsLhs :: forall dom_a10Iz stage_a10IA. Partial (Ann UMatchLhs dom_a10Iz stage_a10IA) (Ann UMatchLhs dom_a10Iz stage_a10IA) (Ann UPattern dom_a10Iz stage_a10IA) (Ann UPattern dom_a10Iz stage_a10IA)
 matchLhsArgs :: forall dom_a10Iz stage_a10IA. Lens (Ann UMatchLhs dom_a10Iz stage_a10IA) (Ann UMatchLhs dom_a10Iz stage_a10IA) (AnnListG UPattern dom_a10Iz stage_a10IA) (AnnListG UPattern dom_a10Iz stage_a10IA)
-kindConstr :: forall dom_aU8A stage_aU8B dom'_a2fqP stage'_a2fqQ. Lens (Ann UKindConstraint dom_aU8A stage_aU8B) (Ann UKindConstraint dom_aU8A stage_aU8B) (Ann UKind dom_aU8A stage_aU8B) (Ann UKind dom_aU8A stage_aU8B)
+kindConstr :: forall dom_aU8A stage_aU8B dom'_a2fC3 stage'_a2fC4. Lens (Ann UKindConstraint dom_aU8A stage_aU8B) (Ann UKindConstraint dom_aU8A stage_aU8B) (Ann UKind dom_aU8A stage_aU8B) (Ann UKind dom_aU8A stage_aU8B)
 valBindRhs :: forall dom_a10ID stage_a10IE. Partial (Ann UValueBind dom_a10ID stage_a10IE) (Ann UValueBind dom_a10ID stage_a10IE) (Ann URhs dom_a10ID stage_a10IE) (Ann URhs dom_a10ID stage_a10IE)
 valBindPat :: forall dom_a10ID stage_a10IE. Partial (Ann UValueBind dom_a10ID stage_a10IE) (Ann UValueBind dom_a10ID stage_a10IE) (Ann UPattern dom_a10ID stage_a10IE) (Ann UPattern dom_a10ID stage_a10IE)
 valBindLocals :: forall dom_a10ID stage_a10IE. Partial (Ann UValueBind dom_a10ID stage_a10IE) (Ann UValueBind dom_a10ID stage_a10IE) (AnnMaybeG ULocalBinds dom_a10ID stage_a10IE) (AnnMaybeG ULocalBinds dom_a10ID stage_a10IE)
@@ -692,7 +701,7 @@ kindElem :: forall dom_aU8y stage_aU8z. Partial (Ann UKind dom_aU8y stage_aU8z) 
 kindAppOp :: forall dom_aU8y stage_aU8z. Partial (Ann UKind dom_aU8y stage_aU8z) (Ann UKind dom_aU8y stage_aU8z) (Ann UOperator dom_aU8y stage_aU8z) (Ann UOperator dom_aU8y stage_aU8z)
 kindAppFun :: forall dom_aU8y stage_aU8z. Partial (Ann UKind dom_aU8y stage_aU8z) (Ann UKind dom_aU8y stage_aU8z) (Ann UKind dom_aU8y stage_aU8z) (Ann UKind dom_aU8y stage_aU8z)
 kindAppArg :: forall dom_aU8y stage_aU8z. Partial (Ann UKind dom_aU8y stage_aU8z) (Ann UKind dom_aU8y stage_aU8z) (Ann UKind dom_aU8y stage_aU8z) (Ann UKind dom_aU8y stage_aU8z)
-contextAssertion :: forall dom_aUSt stage_aUSu dom'_a2hlC stage'_a2hlD. Lens (Ann UContext dom_aUSt stage_aUSu) (Ann UContext dom_aUSt stage_aUSu) (Ann UAssertion dom_aUSt stage_aUSu) (Ann UAssertion dom_aUSt stage_aUSu)
+contextAssertion :: forall dom_aUSt stage_aUSu dom'_a2hwQ stage'_a2hwR. Lens (Ann UContext dom_aUSt stage_aUSu) (Ann UContext dom_aUSt stage_aUSu) (Ann UAssertion dom_aUSt stage_aUSu) (Ann UAssertion dom_aUSt stage_aUSu)
 innerAsserts :: forall dom_aUSr stage_aUSs. Partial (Ann UAssertion dom_aUSr stage_aUSs) (Ann UAssertion dom_aUSr stage_aUSs) (AnnListG UAssertion dom_aUSr stage_aUSs) (AnnListG UAssertion dom_aUSr stage_aUSs)
 assertTypes :: forall dom_aUSr stage_aUSs. Partial (Ann UAssertion dom_aUSr stage_aUSs) (Ann UAssertion dom_aUSr stage_aUSs) (AnnListG UType dom_aUSr stage_aUSs) (AnnListG UType dom_aUSr stage_aUSs)
 assertRhs :: forall dom_aUSr stage_aUSs. Partial (Ann UAssertion dom_aUSr stage_aUSs) (Ann UAssertion dom_aUSr stage_aUSs) (Ann UType dom_aUSr stage_aUSs) (Ann UType dom_aUSr stage_aUSs)
@@ -743,20 +752,20 @@ doKind :: forall dom_aXvH stage_aXvI. Partial (Ann UExpr dom_aXvH stage_aXvI) (A
 compExpr :: forall dom_aXvH stage_aXvI. Partial (Ann UExpr dom_aXvH stage_aXvI) (Ann UExpr dom_aXvH stage_aXvI) (Ann UExpr dom_aXvH stage_aXvI) (Ann UExpr dom_aXvH stage_aXvI)
 compBody :: forall dom_aXvH stage_aXvI. Partial (Ann UExpr dom_aXvH stage_aXvI) (Ann UExpr dom_aXvH stage_aXvI) (AnnListG UListCompBody dom_aXvH stage_aXvI) (AnnListG UListCompBody dom_aXvH stage_aXvI)
 arrowAppl :: forall dom_aXvH stage_aXvI. Partial (Ann UExpr dom_aXvH stage_aXvI) (Ann UExpr dom_aXvH stage_aXvI) (Ann UArrowAppl dom_aXvH stage_aXvI) (Ann UArrowAppl dom_aXvH stage_aXvI)
-altRhs :: forall expr_aXvy dom_aXvz stage_aXvA expr'_a2lqm. Lens (Ann (UAlt' expr_aXvy) dom_aXvz stage_aXvA) (Ann (UAlt' expr_aXvy) dom_aXvz stage_aXvA) (Ann (UCaseRhs' expr_aXvy) dom_aXvz stage_aXvA) (Ann (UCaseRhs' expr_aXvy) dom_aXvz stage_aXvA)
+altRhs :: forall expr_aXvy dom_aXvz stage_aXvA expr'_a2lBA. Lens (Ann (UAlt' expr_aXvy) dom_aXvz stage_aXvA) (Ann (UAlt' expr_aXvy) dom_aXvz stage_aXvA) (Ann (UCaseRhs' expr_aXvy) dom_aXvz stage_aXvA) (Ann (UCaseRhs' expr_aXvy) dom_aXvz stage_aXvA)
 altPattern :: forall expr_aXvy dom_aXvz stage_aXvA. Lens (Ann (UAlt' expr_aXvy) dom_aXvz stage_aXvA) (Ann (UAlt' expr_aXvy) dom_aXvz stage_aXvA) (Ann UPattern dom_aXvz stage_aXvA) (Ann UPattern dom_aXvz stage_aXvA)
 altBinds :: forall expr_aXvy dom_aXvz stage_aXvA. Lens (Ann (UAlt' expr_aXvy) dom_aXvz stage_aXvA) (Ann (UAlt' expr_aXvy) dom_aXvz stage_aXvA) (AnnMaybeG ULocalBinds dom_aXvz stage_aXvA) (AnnMaybeG ULocalBinds dom_aXvz stage_aXvA)
 fieldWildcard :: forall dom_aXvF stage_aXvG. Partial (Ann UFieldUpdate dom_aXvF stage_aXvG) (Ann UFieldUpdate dom_aXvF stage_aXvG) (Ann UFieldWildcard dom_aXvF stage_aXvG) (Ann UFieldWildcard dom_aXvF stage_aXvG)
 fieldValue :: forall dom_aXvF stage_aXvG. Partial (Ann UFieldUpdate dom_aXvF stage_aXvG) (Ann UFieldUpdate dom_aXvF stage_aXvG) (Ann UExpr dom_aXvF stage_aXvG) (Ann UExpr dom_aXvF stage_aXvG)
 fieldUpdateName :: forall dom_aXvF stage_aXvG. Partial (Ann UFieldUpdate dom_aXvF stage_aXvG) (Ann UFieldUpdate dom_aXvF stage_aXvG) (Ann UName dom_aXvF stage_aXvG) (Ann UName dom_aXvF stage_aXvG)
 fieldName :: forall dom_aXvF stage_aXvG. Partial (Ann UFieldUpdate dom_aXvF stage_aXvG) (Ann UFieldUpdate dom_aXvF stage_aXvG) (Ann UName dom_aXvF stage_aXvG) (Ann UName dom_aXvF stage_aXvG)
-tupSecExpr :: forall dom_aXvB stage_aXvC dom'_a2lCG stage'_a2lCH. Partial (Ann UTupSecElem dom_aXvB stage_aXvC) (Ann UTupSecElem dom_aXvB stage_aXvC) (Ann UExpr dom_aXvB stage_aXvC) (Ann UExpr dom_aXvB stage_aXvC)
+tupSecExpr :: forall dom_aXvB stage_aXvC dom'_a2lNU stage'_a2lNV. Partial (Ann UTupSecElem dom_aXvB stage_aXvC) (Ann UTupSecElem dom_aXvB stage_aXvC) (Ann UExpr dom_aXvB stage_aXvC) (Ann UExpr dom_aXvB stage_aXvC)
 pragmaStr :: forall dom_aXvq stage_aXvr. Partial (Ann UExprPragma dom_aXvq stage_aXvr) (Ann UExprPragma dom_aXvq stage_aXvr) (Ann UStringNode dom_aXvq stage_aXvr) (Ann UStringNode dom_aXvq stage_aXvr)
 pragmaSrcRange :: forall dom_aXvq stage_aXvr. Partial (Ann UExprPragma dom_aXvq stage_aXvr) (Ann UExprPragma dom_aXvq stage_aXvr) (Ann USourceRange dom_aXvq stage_aXvr) (Ann USourceRange dom_aXvq stage_aXvr)
 rhsCaseGuards :: forall expr_aXvv dom_aXvw stage_aXvx. Partial (Ann (UCaseRhs' expr_aXvv) dom_aXvw stage_aXvx) (Ann (UCaseRhs' expr_aXvv) dom_aXvw stage_aXvx) (AnnListG (UGuardedCaseRhs' expr_aXvv) dom_aXvw stage_aXvx) (AnnListG (UGuardedCaseRhs' expr_aXvv) dom_aXvw stage_aXvx)
 rhsCaseExpr :: forall expr_aXvv dom_aXvw stage_aXvx. Partial (Ann (UCaseRhs' expr_aXvv) dom_aXvw stage_aXvx) (Ann (UCaseRhs' expr_aXvv) dom_aXvw stage_aXvx) (Ann expr_aXvv dom_aXvw stage_aXvx) (Ann expr_aXvv dom_aXvw stage_aXvx)
 caseGuardStmts :: forall expr_aXvs dom_aXvt stage_aXvu. Lens (Ann (UGuardedCaseRhs' expr_aXvs) dom_aXvt stage_aXvu) (Ann (UGuardedCaseRhs' expr_aXvs) dom_aXvt stage_aXvu) (AnnListG URhsGuard dom_aXvt stage_aXvu) (AnnListG URhsGuard dom_aXvt stage_aXvu)
-caseGuardExpr :: forall expr_aXvs dom_aXvt stage_aXvu expr'_a2lNz. Lens (Ann (UGuardedCaseRhs' expr_aXvs) dom_aXvt stage_aXvu) (Ann (UGuardedCaseRhs' expr_aXvs) dom_aXvt stage_aXvu) (Ann expr_aXvs dom_aXvt stage_aXvu) (Ann expr_aXvs dom_aXvt stage_aXvu)
+caseGuardExpr :: forall expr_aXvs dom_aXvt stage_aXvu expr'_a2lYN. Lens (Ann (UGuardedCaseRhs' expr_aXvs) dom_aXvt stage_aXvu) (Ann (UGuardedCaseRhs' expr_aXvs) dom_aXvt stage_aXvu) (Ann expr_aXvs dom_aXvt stage_aXvu) (Ann expr_aXvs dom_aXvt stage_aXvu)
 stmtPattern :: forall expr_aX1M dom_aX1N stage_aX1O. Partial (Ann (UStmt' expr_aX1M) dom_aX1N stage_aX1O) (Ann (UStmt' expr_aX1M) dom_aX1N stage_aX1O) (Ann UPattern dom_aX1N stage_aX1O) (Ann UPattern dom_aX1N stage_aX1O)
 stmtExpr :: forall expr_aX1M dom_aX1N stage_aX1O. Partial (Ann (UStmt' expr_aX1M) dom_aX1N stage_aX1O) (Ann (UStmt' expr_aX1M) dom_aX1N stage_aX1O) (Ann expr_aX1M dom_aX1N stage_aX1O) (Ann expr_aX1M dom_aX1N stage_aX1O)
 stmtBinds :: forall expr_aX1M dom_aX1N stage_aX1O. Partial (Ann (UStmt' expr_aX1M) dom_aX1N stage_aX1O) (Ann (UStmt' expr_aX1M) dom_aX1N stage_aX1O) (AnnListG ULocalBind dom_aX1N stage_aX1O) (AnnListG ULocalBind dom_aX1N stage_aX1O)
@@ -765,7 +774,7 @@ usingExpr :: forall dom_aX1I stage_aX1J. Partial (Ann UCompStmt dom_aX1I stage_a
 thenExpr :: forall dom_aX1I stage_aX1J. Partial (Ann UCompStmt dom_aX1I stage_aX1J) (Ann UCompStmt dom_aX1I stage_aX1J) (Ann UExpr dom_aX1I stage_aX1J) (Ann UExpr dom_aX1I stage_aX1J)
 compStmt :: forall dom_aX1I stage_aX1J. Partial (Ann UCompStmt dom_aX1I stage_aX1J) (Ann UCompStmt dom_aX1I stage_aX1J) (Ann UStmt dom_aX1I stage_aX1J) (Ann UStmt dom_aX1I stage_aX1J)
 byExpr :: forall dom_aX1I stage_aX1J. Partial (Ann UCompStmt dom_aX1I stage_aX1J) (Ann UCompStmt dom_aX1I stage_aX1J) (AnnMaybeG UExpr dom_aX1I stage_aX1J) (AnnMaybeG UExpr dom_aX1I stage_aX1J)
-compStmts :: forall dom_aX1K stage_aX1L dom'_a2m8r stage'_a2m8s. Lens (Ann UListCompBody dom_aX1K stage_aX1L) (Ann UListCompBody dom_aX1K stage_aX1L) (AnnListG UCompStmt dom_aX1K stage_aX1L) (AnnListG UCompStmt dom_aX1K stage_aX1L)
+compStmts :: forall dom_aX1K stage_aX1L dom'_a2mjF stage'_a2mjG. Lens (Ann UListCompBody dom_aX1K stage_aX1L) (Ann UListCompBody dom_aX1K stage_aX1L) (AnnListG UCompStmt dom_aX1K stage_aX1L) (AnnListG UCompStmt dom_aX1K stage_aX1L)
 cmdThen :: forall dom_aXvk stage_aXvl. Partial (Ann UCmd dom_aXvk stage_aXvl) (Ann UCmd dom_aXvk stage_aXvl) (Ann UCmd dom_aXvk stage_aXvl) (Ann UCmd dom_aXvk stage_aXvl)
 cmdStmts :: forall dom_aXvk stage_aXvl. Partial (Ann UCmd dom_aXvk stage_aXvl) (Ann UCmd dom_aXvk stage_aXvl) (AnnListG UCmdStmt dom_aXvk stage_aXvl) (AnnListG UCmdStmt dom_aXvk stage_aXvl)
 cmdRightCmd :: forall dom_aXvk stage_aXvl. Partial (Ann UCmd dom_aXvk stage_aXvl) (Ann UCmd dom_aXvk stage_aXvl) (Ann UCmd dom_aXvk stage_aXvl) (Ann UCmd dom_aXvk stage_aXvl)
@@ -818,10 +827,10 @@ floatLitValue :: forall dom_a9yZ stage_a9z0. Partial (Ann ULiteral dom_a9yZ stag
 charLitValue :: forall dom_a9yZ stage_a9z0. Partial (Ann ULiteral dom_a9yZ stage_a9z0) (Ann ULiteral dom_a9yZ stage_a9z0) Char Char
 promotedStringValue :: forall t_aU8v dom_aU8w stage_aU8x. Partial (Ann (UPromoted t_aU8v) dom_aU8w stage_aU8x) (Ann (UPromoted t_aU8v) dom_aU8w stage_aU8x) String String
 promotedIntValue :: forall t_aU8v dom_aU8w stage_aU8x. Partial (Ann (UPromoted t_aU8v) dom_aU8w stage_aU8x) (Ann (UPromoted t_aU8v) dom_aU8w stage_aU8x) Integer Integer
-promotedElements :: forall t_aU8v dom_aU8w stage_aU8x t'_a2otR. Partial (Ann (UPromoted t_aU8v) dom_aU8w stage_aU8x) (Ann (UPromoted t_aU8v) dom_aU8w stage_aU8x) (AnnListG t_aU8v dom_aU8w stage_aU8x) (AnnListG t_aU8v dom_aU8w stage_aU8x)
+promotedElements :: forall t_aU8v dom_aU8w stage_aU8x t'_a2oF5. Partial (Ann (UPromoted t_aU8v) dom_aU8w stage_aU8x) (Ann (UPromoted t_aU8v) dom_aU8w stage_aU8x) (AnnListG t_aU8v dom_aU8w stage_aU8x) (AnnListG t_aU8v dom_aU8w stage_aU8x)
 promotedConName :: forall t_aU8v dom_aU8w stage_aU8x. Partial (Ann (UPromoted t_aU8v) dom_aU8w stage_aU8x) (Ann (UPromoted t_aU8v) dom_aU8w stage_aU8x) (Ann UName dom_aU8w stage_aU8x) (Ann UName dom_aU8w stage_aU8x)
-operatorName :: forall dom_aTIn stage_aTIo dom'_a2oDT stage'_a2oDU. Lens (Ann UOperator dom_aTIn stage_aTIo) (Ann UOperator dom_aTIn stage_aTIo) (Ann UQualifiedName dom_aTIn stage_aTIo) (Ann UQualifiedName dom_aTIn stage_aTIo)
-simpleName :: forall dom_aTIl stage_aTIm dom'_a2oFn stage'_a2oFo. Lens (Ann UName dom_aTIl stage_aTIm) (Ann UName dom_aTIl stage_aTIm) (Ann UQualifiedName dom_aTIl stage_aTIm) (Ann UQualifiedName dom_aTIl stage_aTIm)
+operatorName :: forall dom_aTIn stage_aTIo dom'_a2oP7 stage'_a2oP8. Lens (Ann UOperator dom_aTIn stage_aTIo) (Ann UOperator dom_aTIn stage_aTIo) (Ann UQualifiedName dom_aTIn stage_aTIo) (Ann UQualifiedName dom_aTIn stage_aTIo)
+simpleName :: forall dom_aTIl stage_aTIm dom'_a2oQB stage'_a2oQC. Lens (Ann UName dom_aTIl stage_aTIm) (Ann UName dom_aTIl stage_aTIm) (Ann UQualifiedName dom_aTIl stage_aTIm) (Ann UQualifiedName dom_aTIl stage_aTIm)
 unqualifiedName :: forall dom_aTIj stage_aTIk. Lens (Ann UQualifiedName dom_aTIj stage_aTIk) (Ann UQualifiedName dom_aTIj stage_aTIk) (Ann UNamePart dom_aTIj stage_aTIk) (Ann UNamePart dom_aTIj stage_aTIk)
 qualifiers :: forall dom_aTIj stage_aTIk. Lens (Ann UQualifiedName dom_aTIj stage_aTIk) (Ann UQualifiedName dom_aTIj stage_aTIk) (AnnListG UNamePart dom_aTIj stage_aTIk) (AnnListG UNamePart dom_aTIj stage_aTIk)
 simpleNameStr :: forall dom_aTIh stage_aTIi. Lens (Ann UNamePart dom_aTIh stage_aTIi) (Ann UNamePart dom_aTIh stage_aTIi) String String

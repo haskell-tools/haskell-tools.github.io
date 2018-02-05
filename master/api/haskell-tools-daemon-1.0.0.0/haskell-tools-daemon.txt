@@ -329,15 +329,15 @@ LibraryMC :: String -> ModuleCollectionId
 ExecutableMC :: String -> String -> ModuleCollectionId
 TestSuiteMC :: String -> String -> ModuleCollectionId
 BenchmarkMC :: String -> String -> ModuleCollectionId
-mcSourceDirs :: forall k_a14w4. Lens (ModuleCollection k_a14w4) (ModuleCollection k_a14w4) [FilePath] [FilePath]
-mcRoot :: forall k_a14w4. Lens (ModuleCollection k_a14w4) (ModuleCollection k_a14w4) FilePath FilePath
-mcModules :: forall k_a14w4 k'_a150K. Lens (ModuleCollection k_a14w4) (ModuleCollection k'_a150K) (Map k_a14w4 ModuleRecord) (Map k'_a150K ModuleRecord)
-mcModuleFiles :: forall k_a14w4. Lens (ModuleCollection k_a14w4) (ModuleCollection k_a14w4) [(ModuleNameStr, FilePath)] [(ModuleNameStr, FilePath)]
-mcLoadFlagSetup :: forall k_a14w4. Lens (ModuleCollection k_a14w4) (ModuleCollection k_a14w4) (DynFlags -> IO DynFlags) (DynFlags -> IO DynFlags)
-mcLoadDone :: forall k_a14w4. Lens (ModuleCollection k_a14w4) (ModuleCollection k_a14w4) Bool Bool
-mcId :: forall k_a14w4. Lens (ModuleCollection k_a14w4) (ModuleCollection k_a14w4) ModuleCollectionId ModuleCollectionId
-mcFlagSetup :: forall k_a14w4. Lens (ModuleCollection k_a14w4) (ModuleCollection k_a14w4) (DynFlags -> IO DynFlags) (DynFlags -> IO DynFlags)
-mcDependencies :: forall k_a14w4. Lens (ModuleCollection k_a14w4) (ModuleCollection k_a14w4) [ModuleCollectionId] [ModuleCollectionId]
+mcSourceDirs :: forall k_a14w9. Lens (ModuleCollection k_a14w9) (ModuleCollection k_a14w9) [FilePath] [FilePath]
+mcRoot :: forall k_a14w9. Lens (ModuleCollection k_a14w9) (ModuleCollection k_a14w9) FilePath FilePath
+mcModules :: forall k_a14w9 k'_a150P. Lens (ModuleCollection k_a14w9) (ModuleCollection k'_a150P) (Map k_a14w9 ModuleRecord) (Map k'_a150P ModuleRecord)
+mcModuleFiles :: forall k_a14w9. Lens (ModuleCollection k_a14w9) (ModuleCollection k_a14w9) [(ModuleNameStr, FilePath)] [(ModuleNameStr, FilePath)]
+mcLoadFlagSetup :: forall k_a14w9. Lens (ModuleCollection k_a14w9) (ModuleCollection k_a14w9) (DynFlags -> IO DynFlags) (DynFlags -> IO DynFlags)
+mcLoadDone :: forall k_a14w9. Lens (ModuleCollection k_a14w9) (ModuleCollection k_a14w9) Bool Bool
+mcId :: forall k_a14w9. Lens (ModuleCollection k_a14w9) (ModuleCollection k_a14w9) ModuleCollectionId ModuleCollectionId
+mcFlagSetup :: forall k_a14w9. Lens (ModuleCollection k_a14w9) (ModuleCollection k_a14w9) (DynFlags -> IO DynFlags) (DynFlags -> IO DynFlags)
+mcDependencies :: forall k_a14w9. Lens (ModuleCollection k_a14w9) (ModuleCollection k_a14w9) [ModuleCollectionId] [ModuleCollectionId]
 typedRecModule :: Partial ModuleRecord ModuleRecord UnnamedModule UnnamedModule
 renamedRecModule :: Partial ModuleRecord ModuleRecord UnnamedModule UnnamedModule
 recModuleExposed :: Partial ModuleRecord ModuleRecord Bool Bool
