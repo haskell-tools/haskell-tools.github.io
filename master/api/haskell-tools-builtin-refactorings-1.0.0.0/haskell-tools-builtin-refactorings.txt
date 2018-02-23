@@ -16,18 +16,39 @@ tryItOut :: String -> String -> IO ()
 autoCorrectRefactoring :: RefactoringChoice
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
-data LogicalRelation a
-LVar :: a -> LogicalRelation a
-Not :: (LogicalRelation a) -> LogicalRelation a
-(:&&:) :: LogicalRelation a -> LogicalRelation a -> LogicalRelation a
-(:||:) :: LogicalRelation a -> LogicalRelation a -> LogicalRelation a
+type LogicalRelation a = Formula a
 type ExtMap = Map (LogicalRelation Extension) [SrcSpan]
-instance Control.DeepSeq.NFData a => Control.DeepSeq.NFData (Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap.LogicalRelation a)
-instance GHC.Generics.Generic (Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap.LogicalRelation a)
-instance GHC.Classes.Ord a => GHC.Classes.Ord (Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap.LogicalRelation a)
-instance GHC.Base.Functor Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap.LogicalRelation
-instance GHC.Show.Show a => GHC.Show.Show (Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap.LogicalRelation a)
-instance GHC.Classes.Eq a => GHC.Classes.Eq (Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap.LogicalRelation a)
+lVar :: a -> LogicalRelation a
+lNot :: a -> LogicalRelation a
+lAnd :: a -> a -> LogicalRelation a
+lOr :: a -> a -> LogicalRelation a
+lImplies :: a -> a -> LogicalRelation a
+lAll :: [LogicalRelation a] -> LogicalRelation a
+complexity :: Extension -> Int
+determineExtensions :: Map (LogicalRelation Extension) v -> [Extension]
+rmImplied :: Extension -> [Extension] -> [Extension]
+mergeImplied :: [Extension] -> [Extension]
+data Formula v :: * -> *
+Var :: v -> Formula v
+Yes :: Formula v
+No :: Formula v
+Not :: Formula v -> Formula v
+(:&&:) :: Formula v -> Formula v -> Formula v
+(:||:) :: Formula v -> Formula v -> Formula v
+(:++:) :: Formula v -> Formula v -> Formula v
+(:->:) :: Formula v -> Formula v -> Formula v
+(:<->:) :: Formula v -> Formula v -> Formula v
+All :: [Formula v] -> Formula v
+Some :: [Formula v] -> Formula v
+None :: [Formula v] -> Formula v
+ExactlyOne :: [Formula v] -> Formula v
+AtMostOne :: [Formula v] -> Formula v
+Let :: Formula v -> (Formula v -> Formula v) -> Formula v
+Bound :: Integer -> Formula v
+instance GHC.Classes.Ord GHC.LanguageExtensions.Type.Extension
+instance GHC.Read.Read GHC.LanguageExtensions.Type.Extension
+instance GHC.Generics.Generic a => GHC.Generics.Generic (SAT.MiniSat.Formula.Formula a)
+instance (GHC.Generics.Generic a, Control.DeepSeq.NFData a) => Control.DeepSeq.NFData (SAT.MiniSat.Formula.Formula a)
 instance Control.DeepSeq.NFData GHC.LanguageExtensions.Type.Extension
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
@@ -39,6 +60,8 @@ check :: Checkable node => CheckNode node
 addOccurence' :: (Ord k, HasRange a) => k -> a -> Map k [SrcSpan] -> Map k [SrcSpan]
 addOccurence_ :: (MonadState ExtMap m, HasRange node) => Extension -> node -> m ()
 addOccurence :: (MonadState ExtMap m, HasRange node) => Extension -> node -> m node
+addRelation_ :: (MonadState ExtMap m, HasRange node) => LogicalRelation Extension -> node -> m ()
+addRelation :: (MonadState ExtMap m, HasRange node) => LogicalRelation Extension -> node -> m node
 isTurnedOn :: Extension -> ExtMonad Bool
 conditional :: (node -> ExtMonad node) -> Extension -> node -> ExtMonad node
 conditionalNot :: (node -> ExtMonad node) -> Extension -> node -> ExtMonad node
@@ -46,33 +69,15 @@ conditionalAny :: (node -> ExtMonad node) -> [Extension] -> node -> ExtMonad nod
 conditionalAdd :: HasRange node => Extension -> node -> ExtMonad node
 runExtMonadIO :: ExtMonad a -> IO a
 runExtMonadGHC :: ExtMonad a -> Ghc a
-instance GHC.Classes.Ord GHC.LanguageExtensions.Type.Extension
-instance GHC.Read.Read GHC.LanguageExtensions.Type.Extension
-
-module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector
-
-module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions
-unregularExts :: String -> String
-isSupported :: Extension -> Bool
-fullyHandledExtensions :: [Extension]
-syntacticExtensions :: [Extension]
-derivingExtensions :: [Extension]
-
-module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
-chkSynonym :: CheckNode Type
-lookupSynDefM :: Type -> MaybeT ExtMonad TyCon
-lookupSynDef :: TyThing -> Maybe TyCon
-tyconFromTyThing :: TyThing -> Maybe TyCon
-tyconFromGHCType :: Type -> Maybe TyCon
-isNewtype :: Type -> ExtMonad Bool
-lookupType :: Type -> MaybeT ExtMonad TyThing
-nameFromType :: Type -> Maybe Name
-isNewtypeTyCon :: TyThing -> Bool
-getSemName :: Name -> Maybe Name
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
 
+module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector
+
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.Checkable
+
+-- | Global checks
+instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.Module
 instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.Decl
 instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.Pattern
 instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.Expr
@@ -91,6 +96,21 @@ instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Che
 instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.ClassElement
 instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.Stmt
 instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.Cmd
+instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.InstBodyDecl
+instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.IESpec
+instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.Operator
+instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.GadtConDecl
+instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.ConDecl
+instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.Assertion
+instance Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad.Checkable Language.Haskell.Tools.Rewrite.ElementTypes.InstanceHead
+
+module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.SupportedExtensions
+isSupported :: Extension -> Bool
+fullyHandledExtensions :: [Extension]
+syntacticExtensions :: [Extension]
+derivingExtensions :: [Extension]
+typeClassExtensions :: [Extension]
+typeSystemExtensions :: [Extension]
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
 traverseModule :: CheckNode UnnamedModule
@@ -142,12 +162,12 @@ reduceExtensions :: UnnamedModule -> Ghc [Extension]
 collectExtensions :: UnnamedModule -> Ghc ExtMap
 collectExtensionsWith :: CheckNode UnnamedModule -> UnnamedModule -> Ghc ExtMap
 
--- | Collects default extension list, and expands each extension
-expandDefaults :: UnnamedModule -> [Extension]
+-- | Expands every extension in a list, while not producing any duplicates.
+expandExtensions :: [Extension] -> [Extension]
 
 -- | Collects extensions enabled by default
 collectDefaultExtensions :: UnnamedModule -> [Extension]
-toExt :: String -> Extension
+toExt :: String -> Maybe Extension
 
 module Language.Haskell.Tools.Refactor.Builtin.OrganizeImports
 organizeImports :: LocalRefactoring

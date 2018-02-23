@@ -18,147 +18,148 @@ span.spaces    { background: white }
 </pre>
 <pre>
 <span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts, ScopedTypeVariables #-}
-<span class="lineno">    2 </span>-- | Transform a syntax tree with ranges to a syntax tree that has range templates. Cuts the ranges of children
-<span class="lineno">    3 </span>-- from the ranges of their parents and replaces it with placeholders.
-<span class="lineno">    4 </span>module Language.Haskell.Tools.PrettyPrint.Prepare.RangeToRangeTemplate (cutUpRanges, fixRanges, BreakUpProblem(..)) where
-<span class="lineno">    5 </span>
-<span class="lineno">    6 </span>import Language.Haskell.Tools.AST
-<span class="lineno">    7 </span>
-<span class="lineno">    8 </span>import Control.Exception (Exception, throw)
-<span class="lineno">    9 </span>import Control.Monad.State
-<span class="lineno">   10 </span>import Control.Reference ((^.))
-<span class="lineno">   11 </span>import Data.List
-<span class="lineno">   12 </span>import Data.Maybe (Maybe(..), mapMaybe)
-<span class="lineno">   13 </span>
-<span class="lineno">   14 </span>import FastString as GHC (unpackFS)
-<span class="lineno">   15 </span>import SrcLoc
-<span class="lineno">   16 </span>
-<span class="lineno">   17 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplate
-<span class="lineno">   18 </span>
-<span class="lineno">   19 </span>-- | Creates a source template from the ranges and the input file.
-<span class="lineno">   20 </span>-- All source ranges must be good ranges.
-<span class="lineno">   21 </span>cutUpRanges :: forall node dom . SourceInfoTraversal node
-<span class="lineno">   22 </span>                 =&gt; Ann node dom NormRangeStage
-<span class="lineno">   23 </span>                 -&gt; Ann node dom RngTemplateStage
-<span class="lineno">   24 </span><span class="decl"><span class="istickedoff">cutUpRanges n = evalState (cutUpRanges' n) [[],<span class="nottickedoff">[]</span>]</span>
-<span class="lineno">   25 </span><span class="spaces">  </span><span class="istickedoff">where cutUpRanges' :: Ann node dom NormRangeStage -&gt; State [[SrcSpan]] (Ann node dom RngTemplateStage)</span>
-<span class="lineno">   26 </span><span class="spaces">        </span><span class="istickedoff">cutUpRanges' = sourceInfoTraverseUp (SourceInfoTrf (trf cutOutElemSpan) (trf cutOutElemList) (trf cutOutElemOpt)) desc asc</span>
-<span class="lineno">   27 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">   28 </span><span class="spaces">        </span><span class="istickedoff">-- keep the stack to contain the children elements on the place of the parent element</span>
-<span class="lineno">   29 </span><span class="spaces">        </span><span class="istickedoff">desc = modify ([]:)</span>
-<span class="lineno">   30 </span><span class="spaces">        </span><span class="istickedoff">asc  = modify tail</span>
-<span class="lineno">   31 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">   32 </span><span class="spaces">        </span><span class="istickedoff">-- combine the current node with its children, and add it to the list of current nodes</span>
-<span class="lineno">   33 </span><span class="spaces">        </span><span class="istickedoff">trf :: HasRange (x RngTemplateStage)</span>
-<span class="lineno">   34 </span><span class="spaces">            </span><span class="istickedoff">=&gt; ([SrcSpan] -&gt; x NormRangeStage -&gt; x RngTemplateStage) -&gt; x NormRangeStage -&gt; State [[SrcSpan]] (x RngTemplateStage)</span>
-<span class="lineno">   35 </span><span class="spaces">        </span><span class="istickedoff">trf f ni = do (below : top : xs) &lt;- get</span>
-<span class="lineno">   36 </span><span class="spaces">                      </span><span class="istickedoff">let res = f below ni</span>
-<span class="lineno">   37 </span><span class="spaces">                      </span><span class="istickedoff">put ([] : (top ++ [ getRange res ]) : xs)</span>
-<span class="lineno">   38 </span><span class="spaces">                      </span><span class="istickedoff">return res</span></span>
-<span class="lineno">   39 </span>
-<span class="lineno">   40 </span>-- | Cuts out a list of source ranges from a given range
-<span class="lineno">   41 </span>cutOutElemSpan :: [SrcSpan] -&gt; SpanInfo NormRangeStage -&gt; SpanInfo RngTemplateStage
-<span class="lineno">   42 </span><span class="decl"><span class="istickedoff">cutOutElemSpan sps (NormNodeInfo (RealSrcSpan sp))</span>
-<span class="lineno">   43 </span><span class="spaces">  </span><span class="istickedoff">= RangeTemplateNode sp $ foldl breakFirstHit (foldl breakFirstHit [RangeElem sp] loc) span</span>
-<span class="lineno">   44 </span><span class="spaces">  </span><span class="istickedoff">where (loc,span) = partition (\sp -&gt; srcSpanStart sp == srcSpanEnd sp) sps</span>
-<span class="lineno">   45 </span><span class="spaces">        </span><span class="istickedoff">breakFirstHit (elem:rest) sp</span>
-<span class="lineno">   46 </span><span class="spaces">          </span><span class="istickedoff">= case breakUpRangeElem elem sp of</span>
-<span class="lineno">   47 </span><span class="spaces">             </span><span class="istickedoff">-- only continue if the correct place for the child range is not found</span>
-<span class="lineno">   48 </span><span class="spaces">              </span><span class="istickedoff">Just pieces -&gt; pieces ++ rest</span>
-<span class="lineno">   49 </span><span class="spaces">              </span><span class="istickedoff">Nothing -&gt; elem : breakFirstHit rest sp</span>
-<span class="lineno">   50 </span><span class="spaces">        </span><span class="istickedoff">breakFirstHit [] inner = <span class="nottickedoff">throw $ BreakUpProblem sp inner sps</span></span>
-<span class="lineno">   51 </span><span class="spaces"></span><span class="istickedoff">cutOutElemSpan _ (NormNodeInfo (UnhelpfulSpan {}))</span>
-<span class="lineno">   52 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">trfProblem &quot;cutOutElemSpan: no real span&quot;</span></span></span>
-<span class="lineno">   53 </span>
-<span class="lineno">   54 </span>data BreakUpProblem = BreakUpProblem { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">bupOuter</span></span></span> :: RealSrcSpan
-<span class="lineno">   55 </span>                                     , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">bupInner</span></span></span> :: SrcSpan
-<span class="lineno">   56 </span>                                     , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">bupSiblings</span></span></span> :: [SrcSpan]
-<span class="lineno">   57 </span>                                     }
-<span class="lineno">   58 </span>
-<span class="lineno">   59 </span>instance Show BreakUpProblem where
-<span class="lineno">   60 </span> <span class="decl"><span class="nottickedoff">show (BreakUpProblem _ (RealSrcSpan inner) _)</span>
-<span class="lineno">   61 </span><span class="spaces">   </span><span class="nottickedoff">= unpackFS (srcSpanFile inner) ++ &quot;: didn't find correct place for AST element at &quot; ++ shortShowSpan (RealSrcSpan inner)</span>
-<span class="lineno">   62 </span><span class="spaces"> </span><span class="nottickedoff">show (BreakUpProblem outer _ _)</span>
-<span class="lineno">   63 </span><span class="spaces">   </span><span class="nottickedoff">= unpackFS (srcSpanFile outer) ++ &quot;: didn't find correct place for AST element in &quot; ++ shortShowSpan (RealSrcSpan outer)</span></span>
-<span class="lineno">   64 </span>
-<span class="lineno">   65 </span>instance Exception BreakUpProblem
-<span class="lineno">   66 </span>
-<span class="lineno">   67 </span>cutOutElemList :: [SrcSpan] -&gt; ListInfo NormRangeStage -&gt; ListInfo RngTemplateStage
-<span class="lineno">   68 </span><span class="decl"><span class="istickedoff">cutOutElemList sps (NormListInfo bef aft sep indented sp)</span>
-<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">= let RealSrcSpan wholeRange = foldl1 combineSrcSpans $ sp : sps</span>
-<span class="lineno">   70 </span><span class="spaces">     </span><span class="istickedoff">in RangeTemplateList wholeRange bef aft sep indented (getSeparators wholeRange sps)</span></span>
-<span class="lineno">   71 </span>
-<span class="lineno">   72 </span>-- | Cuts out all elements from a list, the rest is the list of separators
-<span class="lineno">   73 </span>getSeparators :: RealSrcSpan -&gt; [SrcSpan] -&gt; [RealSrcSpan]
-<span class="lineno">   74 </span><span class="decl"><span class="istickedoff">getSeparators sp infos@(_:_:_)</span>
-<span class="lineno">   75 </span><span class="spaces">  </span><span class="istickedoff">= mapMaybe getRangeElemSpan (cutOutElemSpan infos (NormNodeInfo (RealSrcSpan sp)) ^. rngTemplateNodeElems)</span>
-<span class="lineno">   76 </span><span class="spaces"></span><span class="istickedoff">-- at least two elements needed or there can be no separators</span>
-<span class="lineno">   77 </span><span class="spaces"></span><span class="istickedoff">getSeparators _ _ = []</span></span>
-<span class="lineno">   78 </span>
-<span class="lineno">   79 </span>cutOutElemOpt :: [SrcSpan] -&gt; OptionalInfo NormRangeStage -&gt; OptionalInfo RngTemplateStage
-<span class="lineno">   80 </span><span class="decl"><span class="istickedoff">cutOutElemOpt sps (NormOptInfo bef aft sp)</span>
-<span class="lineno">   81 </span><span class="spaces">  </span><span class="istickedoff">= let RealSrcSpan wholeRange = foldl1 combineSrcSpans $ sp : sps</span>
-<span class="lineno">   82 </span><span class="spaces">     </span><span class="istickedoff">in RangeTemplateOpt wholeRange bef aft</span></span>
-<span class="lineno">   83 </span>
-<span class="lineno">   84 </span>-- | Breaks the given template element into possibly 2 or 3 parts by cutting out the given part
-<span class="lineno">   85 </span>-- if it is inside the range of the template element. Returns Nothing if the second argument is not inside.
-<span class="lineno">   86 </span>breakUpRangeElem :: RangeTemplateElem -&gt; SrcSpan -&gt; Maybe [RangeTemplateElem]
-<span class="lineno">   87 </span><span class="decl"><span class="istickedoff">breakUpRangeElem (RangeElem outer) (RealSrcSpan inner)</span>
-<span class="lineno">   88 </span><span class="spaces">  </span><span class="istickedoff">| outer `containsSpan` inner</span>
-<span class="lineno">   89 </span><span class="spaces">  </span><span class="istickedoff">= Just $ (if (realSrcSpanStart outer) &lt; (realSrcSpanStart inner)</span>
-<span class="lineno">   90 </span><span class="spaces">              </span><span class="istickedoff">then [ RangeElem (mkRealSrcSpan (realSrcSpanStart outer) (realSrcSpanStart inner)) ]</span>
-<span class="lineno">   91 </span><span class="spaces">              </span><span class="istickedoff">else []) ++</span>
-<span class="lineno">   92 </span><span class="spaces">           </span><span class="istickedoff">[ RangeChildElem ] ++</span>
-<span class="lineno">   93 </span><span class="spaces">           </span><span class="istickedoff">(if (realSrcSpanEnd inner) &lt; (realSrcSpanEnd outer)</span>
-<span class="lineno">   94 </span><span class="spaces">              </span><span class="istickedoff">then [ RangeElem (mkRealSrcSpan (realSrcSpanEnd inner) (realSrcSpanEnd outer)) ]</span>
-<span class="lineno">   95 </span><span class="spaces">              </span><span class="istickedoff">else [])</span>
-<span class="lineno">   96 </span><span class="spaces"></span><span class="istickedoff">breakUpRangeElem _ _ = Nothing</span></span>
-<span class="lineno">   97 </span>
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>-- | Transform a syntax tree with ranges to a syntax tree that has range templates. Cuts the ranges of children
+<span class="lineno">    4 </span>-- from the ranges of their parents and replaces it with placeholders.
+<span class="lineno">    5 </span>module Language.Haskell.Tools.PrettyPrint.Prepare.RangeToRangeTemplate (cutUpRanges, fixRanges, BreakUpProblem(..)) where
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>import Language.Haskell.Tools.AST
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>import Control.Exception (Exception, throw)
+<span class="lineno">   10 </span>import Control.Monad.State
+<span class="lineno">   11 </span>import Control.Reference ((^.))
+<span class="lineno">   12 </span>import Data.List
+<span class="lineno">   13 </span>import Data.Maybe (Maybe(..), mapMaybe)
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>import FastString as GHC (unpackFS)
+<span class="lineno">   16 </span>import SrcLoc
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplate
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>-- | Creates a source template from the ranges and the input file.
+<span class="lineno">   21 </span>-- All source ranges must be good ranges.
+<span class="lineno">   22 </span>cutUpRanges :: forall node dom . SourceInfoTraversal node
+<span class="lineno">   23 </span>                 =&gt; Ann node dom NormRangeStage
+<span class="lineno">   24 </span>                 -&gt; Ann node dom RngTemplateStage
+<span class="lineno">   25 </span><span class="decl"><span class="istickedoff">cutUpRanges n = evalState (cutUpRanges' n) [[],<span class="nottickedoff">[]</span>]</span>
+<span class="lineno">   26 </span><span class="spaces">  </span><span class="istickedoff">where cutUpRanges' :: Ann node dom NormRangeStage -&gt; State [[SrcSpan]] (Ann node dom RngTemplateStage)</span>
+<span class="lineno">   27 </span><span class="spaces">        </span><span class="istickedoff">cutUpRanges' = sourceInfoTraverseUp (SourceInfoTrf (trf cutOutElemSpan) (trf cutOutElemList) (trf cutOutElemOpt)) desc asc</span>
+<span class="lineno">   28 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   29 </span><span class="spaces">        </span><span class="istickedoff">-- keep the stack to contain the children elements on the place of the parent element</span>
+<span class="lineno">   30 </span><span class="spaces">        </span><span class="istickedoff">desc = modify ([]:)</span>
+<span class="lineno">   31 </span><span class="spaces">        </span><span class="istickedoff">asc  = modify tail</span>
+<span class="lineno">   32 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   33 </span><span class="spaces">        </span><span class="istickedoff">-- combine the current node with its children, and add it to the list of current nodes</span>
+<span class="lineno">   34 </span><span class="spaces">        </span><span class="istickedoff">trf :: HasRange (x RngTemplateStage)</span>
+<span class="lineno">   35 </span><span class="spaces">            </span><span class="istickedoff">=&gt; ([SrcSpan] -&gt; x NormRangeStage -&gt; x RngTemplateStage) -&gt; x NormRangeStage -&gt; State [[SrcSpan]] (x RngTemplateStage)</span>
+<span class="lineno">   36 </span><span class="spaces">        </span><span class="istickedoff">trf f ni = do (below : top : xs) &lt;- get</span>
+<span class="lineno">   37 </span><span class="spaces">                      </span><span class="istickedoff">let res = f below ni</span>
+<span class="lineno">   38 </span><span class="spaces">                      </span><span class="istickedoff">put ([] : (top ++ [ getRange res ]) : xs)</span>
+<span class="lineno">   39 </span><span class="spaces">                      </span><span class="istickedoff">return res</span></span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>-- | Cuts out a list of source ranges from a given range
+<span class="lineno">   42 </span>cutOutElemSpan :: [SrcSpan] -&gt; SpanInfo NormRangeStage -&gt; SpanInfo RngTemplateStage
+<span class="lineno">   43 </span><span class="decl"><span class="istickedoff">cutOutElemSpan sps (NormNodeInfo (RealSrcSpan sp))</span>
+<span class="lineno">   44 </span><span class="spaces">  </span><span class="istickedoff">= RangeTemplateNode sp $ foldl breakFirstHit (foldl breakFirstHit [RangeElem sp] loc) span</span>
+<span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">where (loc,span) = partition (\sp -&gt; srcSpanStart sp == srcSpanEnd sp) sps</span>
+<span class="lineno">   46 </span><span class="spaces">        </span><span class="istickedoff">breakFirstHit (elem:rest) sp</span>
+<span class="lineno">   47 </span><span class="spaces">          </span><span class="istickedoff">= case breakUpRangeElem elem sp of</span>
+<span class="lineno">   48 </span><span class="spaces">             </span><span class="istickedoff">-- only continue if the correct place for the child range is not found</span>
+<span class="lineno">   49 </span><span class="spaces">              </span><span class="istickedoff">Just pieces -&gt; pieces ++ rest</span>
+<span class="lineno">   50 </span><span class="spaces">              </span><span class="istickedoff">Nothing -&gt; elem : breakFirstHit rest sp</span>
+<span class="lineno">   51 </span><span class="spaces">        </span><span class="istickedoff">breakFirstHit [] inner = <span class="nottickedoff">throw $ BreakUpProblem sp inner sps</span></span>
+<span class="lineno">   52 </span><span class="spaces"></span><span class="istickedoff">cutOutElemSpan _ (NormNodeInfo (UnhelpfulSpan {}))</span>
+<span class="lineno">   53 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">trfProblem &quot;cutOutElemSpan: no real span&quot;</span></span></span>
+<span class="lineno">   54 </span>
+<span class="lineno">   55 </span>data BreakUpProblem = BreakUpProblem { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">bupOuter</span></span></span> :: RealSrcSpan
+<span class="lineno">   56 </span>                                     , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">bupInner</span></span></span> :: SrcSpan
+<span class="lineno">   57 </span>                                     , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">bupSiblings</span></span></span> :: [SrcSpan]
+<span class="lineno">   58 </span>                                     }
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>instance Show BreakUpProblem where
+<span class="lineno">   61 </span> <span class="decl"><span class="nottickedoff">show (BreakUpProblem _ (RealSrcSpan inner) _)</span>
+<span class="lineno">   62 </span><span class="spaces">   </span><span class="nottickedoff">= unpackFS (srcSpanFile inner) ++ &quot;: didn't find correct place for AST element at &quot; ++ shortShowSpan (RealSrcSpan inner)</span>
+<span class="lineno">   63 </span><span class="spaces"> </span><span class="nottickedoff">show (BreakUpProblem outer _ _)</span>
+<span class="lineno">   64 </span><span class="spaces">   </span><span class="nottickedoff">= unpackFS (srcSpanFile outer) ++ &quot;: didn't find correct place for AST element in &quot; ++ shortShowSpan (RealSrcSpan outer)</span></span>
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>instance Exception BreakUpProblem
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>cutOutElemList :: [SrcSpan] -&gt; ListInfo NormRangeStage -&gt; ListInfo RngTemplateStage
+<span class="lineno">   69 </span><span class="decl"><span class="istickedoff">cutOutElemList sps (NormListInfo bef aft sep indented sp)</span>
+<span class="lineno">   70 </span><span class="spaces">  </span><span class="istickedoff">= let RealSrcSpan wholeRange = foldl1 combineSrcSpans $ sp : sps</span>
+<span class="lineno">   71 </span><span class="spaces">     </span><span class="istickedoff">in RangeTemplateList wholeRange bef aft sep indented (getSeparators wholeRange sps)</span></span>
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>-- | Cuts out all elements from a list, the rest is the list of separators
+<span class="lineno">   74 </span>getSeparators :: RealSrcSpan -&gt; [SrcSpan] -&gt; [RealSrcSpan]
+<span class="lineno">   75 </span><span class="decl"><span class="istickedoff">getSeparators sp infos@(_:_:_)</span>
+<span class="lineno">   76 </span><span class="spaces">  </span><span class="istickedoff">= mapMaybe getRangeElemSpan (cutOutElemSpan infos (NormNodeInfo (RealSrcSpan sp)) ^. rngTemplateNodeElems)</span>
+<span class="lineno">   77 </span><span class="spaces"></span><span class="istickedoff">-- at least two elements needed or there can be no separators</span>
+<span class="lineno">   78 </span><span class="spaces"></span><span class="istickedoff">getSeparators _ _ = []</span></span>
+<span class="lineno">   79 </span>
+<span class="lineno">   80 </span>cutOutElemOpt :: [SrcSpan] -&gt; OptionalInfo NormRangeStage -&gt; OptionalInfo RngTemplateStage
+<span class="lineno">   81 </span><span class="decl"><span class="istickedoff">cutOutElemOpt sps (NormOptInfo bef aft sp)</span>
+<span class="lineno">   82 </span><span class="spaces">  </span><span class="istickedoff">= let RealSrcSpan wholeRange = foldl1 combineSrcSpans $ sp : sps</span>
+<span class="lineno">   83 </span><span class="spaces">     </span><span class="istickedoff">in RangeTemplateOpt wholeRange bef aft</span></span>
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>-- | Breaks the given template element into possibly 2 or 3 parts by cutting out the given part
+<span class="lineno">   86 </span>-- if it is inside the range of the template element. Returns Nothing if the second argument is not inside.
+<span class="lineno">   87 </span>breakUpRangeElem :: RangeTemplateElem -&gt; SrcSpan -&gt; Maybe [RangeTemplateElem]
+<span class="lineno">   88 </span><span class="decl"><span class="istickedoff">breakUpRangeElem (RangeElem outer) (RealSrcSpan inner)</span>
+<span class="lineno">   89 </span><span class="spaces">  </span><span class="istickedoff">| outer `containsSpan` inner</span>
+<span class="lineno">   90 </span><span class="spaces">  </span><span class="istickedoff">= Just $ (if (realSrcSpanStart outer) &lt; (realSrcSpanStart inner)</span>
+<span class="lineno">   91 </span><span class="spaces">              </span><span class="istickedoff">then [ RangeElem (mkRealSrcSpan (realSrcSpanStart outer) (realSrcSpanStart inner)) ]</span>
+<span class="lineno">   92 </span><span class="spaces">              </span><span class="istickedoff">else []) ++</span>
+<span class="lineno">   93 </span><span class="spaces">           </span><span class="istickedoff">[ RangeChildElem ] ++</span>
+<span class="lineno">   94 </span><span class="spaces">           </span><span class="istickedoff">(if (realSrcSpanEnd inner) &lt; (realSrcSpanEnd outer)</span>
+<span class="lineno">   95 </span><span class="spaces">              </span><span class="istickedoff">then [ RangeElem (mkRealSrcSpan (realSrcSpanEnd inner) (realSrcSpanEnd outer)) ]</span>
+<span class="lineno">   96 </span><span class="spaces">              </span><span class="istickedoff">else [])</span>
+<span class="lineno">   97 </span><span class="spaces"></span><span class="istickedoff">breakUpRangeElem _ _ = Nothing</span></span>
 <span class="lineno">   98 </span>
-<span class="lineno">   99 </span>-- | Modifies ranges to contain their children
-<span class="lineno">  100 </span>fixRanges :: SourceInfoTraversal node
-<span class="lineno">  101 </span>          =&gt; Ann node dom RangeStage
-<span class="lineno">  102 </span>          -&gt; Ann node dom NormRangeStage
-<span class="lineno">  103 </span><span class="decl"><span class="istickedoff">fixRanges node = evalState (sourceInfoTraverseUp (SourceInfoTrf (trf expandToContain) (trf expandListToContain) (trf expandOptToContain)) desc asc node) [[],[]]</span>
-<span class="lineno">  104 </span><span class="spaces">  </span><span class="istickedoff">where -- keep the stack to contain the children elements on the place of the parent element</span>
-<span class="lineno">  105 </span><span class="spaces">        </span><span class="istickedoff">desc = modify ([]:)</span>
-<span class="lineno">  106 </span><span class="spaces">        </span><span class="istickedoff">asc  = modify tail</span>
-<span class="lineno">  107 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">  108 </span><span class="spaces">        </span><span class="istickedoff">trf :: HasRange (x NormRangeStage)</span>
-<span class="lineno">  109 </span><span class="spaces">            </span><span class="istickedoff">=&gt; ([SrcSpan] -&gt; x RangeStage -&gt; x NormRangeStage) -&gt; x RangeStage -&gt; State [[SrcSpan]] (x NormRangeStage)</span>
-<span class="lineno">  110 </span><span class="spaces">        </span><span class="istickedoff">trf f ni = do (below : top : xs) &lt;- get</span>
-<span class="lineno">  111 </span><span class="spaces">                      </span><span class="istickedoff">let res = f below ni</span>
-<span class="lineno">  112 </span><span class="spaces">                          </span><span class="istickedoff">resRange = getRange res</span>
-<span class="lineno">  113 </span><span class="spaces">                          </span><span class="istickedoff">endOfSiblings = srcSpanEnd (collectSpanRanges (srcSpanStart resRange) top)</span>
-<span class="lineno">  114 </span><span class="spaces">                          </span><span class="istickedoff">correctedRange = if <span class="tickonlyfalse">endOfSiblings &gt; srcSpanStart resRange</span></span>
-<span class="lineno">  115 </span><span class="spaces">                                             </span><span class="istickedoff">then <span class="nottickedoff">mkSrcSpan endOfSiblings (max endOfSiblings (srcSpanEnd resRange))</span></span>
-<span class="lineno">  116 </span><span class="spaces">                                             </span><span class="istickedoff">else resRange</span>
-<span class="lineno">  117 </span><span class="spaces">                      </span><span class="istickedoff">put ([] : (top ++ [ correctedRange ]) : xs)</span>
-<span class="lineno">  118 </span><span class="spaces">                      </span><span class="istickedoff">return $ setRange correctedRange res</span></span>
-<span class="lineno">  119 </span>
-<span class="lineno">  120 </span>-- | Expand a simple node to contain its children
-<span class="lineno">  121 </span>expandToContain :: [SrcSpan] -&gt; SpanInfo RangeStage -&gt; SpanInfo NormRangeStage
-<span class="lineno">  122 </span><span class="decl"><span class="istickedoff">expandToContain cont (NodeSpan sp)</span>
-<span class="lineno">  123 </span><span class="spaces">  </span><span class="istickedoff">= NormNodeInfo (checkSpans cont $ foldl1 combineSrcSpans $ sp : cont)</span></span>
-<span class="lineno">  124 </span>
-<span class="lineno">  125 </span>expandListToContain :: [SrcSpan] -&gt; ListInfo RangeStage -&gt; ListInfo NormRangeStage
-<span class="lineno">  126 </span><span class="decl"><span class="istickedoff">expandListToContain cont (ListPos bef aft def ind sp)</span>
-<span class="lineno">  127 </span><span class="spaces">  </span><span class="istickedoff">= NormListInfo bef aft def ind (checkSpans cont $ collectSpanRanges sp cont)</span></span>
-<span class="lineno">  128 </span>
-<span class="lineno">  129 </span>expandOptToContain :: [SrcSpan] -&gt; OptionalInfo RangeStage -&gt; OptionalInfo NormRangeStage
-<span class="lineno">  130 </span><span class="decl"><span class="istickedoff">expandOptToContain cont (OptionalPos bef aft sp)</span>
-<span class="lineno">  131 </span><span class="spaces">  </span><span class="istickedoff">= NormOptInfo bef aft (checkSpans cont $ collectSpanRanges sp cont)</span></span>
-<span class="lineno">  132 </span>
-<span class="lineno">  133 </span>collectSpanRanges :: SrcLoc -&gt; [SrcSpan] -&gt; SrcSpan
-<span class="lineno">  134 </span><span class="decl"><span class="istickedoff">collectSpanRanges loc@(RealSrcLoc _) [] = srcLocSpan loc</span>
-<span class="lineno">  135 </span><span class="spaces"></span><span class="istickedoff">collectSpanRanges _ ls = foldl combineSrcSpans noSrcSpan ls</span></span>
-<span class="lineno">  136 </span>
-<span class="lineno">  137 </span>-- | Checks the contained source ranges to detect the convertion problems where we can see their location.
-<span class="lineno">  138 </span>checkSpans :: [SrcSpan] -&gt; SrcSpan -&gt; SrcSpan
-<span class="lineno">  139 </span><span class="decl"><span class="istickedoff">checkSpans spans res</span>
-<span class="lineno">  140 </span><span class="spaces">  </span><span class="istickedoff">= if <span class="tickonlyfalse">any (not . isGoodSrcSpan) spans &amp;&amp; <span class="nottickedoff">isGoodSrcSpan res</span></span></span>
-<span class="lineno">  141 </span><span class="spaces">      </span><span class="istickedoff">then <span class="nottickedoff">trfProblem $ &quot;Wrong src spans in &quot; ++ show res</span></span>
-<span class="lineno">  142 </span><span class="spaces">      </span><span class="istickedoff">else res</span></span>
+<span class="lineno">   99 </span>
+<span class="lineno">  100 </span>-- | Modifies ranges to contain their children
+<span class="lineno">  101 </span>fixRanges :: SourceInfoTraversal node
+<span class="lineno">  102 </span>          =&gt; Ann node dom RangeStage
+<span class="lineno">  103 </span>          -&gt; Ann node dom NormRangeStage
+<span class="lineno">  104 </span><span class="decl"><span class="istickedoff">fixRanges node = evalState (sourceInfoTraverseUp (SourceInfoTrf (trf expandToContain) (trf expandListToContain) (trf expandOptToContain)) desc asc node) [[],[]]</span>
+<span class="lineno">  105 </span><span class="spaces">  </span><span class="istickedoff">where -- keep the stack to contain the children elements on the place of the parent element</span>
+<span class="lineno">  106 </span><span class="spaces">        </span><span class="istickedoff">desc = modify ([]:)</span>
+<span class="lineno">  107 </span><span class="spaces">        </span><span class="istickedoff">asc  = modify tail</span>
+<span class="lineno">  108 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  109 </span><span class="spaces">        </span><span class="istickedoff">trf :: HasRange (x NormRangeStage)</span>
+<span class="lineno">  110 </span><span class="spaces">            </span><span class="istickedoff">=&gt; ([SrcSpan] -&gt; x RangeStage -&gt; x NormRangeStage) -&gt; x RangeStage -&gt; State [[SrcSpan]] (x NormRangeStage)</span>
+<span class="lineno">  111 </span><span class="spaces">        </span><span class="istickedoff">trf f ni = do (below : top : xs) &lt;- get</span>
+<span class="lineno">  112 </span><span class="spaces">                      </span><span class="istickedoff">let res = f below ni</span>
+<span class="lineno">  113 </span><span class="spaces">                          </span><span class="istickedoff">resRange = getRange res</span>
+<span class="lineno">  114 </span><span class="spaces">                          </span><span class="istickedoff">endOfSiblings = srcSpanEnd (collectSpanRanges (srcSpanStart resRange) top)</span>
+<span class="lineno">  115 </span><span class="spaces">                          </span><span class="istickedoff">correctedRange = if endOfSiblings &gt; srcSpanStart resRange</span>
+<span class="lineno">  116 </span><span class="spaces">                                             </span><span class="istickedoff">then mkSrcSpan endOfSiblings (max endOfSiblings (srcSpanEnd resRange))</span>
+<span class="lineno">  117 </span><span class="spaces">                                             </span><span class="istickedoff">else resRange</span>
+<span class="lineno">  118 </span><span class="spaces">                      </span><span class="istickedoff">put ([] : (top ++ [ correctedRange ]) : xs)</span>
+<span class="lineno">  119 </span><span class="spaces">                      </span><span class="istickedoff">return $ setRange correctedRange res</span></span>
+<span class="lineno">  120 </span>
+<span class="lineno">  121 </span>-- | Expand a simple node to contain its children
+<span class="lineno">  122 </span>expandToContain :: [SrcSpan] -&gt; SpanInfo RangeStage -&gt; SpanInfo NormRangeStage
+<span class="lineno">  123 </span><span class="decl"><span class="istickedoff">expandToContain cont (NodeSpan sp)</span>
+<span class="lineno">  124 </span><span class="spaces">  </span><span class="istickedoff">= NormNodeInfo (checkSpans cont $ foldl1 combineSrcSpans $ sp : cont)</span></span>
+<span class="lineno">  125 </span>
+<span class="lineno">  126 </span>expandListToContain :: [SrcSpan] -&gt; ListInfo RangeStage -&gt; ListInfo NormRangeStage
+<span class="lineno">  127 </span><span class="decl"><span class="istickedoff">expandListToContain cont (ListPos bef aft def ind sp)</span>
+<span class="lineno">  128 </span><span class="spaces">  </span><span class="istickedoff">= NormListInfo bef aft def ind (checkSpans cont $ collectSpanRanges sp cont)</span></span>
+<span class="lineno">  129 </span>
+<span class="lineno">  130 </span>expandOptToContain :: [SrcSpan] -&gt; OptionalInfo RangeStage -&gt; OptionalInfo NormRangeStage
+<span class="lineno">  131 </span><span class="decl"><span class="istickedoff">expandOptToContain cont (OptionalPos bef aft sp)</span>
+<span class="lineno">  132 </span><span class="spaces">  </span><span class="istickedoff">= NormOptInfo bef aft (checkSpans cont $ collectSpanRanges sp cont)</span></span>
+<span class="lineno">  133 </span>
+<span class="lineno">  134 </span>collectSpanRanges :: SrcLoc -&gt; [SrcSpan] -&gt; SrcSpan
+<span class="lineno">  135 </span><span class="decl"><span class="istickedoff">collectSpanRanges loc@(RealSrcLoc _) [] = srcLocSpan loc</span>
+<span class="lineno">  136 </span><span class="spaces"></span><span class="istickedoff">collectSpanRanges _ ls = foldl combineSrcSpans noSrcSpan ls</span></span>
+<span class="lineno">  137 </span>
+<span class="lineno">  138 </span>-- | Checks the contained source ranges to detect the convertion problems where we can see their location.
+<span class="lineno">  139 </span>checkSpans :: [SrcSpan] -&gt; SrcSpan -&gt; SrcSpan
+<span class="lineno">  140 </span><span class="decl"><span class="istickedoff">checkSpans spans res</span>
+<span class="lineno">  141 </span><span class="spaces">  </span><span class="istickedoff">= if <span class="tickonlyfalse">any (not . isGoodSrcSpan) spans &amp;&amp; <span class="nottickedoff">isGoodSrcSpan res</span></span></span>
+<span class="lineno">  142 </span><span class="spaces">      </span><span class="istickedoff">then <span class="nottickedoff">trfProblem $ &quot;Wrong src spans in &quot; ++ show res</span></span>
+<span class="lineno">  143 </span><span class="spaces">      </span><span class="istickedoff">else res</span></span>
 
 </pre>
 </body>

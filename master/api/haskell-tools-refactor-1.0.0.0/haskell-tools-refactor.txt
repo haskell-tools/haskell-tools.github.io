@@ -130,6 +130,7 @@ instance GhcMonad.GhcMonad m => GhcMonad.GhcMonad (Control.Monad.Trans.Reader.Re
 instance Exception.ExceptionMonad m => Exception.ExceptionMonad (Control.Monad.Trans.Reader.ReaderT s m)
 instance GhcMonad.GhcMonad m => GhcMonad.GhcMonad (Control.Monad.Trans.Except.ExceptT s m)
 instance Exception.ExceptionMonad m => Exception.ExceptionMonad (Control.Monad.Trans.Except.ExceptT s m)
+instance Exception.ExceptionMonad m => Exception.ExceptionMonad (Control.Monad.Trans.Maybe.MaybeT m)
 
 
 -- | Operations for changing the AST
@@ -187,13 +188,139 @@ instance Language.Haskell.Tools.Refactor.Utils.BindingElem.BindingElem Language.
 instance Language.Haskell.Tools.Refactor.Utils.BindingElem.BindingElem Language.Haskell.Tools.AST.Representation.Binds.ULocalBind
 
 module Language.Haskell.Tools.Refactor.Utils.Extensions
+
+-- | Expands an extension into all the extensions it implies (keeps
+--   original as well)
 expandExtension :: Extension -> [Extension]
+
+-- | Replaces deprecated extensions with their new counterpart
+replaceDeprecated :: Extension -> Extension
 turnOn :: Bool
 turnOff :: Bool
 impliedXFlags :: [(Extension, Bool, Extension)]
 
+-- | Canonicalize extensions
+canonExt :: String -> String
+
 -- | Map the cabal extensions to the ones that GHC recognizes
 translateExtension :: KnownExtension -> Maybe Extension
+
+-- | The language extensions known to GHC.
+--   
+--   Note that there is an orphan <tt>Binary</tt> instance for this type
+--   supplied by the <a>GHC.LanguageExtensions</a> module provided by
+--   <tt>ghc-boot</tt>. We can't provide here as this would require adding
+--   transitive dependencies to the <tt>template-haskell</tt> package,
+--   which must have a minimal dependency set.
+data Extension :: *
+Cpp :: Extension
+OverlappingInstances :: Extension
+UndecidableInstances :: Extension
+IncoherentInstances :: Extension
+UndecidableSuperClasses :: Extension
+MonomorphismRestriction :: Extension
+MonoPatBinds :: Extension
+MonoLocalBinds :: Extension
+RelaxedPolyRec :: Extension
+ExtendedDefaultRules :: Extension
+ForeignFunctionInterface :: Extension
+UnliftedFFITypes :: Extension
+InterruptibleFFI :: Extension
+CApiFFI :: Extension
+GHCForeignImportPrim :: Extension
+JavaScriptFFI :: Extension
+ParallelArrays :: Extension
+Arrows :: Extension
+TemplateHaskell :: Extension
+TemplateHaskellQuotes :: Extension
+QuasiQuotes :: Extension
+ImplicitParams :: Extension
+ImplicitPrelude :: Extension
+ScopedTypeVariables :: Extension
+AllowAmbiguousTypes :: Extension
+UnboxedTuples :: Extension
+UnboxedSums :: Extension
+BangPatterns :: Extension
+TypeFamilies :: Extension
+TypeFamilyDependencies :: Extension
+TypeInType :: Extension
+OverloadedStrings :: Extension
+OverloadedLists :: Extension
+NumDecimals :: Extension
+DisambiguateRecordFields :: Extension
+RecordWildCards :: Extension
+RecordPuns :: Extension
+ViewPatterns :: Extension
+GADTs :: Extension
+GADTSyntax :: Extension
+NPlusKPatterns :: Extension
+DoAndIfThenElse :: Extension
+RebindableSyntax :: Extension
+ConstraintKinds :: Extension
+PolyKinds :: Extension
+DataKinds :: Extension
+InstanceSigs :: Extension
+ApplicativeDo :: Extension
+StandaloneDeriving :: Extension
+DeriveDataTypeable :: Extension
+AutoDeriveTypeable :: Extension
+DeriveFunctor :: Extension
+DeriveTraversable :: Extension
+DeriveFoldable :: Extension
+DeriveGeneric :: Extension
+DefaultSignatures :: Extension
+DeriveAnyClass :: Extension
+DeriveLift :: Extension
+DerivingStrategies :: Extension
+TypeSynonymInstances :: Extension
+FlexibleContexts :: Extension
+FlexibleInstances :: Extension
+ConstrainedClassMethods :: Extension
+MultiParamTypeClasses :: Extension
+NullaryTypeClasses :: Extension
+FunctionalDependencies :: Extension
+UnicodeSyntax :: Extension
+ExistentialQuantification :: Extension
+MagicHash :: Extension
+EmptyDataDecls :: Extension
+KindSignatures :: Extension
+RoleAnnotations :: Extension
+ParallelListComp :: Extension
+TransformListComp :: Extension
+MonadComprehensions :: Extension
+GeneralizedNewtypeDeriving :: Extension
+RecursiveDo :: Extension
+PostfixOperators :: Extension
+TupleSections :: Extension
+PatternGuards :: Extension
+LiberalTypeSynonyms :: Extension
+RankNTypes :: Extension
+ImpredicativeTypes :: Extension
+TypeOperators :: Extension
+ExplicitNamespaces :: Extension
+PackageImports :: Extension
+ExplicitForAll :: Extension
+AlternativeLayoutRule :: Extension
+AlternativeLayoutRuleTransitional :: Extension
+DatatypeContexts :: Extension
+NondecreasingIndentation :: Extension
+RelaxedLayout :: Extension
+TraditionalRecordSyntax :: Extension
+LambdaCase :: Extension
+MultiWayIf :: Extension
+BinaryLiterals :: Extension
+NegativeLiterals :: Extension
+DuplicateRecordFields :: Extension
+OverloadedLabels :: Extension
+EmptyCase :: Extension
+PatternSynonyms :: Extension
+PartialTypeSignatures :: Extension
+NamedWildCards :: Extension
+StaticPointers :: Extension
+TypeApplications :: Extension
+Strict :: Extension
+StrictData :: Extension
+MonadFailDesugaring :: Extension
 
 
 -- | Utilities to modify the indentation of AST fragments
@@ -253,6 +380,23 @@ removeEmptyBnds :: Simple Traversal Module ValueBind -> Simple Traversal Module 
 -- | Puts the elements in the orginal order and remove duplicates (elements
 --   with the same source range)
 normalizeElements :: [Ann e dom SrcTemplateStage] -> [Ann e dom SrcTemplateStage]
+
+module Language.Haskell.Tools.Refactor.Utils.Maybe
+liftMaybe :: (Monad m) => Maybe a -> MaybeT m a
+maybeT :: Monad m => b -> (a -> b) -> MaybeT m a -> m b
+maybeTM :: Monad m => m b -> (a -> m b) -> MaybeT m a -> m b
+
+-- | The parameterizable maybe monad, obtained by composing an arbitrary
+--   monad with the <a>Maybe</a> monad.
+--   
+--   Computations are actions that may produce a value or exit.
+--   
+--   The <a>return</a> function yields a computation that produces that
+--   value, while <tt>&gt;&gt;=</tt> sequences two subcomputations, exiting
+--   if either computation does.
+newtype MaybeT (m :: * -> *) a :: (* -> *) -> * -> *
+MaybeT :: m Maybe a -> MaybeT a
+[runMaybeT] :: MaybeT a -> m Maybe a
 
 
 -- | Basic utilities and types for defining refactorings.
@@ -446,10 +590,67 @@ nameValid :: NameClass -> String -> Maybe String
 isIdChar :: Char -> Bool
 isOperatorChar :: Char -> Bool
 
+module Language.Haskell.Tools.Refactor.Utils.NameLookup
+opSemName :: GhcMonad m => Operator -> MaybeT m Name
+declHeadSemName :: GhcMonad m => DeclHead -> MaybeT m Name
+instHeadSemName :: GhcMonad m => InstanceHead -> MaybeT m Name
+
 module Language.Haskell.Tools.Refactor.Utils.Type
 typeExpr :: Expr -> Ghc Type
 appTypeMatches :: [ClsInst] -> Type -> [Type] -> Maybe (TCvSubst, Type)
 literalType :: Literal -> Ghc Type
+
+module Language.Haskell.Tools.Refactor.Utils.TypeLookup
+hasConstraintKind :: Type -> Bool
+
+-- | Looks up the Type of an entity with an Id of any locality. If the
+--   entity being scrutinised is a type variable, it fails.
+lookupTypeFromId :: (HasIdInfo' id, GhcMonad m) => id -> MaybeT m Type
+
+-- | Looks up the Type or the Kind of an entity that has an Id. Note: In
+--   some cases we only get the Kind of the Id (e.g. for type constructors)
+typeOrKindFromId :: HasIdInfo' id => id -> Type
+
+-- | Extracts a Type from a TyThing when possible.
+typeFromTyThing :: TyThing -> Maybe Type
+
+-- | Looks up a GHC Type from a Haskell Tools Name (given the name is
+--   global) For an identifier, it returns its type. For a data
+--   constructor, it returns its type. For a pattern synonym, it returns
+--   its builder's type. For a type synonym constructor, it returns its
+--   right-hand side. For a coaxiom, it fails.
+lookupTypeFromGlobalName :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m Type
+
+-- | Looks up the right-hand side (GHC representation) of a Haskell Tools
+--   Name corresponding to a type synonym
+lookupTypeSynRhs :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m Type
+lookupSynDef :: TyThing -> Maybe TyCon
+tyconFromTyThing :: TyThing -> Maybe TyCon
+tyconFromGHCType :: Type -> Maybe TyCon
+isNewtype :: GhcMonad m => Type -> m Bool
+lookupType :: GhcMonad m => Type -> MaybeT m TyThing
+
+-- | Looks up a GHC.Class from something that has a type class constructor
+--   in it Fails if the argument does not contain a class type constructor
+lookupClassWith :: GhcMonad m => (a -> MaybeT m Name) -> a -> MaybeT m Class
+lookupClassFromInstance :: GhcMonad m => InstanceHead -> MaybeT m Class
+lookupClassFromDeclHead :: GhcMonad m => DeclHead -> MaybeT m Class
+
+-- | Looks up the right-hand side (GHC representation) of a Haskell Tools
+--   Type corresponding to a type synonym
+semanticsTypeSynRhs :: GhcMonad m => Type -> MaybeT m Type
+
+-- | Converts a global Haskell Tools type to a GHC type
+semanticsType :: GhcMonad m => Type -> MaybeT m Type
+
+-- | Extracts the name of a type In case of a type application, it finds
+--   the type being applied
+nameFromType :: Type -> Maybe Name
+isNewtypeTyCon :: TyThing -> Bool
+
+-- | Decides whether a given name is a standard Haskell98 data constructor.
+--   Fails if not given a proper name.
+isVanillaDataConNameM :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m Bool
 
 
 -- | Defines the API for refactorings
@@ -478,8 +679,8 @@ isAnnNothing :: () => AnnMaybeG e d s -> Bool
 -- | A semantic domain for the AST. The semantic domain maps semantic
 --   information for the different types of nodes in the AST. The kind of
 --   semantic domain for an AST depends on which stages of the compilation
---   did it pass. However after transforming the GHC representation to our
---   AST, the domain keeps the same. The domain is not applied to the AST
+--   it passed. However after transforming the GHC representation to our
+--   AST, the domain stays the same. The domain is not applied to the AST
 --   elements that are generated while refactoring.
 type Domain d = (Typeable * d, Data d, (~) * SemanticInfo' d SemaInfoDefaultCls NoSemanticInfo, Data SemanticInfo' d SemaInfoNameCls, Data SemanticInfo' d SemaInfoLitCls, Data SemanticInfo' d SemaInfoExprCls, Data SemanticInfo' d SemaInfoImportCls, Data SemanticInfo' d SemaInfoModuleCls, Data SemanticInfo' d SemaInfoWildcardCls)
 

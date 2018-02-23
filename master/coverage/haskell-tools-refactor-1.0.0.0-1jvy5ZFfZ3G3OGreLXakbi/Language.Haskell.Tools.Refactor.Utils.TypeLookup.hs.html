@@ -1,0 +1,177 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts, ScopedTypeVariables #-}
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>module Language.Haskell.Tools.Refactor.Utils.TypeLookup where
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>import qualified TyCoRep   as GHC (Type(..), TyThing(..))
+<span class="lineno">    6 </span>import qualified Kind      as GHC (isConstraintKind, typeKind)
+<span class="lineno">    7 </span>import qualified ConLike   as GHC (ConLike(..))
+<span class="lineno">    8 </span>import qualified DataCon   as GHC (dataConUserType, isVanillaDataCon)
+<span class="lineno">    9 </span>import qualified PatSyn    as GHC (patSynBuilder)
+<span class="lineno">   10 </span>import qualified Var       as GHC (varType)
+<span class="lineno">   11 </span>import qualified GHC       hiding (typeKind)
+<span class="lineno">   12 </span>import           GHC       (GhcMonad)
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   15 </span>import Language.Haskell.Tools.Rewrite
+<span class="lineno">   16 </span>import Language.Haskell.Tools.Refactor.Utils.NameLookup
+<span class="lineno">   17 </span>import Language.Haskell.Tools.Refactor.Utils.Maybe
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>hasConstraintKind :: GHC.Type -&gt; Bool
+<span class="lineno">   21 </span><span class="decl"><span class="istickedoff">hasConstraintKind = GHC.isConstraintKind . GHC.typeKind</span></span>
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>-- | Looks up the Type of an entity with an Id of any locality.
+<span class="lineno">   25 </span>-- If the entity being scrutinised is a type variable, it fails.
+<span class="lineno">   26 </span>lookupTypeFromId :: (HasIdInfo' id, GhcMonad m) =&gt; id -&gt; MaybeT m GHC.Type
+<span class="lineno">   27 </span><span class="decl"><span class="istickedoff">lookupTypeFromId idn</span>
+<span class="lineno">   28 </span><span class="spaces">  </span><span class="istickedoff">| GHC.isLocalId  . semanticsId $ idn = return . typeOrKindFromId $ idn</span>
+<span class="lineno">   29 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">GHC.isGlobalId . semanticsId $ idn</span> = lookupTypeFromGlobalName idn</span>
+<span class="lineno">   30 </span><span class="spaces">  </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">fail &quot;Couldn't lookup name&quot;</span></span></span>
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>-- | Looks up the Type or the Kind of an entity that has an Id.
+<span class="lineno">   33 </span>-- Note: In some cases we only get the Kind of the Id (e.g. for type constructors)
+<span class="lineno">   34 </span>typeOrKindFromId :: HasIdInfo' id =&gt; id -&gt; GHC.Type
+<span class="lineno">   35 </span><span class="decl"><span class="istickedoff">typeOrKindFromId idn = GHC.varType . semanticsId $ idn</span></span>
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>-- | Extracts a Type from a TyThing when possible.
+<span class="lineno">   38 </span>typeFromTyThing :: GHC.TyThing -&gt; Maybe GHC.Type
+<span class="lineno">   39 </span><span class="decl"><span class="istickedoff">typeFromTyThing (GHC.AnId     idn)  = Just . GHC.varType $ idn</span>
+<span class="lineno">   40 </span><span class="spaces"></span><span class="istickedoff">typeFromTyThing (GHC.ATyCon   tc)   = GHC.synTyConRhs_maybe tc</span>
+<span class="lineno">   41 </span><span class="spaces"></span><span class="istickedoff">typeFromTyThing (GHC.ACoAxiom _)    = <span class="nottickedoff">fail &quot;CoAxioms are not supported for type lookup&quot;</span></span>
+<span class="lineno">   42 </span><span class="spaces"></span><span class="istickedoff">typeFromTyThing (GHC.AConLike con)  = handleCon con</span>
+<span class="lineno">   43 </span><span class="spaces">  </span><span class="istickedoff">where handleCon (GHC.RealDataCon dc) = Just . GHC.dataConUserType $ dc</span>
+<span class="lineno">   44 </span><span class="spaces">        </span><span class="istickedoff">handleCon (GHC.PatSynCon   pc) = <span class="nottickedoff">do</span></span>
+<span class="lineno">   45 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">(idn,_) &lt;- GHC.patSynBuilder pc</span></span>
+<span class="lineno">   46 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">return . GHC.varType $ idn</span></span></span>
+<span class="lineno">   47 </span>
+<span class="lineno">   48 </span>-- | Looks up a GHC Type from a Haskell Tools Name (given the name is global)
+<span class="lineno">   49 </span>-- For an identifier, it returns its type.
+<span class="lineno">   50 </span>-- For a data constructor, it returns its type.
+<span class="lineno">   51 </span>-- For a pattern synonym, it returns its builder's type.
+<span class="lineno">   52 </span>-- For a type synonym constructor, it returns its right-hand side.
+<span class="lineno">   53 </span>-- For a coaxiom, it fails.
+<span class="lineno">   54 </span>lookupTypeFromGlobalName :: (HasNameInfo' n, GhcMonad m) =&gt; n -&gt; MaybeT m GHC.Type
+<span class="lineno">   55 </span><span class="decl"><span class="istickedoff">lookupTypeFromGlobalName name = do</span>
+<span class="lineno">   56 </span><span class="spaces">  </span><span class="istickedoff">sname &lt;- liftMaybe . semanticsName $ name</span>
+<span class="lineno">   57 </span><span class="spaces">  </span><span class="istickedoff">tt    &lt;- MaybeT    . GHC.lookupName $ sname</span>
+<span class="lineno">   58 </span><span class="spaces">  </span><span class="istickedoff">liftMaybe . typeFromTyThing $ tt</span></span>
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>
+<span class="lineno">   61 </span>-- | Looks up the right-hand side (GHC representation)
+<span class="lineno">   62 </span>-- of a Haskell Tools Name corresponding to a type synonym
+<span class="lineno">   63 </span>lookupTypeSynRhs :: (HasNameInfo' n, GhcMonad m) =&gt; n -&gt; MaybeT m GHC.Type
+<span class="lineno">   64 </span><span class="decl"><span class="istickedoff">lookupTypeSynRhs name = do</span>
+<span class="lineno">   65 </span><span class="spaces">  </span><span class="istickedoff">sname &lt;- liftMaybe . semanticsName $ name</span>
+<span class="lineno">   66 </span><span class="spaces">  </span><span class="istickedoff">tt    &lt;- MaybeT    . GHC.lookupName $ sname</span>
+<span class="lineno">   67 </span><span class="spaces">  </span><span class="istickedoff">tc    &lt;- liftMaybe . tyconFromTyThing $ tt</span>
+<span class="lineno">   68 </span><span class="spaces">  </span><span class="istickedoff">liftMaybe . GHC.synTyConRhs_maybe $ tc</span></span>
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>-- NOTE: Returns Nothing if it is not a type synonym
+<span class="lineno">   71 </span>lookupSynDef :: GHC.TyThing -&gt; Maybe GHC.TyCon
+<span class="lineno">   72 </span><span class="decl"><span class="istickedoff">lookupSynDef syn = do</span>
+<span class="lineno">   73 </span><span class="spaces">  </span><span class="istickedoff">tycon &lt;- tyconFromTyThing syn</span>
+<span class="lineno">   74 </span><span class="spaces">  </span><span class="istickedoff">rhs   &lt;- GHC.synTyConRhs_maybe tycon</span>
+<span class="lineno">   75 </span><span class="spaces">  </span><span class="istickedoff">tyconFromGHCType rhs</span></span>
+<span class="lineno">   76 </span>
+<span class="lineno">   77 </span>tyconFromTyThing :: GHC.TyThing -&gt; Maybe GHC.TyCon
+<span class="lineno">   78 </span><span class="decl"><span class="istickedoff">tyconFromTyThing (GHC.ATyCon tycon) = Just tycon</span>
+<span class="lineno">   79 </span><span class="spaces"></span><span class="istickedoff">tyconFromTyThing _ = <span class="nottickedoff">Nothing</span></span></span>
+<span class="lineno">   80 </span>
+<span class="lineno">   81 </span>-- won't bother
+<span class="lineno">   82 </span>tyconFromGHCType :: GHC.Type -&gt; Maybe GHC.TyCon
+<span class="lineno">   83 </span><span class="decl"><span class="istickedoff">tyconFromGHCType (GHC.AppTy t1 _) = <span class="nottickedoff">tyconFromGHCType t1</span></span>
+<span class="lineno">   84 </span><span class="spaces"></span><span class="istickedoff">tyconFromGHCType (GHC.TyConApp tycon _) = Just tycon</span>
+<span class="lineno">   85 </span><span class="spaces"></span><span class="istickedoff">tyconFromGHCType _ = <span class="nottickedoff">Nothing</span></span></span>
+<span class="lineno">   86 </span>
+<span class="lineno">   87 </span>
+<span class="lineno">   88 </span>-- NOTE: Returns false if the type is certainly not a newtype
+<span class="lineno">   89 </span>--       Returns true if it is a newtype or it could not have been looked up
+<span class="lineno">   90 </span>isNewtype :: GhcMonad m =&gt; Type -&gt; m Bool
+<span class="lineno">   91 </span><span class="decl"><span class="istickedoff">isNewtype t = do</span>
+<span class="lineno">   92 </span><span class="spaces">  </span><span class="istickedoff">tycon &lt;- runMaybeT . lookupType $ t</span>
+<span class="lineno">   93 </span><span class="spaces">  </span><span class="istickedoff">return $! maybe <span class="nottickedoff">True</span> isNewtypeTyCon tycon</span></span>
+<span class="lineno">   94 </span>
+<span class="lineno">   95 </span>
+<span class="lineno">   96 </span>
+<span class="lineno">   97 </span>lookupType :: GhcMonad m =&gt; Type -&gt; MaybeT m GHC.TyThing
+<span class="lineno">   98 </span><span class="decl"><span class="istickedoff">lookupType t = do</span>
+<span class="lineno">   99 </span><span class="spaces">  </span><span class="istickedoff">name  &lt;- liftMaybe . nameFromType $ t</span>
+<span class="lineno">  100 </span><span class="spaces">  </span><span class="istickedoff">sname &lt;- liftMaybe . semanticsName   $ name</span>
+<span class="lineno">  101 </span><span class="spaces">  </span><span class="istickedoff">MaybeT . GHC.lookupName $ sname</span></span>
+<span class="lineno">  102 </span>
+<span class="lineno">  103 </span>-- | Looks up a GHC.Class from something that has a type class constructor in it
+<span class="lineno">  104 </span>-- Fails if the argument does not contain a class type constructor
+<span class="lineno">  105 </span>lookupClassWith :: GhcMonad m =&gt; (a -&gt; MaybeT m GHC.Name) -&gt; a -&gt; MaybeT m GHC.Class
+<span class="lineno">  106 </span><span class="decl"><span class="istickedoff">lookupClassWith getName x = do</span>
+<span class="lineno">  107 </span><span class="spaces">  </span><span class="istickedoff">sname   &lt;- getName x</span>
+<span class="lineno">  108 </span><span class="spaces">  </span><span class="istickedoff">tything &lt;- MaybeT . GHC.lookupName $ sname</span>
+<span class="lineno">  109 </span><span class="spaces">  </span><span class="istickedoff">case tything of</span>
+<span class="lineno">  110 </span><span class="spaces">    </span><span class="istickedoff">GHC.ATyCon tc | <span class="tickonlytrue">GHC.isClassTyCon tc</span> -&gt; liftMaybe . GHC.tyConClass_maybe $ tc</span>
+<span class="lineno">  111 </span><span class="spaces">    </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">fail &quot;TypeLookup.lookupClassWith: Argument does not contain a class type constructor&quot;</span></span></span>
+<span class="lineno">  112 </span>
+<span class="lineno">  113 </span>lookupClassFromInstance :: GhcMonad m =&gt; InstanceHead -&gt; MaybeT m GHC.Class
+<span class="lineno">  114 </span><span class="decl"><span class="istickedoff">lookupClassFromInstance = lookupClassWith instHeadSemName</span></span>
+<span class="lineno">  115 </span>
+<span class="lineno">  116 </span>lookupClassFromDeclHead :: GhcMonad m =&gt; DeclHead -&gt; MaybeT m GHC.Class
+<span class="lineno">  117 </span><span class="decl"><span class="nottickedoff">lookupClassFromDeclHead = lookupClassWith declHeadSemName</span></span>
+<span class="lineno">  118 </span>
+<span class="lineno">  119 </span>-- | Looks up the right-hand side (GHC representation)
+<span class="lineno">  120 </span>-- of a Haskell Tools Type corresponding to a type synonym
+<span class="lineno">  121 </span>semanticsTypeSynRhs :: GhcMonad m =&gt; Type -&gt; MaybeT m GHC.Type
+<span class="lineno">  122 </span><span class="decl"><span class="istickedoff">semanticsTypeSynRhs ty = (liftMaybe . nameFromType $ ty) &gt;&gt;= lookupTypeSynRhs</span></span>
+<span class="lineno">  123 </span>
+<span class="lineno">  124 </span>-- | Converts a global Haskell Tools type to a GHC type
+<span class="lineno">  125 </span>semanticsType :: GhcMonad m =&gt; Type -&gt; MaybeT m GHC.Type
+<span class="lineno">  126 </span><span class="decl"><span class="nottickedoff">semanticsType ty = (liftMaybe . nameFromType $ ty) &gt;&gt;= lookupTypeFromGlobalName</span></span>
+<span class="lineno">  127 </span>
+<span class="lineno">  128 </span>-- | Extracts the name of a type
+<span class="lineno">  129 </span>-- In case of a type application, it finds the type being applied
+<span class="lineno">  130 </span>nameFromType :: Type -&gt; Maybe Name
+<span class="lineno">  131 </span><span class="decl"><span class="istickedoff">nameFromType (TypeApp f _)    = nameFromType f</span>
+<span class="lineno">  132 </span><span class="spaces"></span><span class="istickedoff">nameFromType (ParenType x)    = nameFromType x</span>
+<span class="lineno">  133 </span><span class="spaces"></span><span class="istickedoff">nameFromType (KindedType t _) = <span class="nottickedoff">nameFromType t</span></span>
+<span class="lineno">  134 </span><span class="spaces"></span><span class="istickedoff">nameFromType (BangType t)     = <span class="nottickedoff">nameFromType t</span></span>
+<span class="lineno">  135 </span><span class="spaces"></span><span class="istickedoff">nameFromType (LazyType t)     = <span class="nottickedoff">nameFromType t</span></span>
+<span class="lineno">  136 </span><span class="spaces"></span><span class="istickedoff">nameFromType (UnpackType t)   = <span class="nottickedoff">nameFromType t</span></span>
+<span class="lineno">  137 </span><span class="spaces"></span><span class="istickedoff">nameFromType (NoUnpackType t) = <span class="nottickedoff">nameFromType t</span></span>
+<span class="lineno">  138 </span><span class="spaces"></span><span class="istickedoff">nameFromType (VarType x)      = Just x</span>
+<span class="lineno">  139 </span><span class="spaces"></span><span class="istickedoff">nameFromType _                = Nothing</span></span>
+<span class="lineno">  140 </span>
+<span class="lineno">  141 </span>isNewtypeTyCon :: GHC.TyThing -&gt; Bool
+<span class="lineno">  142 </span><span class="decl"><span class="istickedoff">isNewtypeTyCon (GHC.ATyCon tycon) = GHC.isNewTyCon tycon</span>
+<span class="lineno">  143 </span><span class="spaces"></span><span class="istickedoff">isNewtypeTyCon _ = <span class="nottickedoff">False</span></span></span>
+<span class="lineno">  144 </span>
+<span class="lineno">  145 </span>-- | Decides whether a given name is a standard Haskell98 data constructor.
+<span class="lineno">  146 </span>-- Fails if not given a proper name.
+<span class="lineno">  147 </span>isVanillaDataConNameM :: (HasNameInfo' n, GhcMonad m) =&gt; n -&gt; MaybeT m Bool
+<span class="lineno">  148 </span><span class="decl"><span class="istickedoff">isVanillaDataConNameM name = do</span>
+<span class="lineno">  149 </span><span class="spaces">  </span><span class="istickedoff">sname &lt;- liftMaybe . semanticsName  $ name</span>
+<span class="lineno">  150 </span><span class="spaces">  </span><span class="istickedoff">tt    &lt;- MaybeT    . GHC.lookupName $ sname</span>
+<span class="lineno">  151 </span><span class="spaces">  </span><span class="istickedoff">dc    &lt;- liftMaybe . extractDataCon $ tt</span>
+<span class="lineno">  152 </span><span class="spaces">  </span><span class="istickedoff">return . GHC.isVanillaDataCon $ dc</span>
+<span class="lineno">  153 </span><span class="spaces">  </span><span class="istickedoff">where extractDataCon (GHC.AConLike (GHC.RealDataCon dc)) = Just dc</span>
+<span class="lineno">  154 </span><span class="spaces">        </span><span class="istickedoff">extractDataCon  _                                  = <span class="nottickedoff">Nothing</span></span></span>
+
+</pre>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts, GADTs, RankNTypes, ScopedTypeVariables, TupleSections, TypeApplications, ViewPatterns #-}
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>module Language.Haskell.Tools.Refactor.Builtin.GenerateTypeSignature
+<span class="lineno">    4 </span>  ( generateTypeSignature, generateTypeSignature', tryItOut
+<span class="lineno">    5 </span>  , generateTypeSignatureRefactoring) where
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>import GHC hiding (Module)
+<span class="lineno">    8 </span>import Id as GHC
+<span class="lineno">    9 </span>import OccName as GHC (isSymOcc)
+<span class="lineno">   10 </span>import Outputable as GHC (Outputable(..), showSDocUnsafe)
+<span class="lineno">   11 </span>import TyCon as GHC (TyCon(..), isTupleTyCon)
+<span class="lineno">   12 </span>import Type as GHC
+<span class="lineno">   13 </span>import TysWiredIn as GHC (listTyCon, charTyCon)
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>import Control.Monad
+<span class="lineno">   16 </span>import Control.Monad.State
+<span class="lineno">   17 </span>import Control.Reference
+<span class="lineno">   18 </span>import Data.Generics.Uniplate.Data (universeBi)
+<span class="lineno">   19 </span>import Data.List
+<span class="lineno">   20 </span>import Data.Maybe (Maybe(..), catMaybes)
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>import Language.Haskell.Tools.Refactor as AST
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>generateTypeSignatureRefactoring :: RefactoringChoice
+<span class="lineno">   25 </span><span class="decl"><span class="istickedoff">generateTypeSignatureRefactoring = SelectionRefactoring &quot;GenerateSignature&quot; (localRefactoring . generateTypeSignature')</span></span>
+<span class="lineno">   26 </span>
+<span class="lineno">   27 </span>tryItOut :: String -&gt; String -&gt; IO ()
+<span class="lineno">   28 </span><span class="decl"><span class="nottickedoff">tryItOut = tryRefactor (localRefactoring . generateTypeSignature')</span></span>
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>generateTypeSignature' :: RealSrcSpan -&gt; LocalRefactoring
+<span class="lineno">   31 </span><span class="decl"><span class="istickedoff">generateTypeSignature' sp = generateTypeSignature (nodesContaining sp) (nodesContaining sp) (getValBindInList sp)</span></span>
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>-- | Perform the refactoring on either local or top-level definition
+<span class="lineno">   34 </span>generateTypeSignature :: Simple Traversal Module DeclList
+<span class="lineno">   35 </span>                                -- ^ Access for a top-level definition if it is the selected definition
+<span class="lineno">   36 </span>                           -&gt; Simple Traversal Module LocalBindList
+<span class="lineno">   37 </span>                                -- ^ Access for a definition list if it contains the selected definition
+<span class="lineno">   38 </span>                           -&gt; (forall d . (BindingElem d) =&gt; AnnList d -&gt; Maybe ValueBind)
+<span class="lineno">   39 </span>                                -- ^ Selector for either local or top-level declaration in the definition list
+<span class="lineno">   40 </span>                           -&gt; LocalRefactoring
+<span class="lineno">   41 </span><span class="decl"><span class="istickedoff">generateTypeSignature topLevelRef localRef vbAccess mod</span>
+<span class="lineno">   42 </span><span class="spaces">  </span><span class="istickedoff">= let typeSigs = universeBi mod</span>
+<span class="lineno">   43 </span><span class="spaces">        </span><span class="istickedoff">bindings = universeBi mod</span>
+<span class="lineno">   44 </span><span class="spaces">        </span><span class="istickedoff">findTypeSigFor id = find (\ts -&gt; any (id ==) $ map semanticsId (ts ^? tsName &amp; annList &amp; simpleName))</span>
+<span class="lineno">   45 </span><span class="spaces">        </span><span class="istickedoff">bindsWithSigs = catMaybes $ concatMap (\b -&gt; map (\n -&gt; let id = semanticsId n in fmap (<span class="nottickedoff">id</span>,,b) (findTypeSigFor id typeSigs)) (b ^? bindingName)) bindings</span>
+<span class="lineno">   46 </span><span class="spaces">        </span><span class="istickedoff">scopedSigs = hasScopedTypeSignatures mod</span>
+<span class="lineno">   47 </span><span class="spaces">     </span><span class="istickedoff">in do (mod', done) &lt;- flip runStateT False .</span>
+<span class="lineno">   48 </span><span class="spaces">                             </span><span class="istickedoff">(topLevelRef !~ genTypeSig <span class="nottickedoff">scopedSigs</span> <span class="nottickedoff">bindsWithSigs</span> vbAccess</span>
+<span class="lineno">   49 </span><span class="spaces">                                </span><span class="istickedoff">&lt;=&lt; localRef !~ genTypeSig scopedSigs bindsWithSigs vbAccess) $ mod</span>
+<span class="lineno">   50 </span><span class="spaces">           </span><span class="istickedoff">if <span class="tickonlytrue">done</span></span>
+<span class="lineno">   51 </span><span class="spaces">             </span><span class="istickedoff">then return mod'</span>
+<span class="lineno">   52 </span><span class="spaces">             </span><span class="istickedoff">else <span class="nottickedoff">refactError &quot;No binding without type signature is found at the selection.&quot;</span></span></span>
+<span class="lineno">   53 </span>
+<span class="lineno">   54 </span>
+<span class="lineno">   55 </span>hasScopedTypeSignatures :: Module -&gt; Bool
+<span class="lineno">   56 </span><span class="decl"><span class="istickedoff">hasScopedTypeSignatures mod = &quot;ScopedTypeVariables&quot; `elem` (mod ^? filePragmas &amp; annList &amp; lpPragmas &amp; annList &amp; langExt :: [String])</span></span>
+<span class="lineno">   57 </span>
+<span class="lineno">   58 </span>genTypeSig :: (BindingElem d) =&gt; Bool -&gt; [(GHC.Var, TypeSignature, ValueBind)] -&gt; (AnnList d -&gt; Maybe ValueBind)
+<span class="lineno">   59 </span>                                   -&gt; AnnList d -&gt; StateT Bool LocalRefactor (AnnList d)
+<span class="lineno">   60 </span><span class="decl"><span class="istickedoff">genTypeSig scopedSigs sigBinds vbAccess ls</span>
+<span class="lineno">   61 </span><span class="spaces">  </span><span class="istickedoff">| Just vb &lt;- vbAccess ls</span>
+<span class="lineno">   62 </span><span class="spaces">  </span><span class="istickedoff">, not (typeSignatureAlreadyExist ls vb)</span>
+<span class="lineno">   63 </span><span class="spaces">    </span><span class="istickedoff">= if isSimpleBinding vb</span>
+<span class="lineno">   64 </span><span class="spaces">        </span><span class="istickedoff">then</span>
+<span class="lineno">   65 </span><span class="spaces">          </span><span class="istickedoff">do let id = getBindingName vb</span>
+<span class="lineno">   66 </span><span class="spaces">                 </span><span class="istickedoff">isTheBind (Just decl)</span>
+<span class="lineno">   67 </span><span class="spaces">                   </span><span class="istickedoff">= isBinding decl &amp;&amp; map semanticsId (decl ^? elementName) == map semanticsId (vb ^? bindingName)</span>
+<span class="lineno">   68 </span><span class="spaces">                 </span><span class="istickedoff">isTheBind _ = <span class="nottickedoff">False</span></span>
+<span class="lineno">   69 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   70 </span><span class="spaces">             </span><span class="istickedoff">alreadyGenerated &lt;- get</span>
+<span class="lineno">   71 </span><span class="spaces">             </span><span class="istickedoff">if alreadyGenerated</span>
+<span class="lineno">   72 </span><span class="spaces">               </span><span class="istickedoff">then return ls</span>
+<span class="lineno">   73 </span><span class="spaces">               </span><span class="istickedoff">else do put True</span>
+<span class="lineno">   74 </span><span class="spaces">                       </span><span class="istickedoff">-- checking for possible situations when we cannot generate signature because of</span>
+<span class="lineno">   75 </span><span class="spaces">                       </span><span class="istickedoff">-- an implicitly passed value</span>
+<span class="lineno">   76 </span><span class="spaces">                       </span><span class="istickedoff">let dangerousTypeVars = dangerousTVs scopedSigs sigBinds</span>
+<span class="lineno">   77 </span><span class="spaces">                           </span><span class="istickedoff">myTvs = concatMap @[] (getExternalTVs . idType . semanticsId) (vb ^? bindingName)</span>
+<span class="lineno">   78 </span><span class="spaces">                       </span><span class="istickedoff">if not $ null @[] $ myTvs `intersect` dangerousTypeVars</span>
+<span class="lineno">   79 </span><span class="spaces">                         </span><span class="istickedoff">then refactError $ <span class="nottickedoff">&quot;Could not generate type signature: the type variable(s) &quot;</span></span>
+<span class="lineno">   80 </span><span class="spaces">                                              </span><span class="istickedoff"><span class="nottickedoff">++ concat (intersperse &quot;, &quot; $ map (showSDocUnsafe . ppr) (myTvs `intersect` dangerousTypeVars))</span></span>
+<span class="lineno">   81 </span><span class="spaces">                                              </span><span class="istickedoff"><span class="nottickedoff">++ &quot; cannot be captured. (Use ScopedTypeVariables and forall-ed type signatures)&quot;</span></span>
+<span class="lineno">   82 </span><span class="spaces">                         </span><span class="istickedoff">else do</span>
+<span class="lineno">   83 </span><span class="spaces">                           </span><span class="istickedoff">typeSig &lt;- lift $ generateTSFor (getName id) (idType id)</span>
+<span class="lineno">   84 </span><span class="spaces">                           </span><span class="istickedoff">return $ insertWhere True (createTypeSig typeSig) (const True) isTheBind ls</span>
+<span class="lineno">   85 </span><span class="spaces">        </span><span class="istickedoff">else refactError <span class="nottickedoff">&quot;Signature can only be generated for simple value bindings.&quot;</span></span>
+<span class="lineno">   86 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = return ls</span>
+<span class="lineno">   87 </span><span class="spaces">  </span><span class="istickedoff">where isSimpleBinding vb = case vb of SimpleBind (AST.VarPat {}) _ _ -&gt; True</span>
+<span class="lineno">   88 </span><span class="spaces">                                        </span><span class="istickedoff">SimpleBind _ _ _ -&gt; False</span>
+<span class="lineno">   89 </span><span class="spaces">                                        </span><span class="istickedoff">_ -&gt; True</span>
+<span class="lineno">   90 </span><span class="spaces">        </span><span class="istickedoff">dangerousTVs scopedSigs sigBinds</span>
+<span class="lineno">   91 </span><span class="spaces">          </span><span class="istickedoff">= let dangerousDecls = if scopedSigs then filter (\(_,ts,_) -&gt; not $ isForalledTS ts) sigBinds else sigBinds</span>
+<span class="lineno">   92 </span><span class="spaces">                </span><span class="istickedoff">dangerousNames = map (\(_,_,bn) -&gt; bn ^? (valBindPats &amp; biplateRef &amp;+&amp; bindingName)) dangerousDecls</span>
+<span class="lineno">   93 </span><span class="spaces">             </span><span class="istickedoff">in concatMap (concatMap @[] (getExternalTVs . idType . semanticsId @QualifiedName)) dangerousNames</span></span>
+<span class="lineno">   94 </span>
+<span class="lineno">   95 </span>generateTSFor :: GHC.Name -&gt; GHC.Type -&gt; LocalRefactor TypeSignature
+<span class="lineno">   96 </span><span class="decl"><span class="istickedoff">generateTSFor n t = mkTypeSignature (mkUnqualName' n) &lt;$&gt; generateTypeFor (-1) (dropForAlls t)</span></span>
+<span class="lineno">   97 </span>
+<span class="lineno">   98 </span>-- | Generates the source-level type for a GHC internal type
+<span class="lineno">   99 </span>generateTypeFor :: Int -&gt; GHC.Type -&gt; LocalRefactor AST.Type
+<span class="lineno">  100 </span><span class="decl"><span class="istickedoff">generateTypeFor prec t</span>
+<span class="lineno">  101 </span><span class="spaces">  </span><span class="istickedoff">-- context</span>
+<span class="lineno">  102 </span><span class="spaces">  </span><span class="istickedoff">| (break (not . isPredTy) -&gt; (preds, other), rt) &lt;- splitFunTys t</span>
+<span class="lineno">  103 </span><span class="spaces">  </span><span class="istickedoff">, not (null preds)</span>
+<span class="lineno">  104 </span><span class="spaces">  </span><span class="istickedoff">= do ctx &lt;- case preds of [pred] -&gt; mkContext &lt;$&gt; generateAssertionFor pred</span>
+<span class="lineno">  105 </span><span class="spaces">                            </span><span class="istickedoff">_      -&gt; mkContext &lt;$&gt; (mkTupleAssertion &lt;$&gt; mapM generateAssertionFor preds)</span>
+<span class="lineno">  106 </span><span class="spaces">       </span><span class="istickedoff">wrapParen 0 &lt;$&gt; (mkCtxType ctx &lt;$&gt; generateTypeFor 0 (mkFunTys other rt))</span>
+<span class="lineno">  107 </span><span class="spaces">  </span><span class="istickedoff">-- function</span>
+<span class="lineno">  108 </span><span class="spaces">  </span><span class="istickedoff">| Just (at, rt) &lt;- splitFunTy_maybe t</span>
+<span class="lineno">  109 </span><span class="spaces">  </span><span class="istickedoff">= wrapParen 0 &lt;$&gt; (mkFunctionType &lt;$&gt; generateTypeFor 10 at &lt;*&gt; generateTypeFor 0 rt)</span>
+<span class="lineno">  110 </span><span class="spaces">  </span><span class="istickedoff">-- type operator (we don't know the precedences, so always use parentheses)</span>
+<span class="lineno">  111 </span><span class="spaces">  </span><span class="istickedoff">| (op, [at,rt]) &lt;- splitAppTys t</span>
+<span class="lineno">  112 </span><span class="spaces">  </span><span class="istickedoff">, Just tc &lt;- tyConAppTyCon_maybe op</span>
+<span class="lineno">  113 </span><span class="spaces">  </span><span class="istickedoff">, <span class="tickonlyfalse">isSymOcc (getOccName (getName tc))</span></span>
+<span class="lineno">  114 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">wrapParen 0 &lt;$&gt; (mkInfixTypeApp &lt;$&gt; generateTypeFor 10 at &lt;*&gt; referenceOperator (idName $ getTCId tc) &lt;*&gt; generateTypeFor 10 rt)</span></span>
+<span class="lineno">  115 </span><span class="spaces">  </span><span class="istickedoff">-- tuple types</span>
+<span class="lineno">  116 </span><span class="spaces">  </span><span class="istickedoff">| Just (tc, tas) &lt;- splitTyConApp_maybe t</span>
+<span class="lineno">  117 </span><span class="spaces">  </span><span class="istickedoff">, isTupleTyCon tc</span>
+<span class="lineno">  118 </span><span class="spaces">  </span><span class="istickedoff">= mkTupleType &lt;$&gt; mapM (generateTypeFor <span class="nottickedoff">(-1)</span>) tas</span>
+<span class="lineno">  119 </span><span class="spaces">  </span><span class="istickedoff">-- string type</span>
+<span class="lineno">  120 </span><span class="spaces">  </span><span class="istickedoff">| Just (ls, [et]) &lt;- splitTyConApp_maybe t</span>
+<span class="lineno">  121 </span><span class="spaces">  </span><span class="istickedoff">, Just ch &lt;- tyConAppTyCon_maybe et</span>
+<span class="lineno">  122 </span><span class="spaces">  </span><span class="istickedoff">, <span class="nottickedoff">listTyCon == ls</span></span>
+<span class="lineno">  123 </span><span class="spaces">  </span><span class="istickedoff">, <span class="nottickedoff">charTyCon == ch</span></span>
+<span class="lineno">  124 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">return $ mkVarType (mkNormalName $ mkSimpleName &quot;String&quot;)</span></span>
+<span class="lineno">  125 </span><span class="spaces">  </span><span class="istickedoff">-- list types</span>
+<span class="lineno">  126 </span><span class="spaces">  </span><span class="istickedoff">| Just (tc, [et]) &lt;- splitTyConApp_maybe t</span>
+<span class="lineno">  127 </span><span class="spaces">  </span><span class="istickedoff">, <span class="tickonlyfalse">listTyCon == tc</span></span>
+<span class="lineno">  128 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">mkListType &lt;$&gt; generateTypeFor (-1) et</span></span>
+<span class="lineno">  129 </span><span class="spaces">  </span><span class="istickedoff">-- type application</span>
+<span class="lineno">  130 </span><span class="spaces">  </span><span class="istickedoff">| Just (tf, ta) &lt;- splitAppTy_maybe t</span>
+<span class="lineno">  131 </span><span class="spaces">  </span><span class="istickedoff">= wrapParen 10 &lt;$&gt; (mkTypeApp &lt;$&gt; generateTypeFor 10 tf &lt;*&gt; generateTypeFor <span class="nottickedoff">11</span> ta)</span>
+<span class="lineno">  132 </span><span class="spaces">  </span><span class="istickedoff">-- type constructor</span>
+<span class="lineno">  133 </span><span class="spaces">  </span><span class="istickedoff">| Just tc &lt;- tyConAppTyCon_maybe t</span>
+<span class="lineno">  134 </span><span class="spaces">  </span><span class="istickedoff">= mkVarType &lt;$&gt; referenceName (idName $ getTCId tc)</span>
+<span class="lineno">  135 </span><span class="spaces">  </span><span class="istickedoff">-- type variable</span>
+<span class="lineno">  136 </span><span class="spaces">  </span><span class="istickedoff">| Just tv &lt;- getTyVar_maybe t</span>
+<span class="lineno">  137 </span><span class="spaces">  </span><span class="istickedoff">= mkVarType &lt;$&gt; referenceName (idName tv)</span>
+<span class="lineno">  138 </span><span class="spaces">  </span><span class="istickedoff">-- forall type</span>
+<span class="lineno">  139 </span><span class="spaces">  </span><span class="istickedoff">| (tvs@(_:_), t') &lt;- <span class="nottickedoff">splitForAllTys t</span></span>
+<span class="lineno">  140 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">wrapParen (-1) &lt;$&gt; (mkForallType (map (mkTypeVar' . getName) tvs) &lt;$&gt; generateTypeFor 0 t')</span></span>
+<span class="lineno">  141 </span><span class="spaces">  </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">error (&quot;Cannot represent type: &quot; ++ showSDocUnsafe (ppr t))</span></span>
+<span class="lineno">  142 </span><span class="spaces">  </span><span class="istickedoff">where wrapParen :: Int -&gt; AST.Type -&gt; AST.Type</span>
+<span class="lineno">  143 </span><span class="spaces">        </span><span class="istickedoff">wrapParen prec' node = if prec' &lt; prec then mkParenType node else node</span>
+<span class="lineno">  144 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  145 </span><span class="spaces">        </span><span class="istickedoff">getTCId :: GHC.TyCon -&gt; GHC.Id</span>
+<span class="lineno">  146 </span><span class="spaces">        </span><span class="istickedoff">getTCId tc = GHC.mkVanillaGlobal (GHC.tyConName tc) <span class="nottickedoff">(tyConKind tc)</span></span>
+<span class="lineno">  147 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  148 </span><span class="spaces">        </span><span class="istickedoff">generateAssertionFor :: GHC.Type -&gt; LocalRefactor Assertion</span>
+<span class="lineno">  149 </span><span class="spaces">        </span><span class="istickedoff">generateAssertionFor t</span>
+<span class="lineno">  150 </span><span class="spaces">          </span><span class="istickedoff">| Just (tc, types) &lt;- splitTyConApp_maybe t</span>
+<span class="lineno">  151 </span><span class="spaces">          </span><span class="istickedoff">= mkClassAssert &lt;$&gt; referenceName (idName $ getTCId tc) &lt;*&gt; mapM (generateTypeFor <span class="nottickedoff">0</span>) types</span>
+<span class="lineno">  152 </span><span class="spaces">          </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">error &quot;generateAssertionFor: type not supported yet.&quot;</span></span></span>
+<span class="lineno">  153 </span>
+<span class="lineno">  154 </span>-- | Check whether the definition already has a type signature
+<span class="lineno">  155 </span>typeSignatureAlreadyExist :: (BindingElem d) =&gt; AnnList d -&gt; ValueBind -&gt; Bool
+<span class="lineno">  156 </span><span class="decl"><span class="istickedoff">typeSignatureAlreadyExist ls vb =</span>
+<span class="lineno">  157 </span><span class="spaces">  </span><span class="istickedoff">getBindingName vb `elem` (map semanticsId $ concatMap (^? elementName) (filter isTypeSig $ ls ^? annList))</span></span>
+<span class="lineno">  158 </span>
+<span class="lineno">  159 </span>getBindingName :: ValueBind -&gt; GHC.Id
+<span class="lineno">  160 </span><span class="decl"><span class="istickedoff">getBindingName vb = case nub $ map semanticsId $ vb ^? bindingName of</span>
+<span class="lineno">  161 </span><span class="spaces">  </span><span class="istickedoff">[n] -&gt; n</span>
+<span class="lineno">  162 </span><span class="spaces">  </span><span class="istickedoff">[] -&gt; <span class="nottickedoff">error &quot;Trying to generate a signature for a binding with no name&quot;</span></span>
+<span class="lineno">  163 </span><span class="spaces">  </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">error &quot;Trying to generate a signature for a binding with multiple names&quot;</span></span></span>
+<span class="lineno">  164 </span>
+<span class="lineno">  165 </span>-- * Checking for type variable constraints
+<span class="lineno">  166 </span>
+<span class="lineno">  167 </span>getExternalTVs :: GHC.Type -&gt; [GHC.Var]
+<span class="lineno">  168 </span><span class="decl"><span class="istickedoff">getExternalTVs t</span>
+<span class="lineno">  169 </span><span class="spaces">  </span><span class="istickedoff">| Just tv &lt;- getTyVar_maybe t = [tv]</span>
+<span class="lineno">  170 </span><span class="spaces">  </span><span class="istickedoff">| Just (op, arg) &lt;- splitAppTy_maybe t = getExternalTVs op `union` getExternalTVs arg</span>
+<span class="lineno">  171 </span><span class="spaces">  </span><span class="istickedoff">| Just (tv, t') &lt;- splitForAllTy_maybe t = delete tv $ getExternalTVs t'</span>
+<span class="lineno">  172 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = []</span></span>
+<span class="lineno">  173 </span>
+<span class="lineno">  174 </span>isForalledTS :: TypeSignature -&gt; Bool
+<span class="lineno">  175 </span><span class="decl"><span class="istickedoff">isForalledTS ts = not $ null @[] $ ts ^? tsType &amp; typeBounded &amp; annList</span></span>
+
+</pre>
+</body>
+</html>

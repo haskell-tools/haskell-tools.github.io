@@ -34,6 +34,9 @@ type ExportSpec = Ann UExportSpec IdDom SrcTemplateStage
 --   (subspecifier)
 type IESpec = Ann UIESpec IdDom SrcTemplateStage
 
+-- | Specifies the imported element
+type ImportModifier = Ann UImportModifier IdDom SrcTemplateStage
+
 -- | Marks how related names will be imported or exported with a given name
 type SubSpec = Ann USubSpec IdDom SrcTemplateStage
 
@@ -351,6 +354,7 @@ type MaybeImportSource = AnnMaybe UImportSource
 type MaybeImportSafe = AnnMaybe UImportSafe
 type MaybeImportSpec = AnnMaybe UImportSpec
 type MaybeModuleHead = AnnMaybe UModuleHead
+type MaybeImportModifier = AnnMaybe UImportModifier
 type MaybeModulePragma = AnnMaybe UModulePragma
 type MaybeSubSpec = AnnMaybe USubSpec
 type MaybeStringNode = AnnMaybe UStringNode
@@ -643,6 +647,7 @@ mkImportHidingList :: [IESpec] -> ImportSpec
 
 -- | The name of a module
 mkModuleName :: String -> ModuleName
+mkFilePragmas :: [FilePragma] -> FilePragmaList
 
 -- | <tt>LANGUAGE</tt> pragma, listing the enabled language extensions in
 --   that file
@@ -2168,7 +2173,7 @@ module Language.Haskell.Tools.Rewrite.Match.Types
 
 -- | Forall types (<tt> forall x y . type </tt>)
 
--- | Type with a context (<tt> forall x y . type </tt>)
+-- | Type with a context (<tt> C a =&gt; type </tt>)
 
 -- | Function types (<tt> a -&gt; b </tt>)
 

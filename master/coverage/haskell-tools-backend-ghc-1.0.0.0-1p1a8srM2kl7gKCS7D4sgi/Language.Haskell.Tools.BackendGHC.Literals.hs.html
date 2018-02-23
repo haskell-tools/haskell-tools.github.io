@@ -62,7 +62,7 @@ span.spaces    { background: white }
 <span class="lineno">   43 </span>trfOverloadedLit :: OverLitVal -&gt; Trf (AST.ULiteral (Dom r) RangeStage)
 <span class="lineno">   44 </span><span class="decl"><span class="istickedoff">trfOverloadedLit (HsIntegral _ i) = pure $ AST.UIntLit <span class="nottickedoff">i</span></span>
 <span class="lineno">   45 </span><span class="spaces"></span><span class="istickedoff">trfOverloadedLit (HsFractional frac) = pure $ AST.UFracLit <span class="nottickedoff">(fl_value frac)</span></span>
-<span class="lineno">   46 </span><span class="spaces"></span><span class="istickedoff">trfOverloadedLit (HsIsString _ str) = <span class="nottickedoff">pure $ AST.UStringLit (unpackFS str)</span></span></span>
+<span class="lineno">   46 </span><span class="spaces"></span><span class="istickedoff">trfOverloadedLit (HsIsString _ str) = pure $ AST.UStringLit <span class="nottickedoff">(unpackFS str)</span></span></span>
 
 </pre>
 </body>

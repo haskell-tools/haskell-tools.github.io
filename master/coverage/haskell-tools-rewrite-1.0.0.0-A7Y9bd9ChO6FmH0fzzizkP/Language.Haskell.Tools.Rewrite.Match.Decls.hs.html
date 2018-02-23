@@ -19,442 +19,443 @@ span.spaces    { background: white }
 <pre>
 <span class="lineno">    1 </span>-- | UPattern matching on declaration-level AST fragments for refactorings.
 <span class="lineno">    2 </span>{-# LANGUAGE PatternSynonyms #-}
-<span class="lineno">    3 </span>module Language.Haskell.Tools.Rewrite.Match.Decls where
-<span class="lineno">    4 </span>
-<span class="lineno">    5 </span>import Language.Haskell.Tools.AST
-<span class="lineno">    6 </span>import Language.Haskell.Tools.Rewrite.ElementTypes
-<span class="lineno">    7 </span>
-<span class="lineno">    8 </span>-- WORKAROUND: nested pattern synonyms don't work in GHC 8.0, so I replaced them with longer but working pattern
-<span class="lineno">    9 </span>
-<span class="lineno">   10 </span>-- * Declarations
-<span class="lineno">   11 </span>
-<span class="lineno">   12 </span>-- | A type synonym ( @type String = [Char]@ )
-<span class="lineno">   13 </span>pattern TypeDecl :: DeclHead -&gt; Type -&gt; Decl
-<span class="lineno">   14 </span>pattern TypeDecl dh typ &lt;- <span class="nottickedoff">Ann _ (UTypeDecl dh typ)</span>
-<span class="lineno">   15 </span>
-<span class="lineno">   16 </span>-- | Standalone deriving declaration (@ deriving instance X T @)
-<span class="lineno">   17 </span>pattern StandaloneDeriving :: Maybe DeriveStrategy -&gt; Maybe OverlapPragma -&gt; InstanceRule -&gt; Decl
-<span class="lineno">   18 </span>pattern StandaloneDeriving strat overlap instRule &lt;- <span class="istickedoff">Ann _ (UDerivDecl (AnnMaybeG _ strat) (AnnMaybeG _ overlap) instRule)</span>
-<span class="lineno">   19 </span>
-<span class="lineno">   20 </span>-- | Fixity declaration (@ infixl 5 +, - @)
-<span class="lineno">   21 </span>pattern FixityDecl :: FixitySignature -&gt; Decl
-<span class="lineno">   22 </span>pattern FixityDecl fixity &lt;- <span class="nottickedoff">Ann _ (UFixityDecl fixity)</span>
-<span class="lineno">   23 </span>
-<span class="lineno">   24 </span>-- | Default types (@ default (T1, T2) @)
-<span class="lineno">   25 </span>pattern DefaultDecl :: TypeList -&gt; Decl
-<span class="lineno">   26 </span>pattern DefaultDecl types &lt;- <span class="nottickedoff">Ann _ (UDefaultDecl types)</span>
-<span class="lineno">   27 </span>
-<span class="lineno">   28 </span>-- | Type signature declaration (@ f :: Int -&gt; Int @)
-<span class="lineno">   29 </span>pattern TypeSigDecl :: TypeSignature -&gt; Decl
-<span class="lineno">   30 </span>pattern TypeSigDecl typeSig &lt;- <span class="istickedoff">Ann _ (UTypeSigDecl typeSig)</span>
-<span class="lineno">   31 </span>
-<span class="lineno">   32 </span>-- | Function or value binding (@ f x = 12 @)
-<span class="lineno">   33 </span>pattern ValueBinding :: ValueBind -&gt; Decl
-<span class="lineno">   34 </span>pattern ValueBinding bind &lt;- <span class="istickedoff">Ann _ (UValueBinding bind)</span>
-<span class="lineno">   35 </span>
-<span class="lineno">   36 </span>-- | A Template Haskell splice declaration (@ $(generateDecls) @)
-<span class="lineno">   37 </span>pattern SpliceDecl :: Splice -&gt; Decl
-<span class="lineno">   38 </span>pattern SpliceDecl sp &lt;- <span class="nottickedoff">Ann _ (USpliceDecl sp)</span>
-<span class="lineno">   39 </span>
-<span class="lineno">   40 </span>-- * Data type definitions
-<span class="lineno">   41 </span>
-<span class="lineno">   42 </span>-- | A data or newtype declaration. Empty data type declarations without
-<span class="lineno">   43 </span>-- where keyword are always belong to DataDecl.
-<span class="lineno">   44 </span>pattern DataDecl :: DataOrNewtypeKeyword -&gt; MaybeContext -&gt; DeclHead -&gt; ConDeclList -&gt; DerivingList -&gt; Decl
-<span class="lineno">   45 </span>pattern DataDecl keyw ctx dh cons derivs &lt;- <span class="istickedoff">Ann _ (UDataDecl keyw ctx dh cons derivs)</span>
-<span class="lineno">   46 </span>
-<span class="lineno">   47 </span>-- | A GADT-style data or newtype declaration.
-<span class="lineno">   48 </span>pattern GADTDataDecl :: DataOrNewtypeKeyword -&gt; MaybeContext -&gt; DeclHead -&gt; MaybeKindConstraint -&gt; AnnList UGadtConDecl -&gt; DerivingList -&gt; Decl
-<span class="lineno">   49 </span>pattern GADTDataDecl keyw ctx dh kind cons derivs  &lt;- <span class="istickedoff">Ann _ (UGDataDecl keyw ctx dh kind cons derivs )</span>
-<span class="lineno">   50 </span>
-<span class="lineno">   51 </span>-- | GADT constructor declaration (@ D1 :: Int -&gt; T String @)
-<span class="lineno">   52 </span>pattern GadtConDecl :: NameList -&gt; Type -&gt; GadtConDecl
-<span class="lineno">   53 </span>pattern GadtConDecl names typ &lt;- <span class="nottickedoff">Ann _ (UGadtConDecl names _ _ (Ann _ (UGadtNormalType typ)))</span>
-<span class="lineno">   54 </span>
-<span class="lineno">   55 </span>-- | GADT constructor declaration with record syntax (@ D1 :: { val :: Int } -&gt; T String @)
-<span class="lineno">   56 </span>pattern GadtRecordConDecl :: NameList -&gt; FieldDeclList -&gt; Type -&gt; GadtConDecl
-<span class="lineno">   57 </span>pattern GadtRecordConDecl names fields typ &lt;- <span class="nottickedoff">Ann _ (UGadtConDecl names _ _ (Ann _ (UGadtRecordType fields typ)))</span>
-<span class="lineno">   58 </span>
-<span class="lineno">   59 </span>-- | Ordinary data constructor (@ C t1 t2 @)
-<span class="lineno">   60 </span>pattern ConDecl :: Name -&gt; TypeList -&gt; ConDecl
-<span class="lineno">   61 </span>pattern ConDecl name args &lt;- <span class="istickedoff">Ann _ (UConDecl _ _ name args)</span>
-<span class="lineno">   62 </span>
-<span class="lineno">   63 </span>-- | Creates a record data constructor (@ Point { x :: Double, y :: Double } @)
-<span class="lineno">   64 </span>pattern RecordConDecl :: Name -&gt; FieldDeclList -&gt; ConDecl
-<span class="lineno">   65 </span>pattern RecordConDecl name fields &lt;- <span class="nottickedoff">Ann _ (URecordDecl _ _ name fields)</span>
-<span class="lineno">   66 </span>
-<span class="lineno">   67 </span>-- | Infix data constructor (@ t1 :+: t2 @)
-<span class="lineno">   68 </span>pattern InfixConDecl :: Type -&gt; Operator -&gt; Type -&gt; ConDecl
-<span class="lineno">   69 </span>pattern InfixConDecl lhs op rhs &lt;- <span class="nottickedoff">Ann _ (UInfixConDecl _ _ lhs op rhs)</span>
-<span class="lineno">   70 </span>
-<span class="lineno">   71 </span>-- | Field declaration (@ fld :: Int @)
-<span class="lineno">   72 </span>pattern FieldDecl :: NameList -&gt; Type -&gt; FieldDecl
-<span class="lineno">   73 </span>pattern FieldDecl names typ &lt;- <span class="nottickedoff">Ann _ (UFieldDecl names typ)</span>
-<span class="lineno">   74 </span>
-<span class="lineno">   75 </span>-- | A deriving clause without parentheses (@ deriving Show @.
-<span class="lineno">   76 </span>pattern DerivingOne :: InstanceHead -&gt; Deriving
-<span class="lineno">   77 </span>pattern DerivingOne deriv &lt;- <span class="istickedoff">Ann _ (UDerivingOne _ deriv)</span>
-<span class="lineno">   78 </span>
-<span class="lineno">   79 </span>-- | A deriving clause without parentheses, with/witohut strategy (@ deriving stock Show @.
-<span class="lineno">   80 </span>pattern DerivingOne' :: MaybeDeriveStrategy -&gt; InstanceHead -&gt; Deriving
-<span class="lineno">   81 </span>pattern DerivingOne' strat deriv &lt;- <span class="nottickedoff">Ann _ (UDerivingOne strat deriv)</span>
-<span class="lineno">   82 </span>
-<span class="lineno">   83 </span>-- | A deriving clause with parentheses @ deriving (Show, Eq) @)
-<span class="lineno">   84 </span>pattern DerivingMulti :: InstanceHeadList -&gt; Deriving
-<span class="lineno">   85 </span>pattern DerivingMulti derivs &lt;- <span class="istickedoff">Ann _ (UDerivings _ derivs)</span>
-<span class="lineno">   86 </span>
-<span class="lineno">   87 </span>-- | A deriving clause with parentheses, with/witohut strategy (@ deriving stock (Show, Eq) @.
-<span class="lineno">   88 </span>pattern DerivingMulti' :: MaybeDeriveStrategy -&gt; InstanceHeadList -&gt; Deriving
-<span class="lineno">   89 </span>pattern DerivingMulti' strat derivs &lt;- <span class="nottickedoff">Ann _ (UDerivings strat derivs)</span>
-<span class="lineno">   90 </span>
-<span class="lineno">   91 </span>pattern DataKeyword :: DataOrNewtypeKeyword
-<span class="lineno">   92 </span>pattern DataKeyword &lt;- <span class="istickedoff">Ann _ UDataKeyword</span>
-<span class="lineno">   93 </span>
-<span class="lineno">   94 </span>pattern NewtypeKeyword :: DataOrNewtypeKeyword
-<span class="lineno">   95 </span>pattern NewtypeKeyword &lt;- <span class="nottickedoff">Ann _ UNewtypeKeyword</span>
-<span class="lineno">   96 </span>
-<span class="lineno">   97 </span>-- | A list of functional dependencies: @ | a -&gt; b, c -&gt; d @ separated by commas
-<span class="lineno">   98 </span>pattern FunDeps :: FunDepList -&gt; FunDeps
-<span class="lineno">   99 </span>pattern FunDeps fds &lt;- <span class="nottickedoff">Ann _ (UFunDeps fds)</span>
-<span class="lineno">  100 </span>
-<span class="lineno">  101 </span>-- | A functional dependency, given on the form @l1 ... ln -&gt; r1 ... rn@
-<span class="lineno">  102 </span>pattern FunDep :: NameList -&gt; NameList -&gt; FunDep
-<span class="lineno">  103 </span>pattern FunDep lhs rhs &lt;- <span class="nottickedoff">Ann _ (UFunDep lhs rhs)</span>
-<span class="lineno">  104 </span>
-<span class="lineno">  105 </span>-- * Type class declarations
-<span class="lineno">  106 </span>
-<span class="lineno">  107 </span>-- | Type class declaration (@ class X a [where f = ...] @)
-<span class="lineno">  108 </span>pattern ClassDecl :: MaybeContext -&gt; DeclHead -&gt; MaybeFunDeps -&gt; MaybeClassBody -&gt; Decl
-<span class="lineno">  109 </span>pattern ClassDecl ctx dh fdeps body &lt;- <span class="istickedoff">Ann _ (UClassDecl ctx dh fdeps body)</span>
-<span class="lineno">  110 </span>
-<span class="lineno">  111 </span>-- | The list of declarations that can appear in a typeclass
-<span class="lineno">  112 </span>pattern ClassBody :: ClassElementList -&gt; ClassBody
-<span class="lineno">  113 </span>pattern ClassBody body &lt;- <span class="nottickedoff">Ann _ (UClassBody body)</span>
-<span class="lineno">  114 </span>
-<span class="lineno">  115 </span>-- | Type signature: @ f :: A -&gt; B @ as a class member
-<span class="lineno">  116 </span>pattern ClassElemSig :: TypeSignature -&gt; ClassElement
-<span class="lineno">  117 </span>pattern ClassElemSig typeSig &lt;- <span class="nottickedoff">Ann _ (UClsSig typeSig)</span>
-<span class="lineno">  118 </span>
-<span class="lineno">  119 </span>-- | Default binding: @ f x = &quot;aaa&quot; @ as a class member
-<span class="lineno">  120 </span>pattern ClassElemDef :: ValueBind -&gt; ClassElement
-<span class="lineno">  121 </span>pattern ClassElemDef def &lt;- <span class="nottickedoff">Ann _ (UClsDef def)</span>
-<span class="lineno">  122 </span>
-<span class="lineno">  123 </span>-- | Declaration of an associated type synonym: @ type T x :: * @ in a class
-<span class="lineno">  124 </span>pattern ClassElemTypeFam :: DeclHead -&gt; MaybeTypeFamilySpec -&gt; ClassElement
-<span class="lineno">  125 </span>pattern ClassElemTypeFam dh tfSpec &lt;- <span class="nottickedoff">Ann _ (UClsTypeFam (Ann _ (UTypeFamily dh tfSpec)))</span>
-<span class="lineno">  126 </span>
-<span class="lineno">  127 </span>-- | Declaration of an associated data synonym: @ data T x :: * @ in a class
-<span class="lineno">  128 </span>pattern ClassElemDataFam :: DeclHead -&gt; MaybeKindConstraint -&gt; ClassElement
-<span class="lineno">  129 </span>pattern ClassElemDataFam dh kind &lt;- <span class="nottickedoff">Ann _ (UClsTypeFam (Ann _ (UDataFamily dh kind)))</span>
-<span class="lineno">  130 </span>
-<span class="lineno">  131 </span>-- | Default choice for type synonym: @ type T x = TE @ or @ type instance T x = TE @ in a class
-<span class="lineno">  132 </span>pattern ClsDefaultType :: DeclHead -&gt; Type -&gt; ClassElement
-<span class="lineno">  133 </span>pattern ClsDefaultType dh typ &lt;- <span class="nottickedoff">Ann _ (UClsTypeDef dh typ)</span>
-<span class="lineno">  134 </span>
-<span class="lineno">  135 </span>-- | Default signature (by using @DefaultSignatures@): @ default enum :: (Generic a, GEnum (Rep a)) =&gt; [a] @
-<span class="lineno">  136 </span>pattern ClsDefaultSig :: Name -&gt; Type -&gt; ClassElement
-<span class="lineno">  137 </span>pattern ClsDefaultSig name typ &lt;- <span class="istickedoff">Ann _ (UClsDefSig name typ)</span>
-<span class="lineno">  138 </span>
-<span class="lineno">  139 </span>-- | Minimal pragma: @ {-\# MINIMAL (==) | (/=) \#-} @ in a class
-<span class="lineno">  140 </span>pattern ClsMinimal :: MinimalFormula -&gt; ClassElement
-<span class="lineno">  141 </span>pattern ClsMinimal min &lt;- <span class="nottickedoff">Ann _ (UClsMinimal min)</span>
-<span class="lineno">  142 </span>
-<span class="lineno">  143 </span>pattern MinimalName :: Name -&gt; MinimalFormula
-<span class="lineno">  144 </span>pattern MinimalName name &lt;- <span class="nottickedoff">Ann _ (UMinimalName name)</span>
-<span class="lineno">  145 </span>
-<span class="lineno">  146 </span>pattern MinimalParen :: MinimalFormula -&gt; MinimalFormula
-<span class="lineno">  147 </span>pattern MinimalParen min &lt;- <span class="nottickedoff">Ann _ (UMinimalParen min)</span>
-<span class="lineno">  148 </span>
-<span class="lineno">  149 </span>-- | One of the minimal formulas are needed (@ min1 | min2 @)
-<span class="lineno">  150 </span>pattern MinimalOr :: MinimalFormulaList -&gt; MinimalFormula
-<span class="lineno">  151 </span>pattern MinimalOr mins &lt;- <span class="nottickedoff">Ann _ (UMinimalOr mins)</span>
-<span class="lineno">  152 </span>
-<span class="lineno">  153 </span>-- | Both of the minimal formulas are needed (@ min1 , min2 @)
-<span class="lineno">  154 </span>pattern MinimalAnd :: MinimalFormulaList -&gt; MinimalFormula
-<span class="lineno">  155 </span>pattern MinimalAnd mins &lt;- <span class="nottickedoff">Ann _ (UMinimalAnd mins)</span>
-<span class="lineno">  156 </span>
-<span class="lineno">  157 </span>-- * Declaration heads
-<span class="lineno">  158 </span>
-<span class="lineno">  159 </span>-- | Type or class name as a declaration head
-<span class="lineno">  160 </span>pattern NameDeclHead :: Name -&gt; DeclHead
-<span class="lineno">  161 </span>pattern NameDeclHead name &lt;- <span class="nottickedoff">Ann _ (UDeclHead name)</span>
-<span class="lineno">  162 </span>
-<span class="lineno">  163 </span>-- | Parenthesized type as a declaration head
-<span class="lineno">  164 </span>pattern ParenDeclHead :: DeclHead -&gt; DeclHead
-<span class="lineno">  165 </span>pattern ParenDeclHead dh &lt;- <span class="nottickedoff">Ann _ (UDHParen dh)</span>
-<span class="lineno">  166 </span>
-<span class="lineno">  167 </span>-- | Type application as a declaration head
-<span class="lineno">  168 </span>pattern DeclHeadApp :: DeclHead -&gt; TyVar -&gt; DeclHead
-<span class="lineno">  169 </span>pattern DeclHeadApp dh tv &lt;- <span class="nottickedoff">Ann _ (UDHApp dh tv)</span>
-<span class="lineno">  170 </span>
-<span class="lineno">  171 </span>-- | Infix type application as a declaration head
-<span class="lineno">  172 </span>pattern InfixDeclHead :: TyVar -&gt; Operator -&gt; TyVar -&gt; DeclHead
-<span class="lineno">  173 </span>pattern InfixDeclHead lhs op rhs &lt;- <span class="nottickedoff">Ann _ (UDHInfix lhs op rhs)</span>
-<span class="lineno">  174 </span>
-<span class="lineno">  175 </span>-- * Type class instance declarations
-<span class="lineno">  176 </span>
-<span class="lineno">  177 </span>-- | Instance declaration (@ instance X T [where f = ...] @)
-<span class="lineno">  178 </span>pattern InstanceDecl :: InstanceRule -&gt; MaybeInstBody -&gt; Decl
-<span class="lineno">  179 </span>pattern InstanceDecl instRule body &lt;- <span class="istickedoff">Ann _ (UInstDecl _ instRule body)</span>
-<span class="lineno">  180 </span>
-<span class="lineno">  181 </span>-- | Instance body is the implementation of the class functions (@ where a x = 1; b x = 2 @)
-<span class="lineno">  182 </span>pattern InstanceBody :: InstBodyDeclList -&gt; InstBody
-<span class="lineno">  183 </span>pattern InstanceBody defs &lt;- <span class="nottickedoff">Ann _ (UInstBody defs)</span>
-<span class="lineno">  184 </span>
-<span class="lineno">  185 </span>-- | A normal value binding (@ f x = 12 @) inside a class instance
-<span class="lineno">  186 </span>pattern InstanceBind :: ValueBind -&gt; InstBodyDecl
-<span class="lineno">  187 </span>pattern InstanceBind bind &lt;- <span class="nottickedoff">Ann _ (UInstBodyNormalDecl bind)</span>
-<span class="lineno">  188 </span>
-<span class="lineno">  189 </span>-- | Type signature in instance definition with @InstanceSigs@
-<span class="lineno">  190 </span>pattern InstanceTypeSig :: TypeSignature -&gt; InstBodyDecl
-<span class="lineno">  191 </span>pattern InstanceTypeSig typeSig &lt;- <span class="nottickedoff">Ann _ (UInstBodyTypeSig typeSig)</span>
-<span class="lineno">  192 </span>
-<span class="lineno">  193 </span>-- | An associated type definition (@ type A X = B @) in a class instance
-<span class="lineno">  194 </span>pattern InstanceTypeFamilyDef :: TypeEqn -&gt; InstBodyDecl
-<span class="lineno">  195 </span>pattern InstanceTypeFamilyDef typeEq &lt;- <span class="nottickedoff">Ann _ (UInstBodyTypeDecl typeEq)</span>
-<span class="lineno">  196 </span>
-<span class="lineno">  197 </span>-- | An associated data definition (@ data A X = B Int | C @) in a class instance
-<span class="lineno">  198 </span>pattern InstanceDataFamilyDef :: DataOrNewtypeKeyword -&gt; InstanceRule -&gt; ConDeclList -&gt; DerivingList -&gt; InstBodyDecl
-<span class="lineno">  199 </span>pattern InstanceDataFamilyDef keyw instRule cons derivs  &lt;- <span class="nottickedoff">Ann _ (UInstBodyDataDecl keyw instRule cons derivs )</span>
-<span class="lineno">  200 </span>
-<span class="lineno">  201 </span>-- | An associated data definition as a GADT (@ data A X where B :: Int -&gt; A X @) in a class instance
-<span class="lineno">  202 </span>pattern InstanceDataFamilyGADTDef :: DataOrNewtypeKeyword -&gt; InstanceRule -&gt; MaybeKindConstraint -&gt; AnnList UGadtConDecl
-<span class="lineno">  203 </span>                                       -&gt; DerivingList -&gt; InstBodyDecl
-<span class="lineno">  204 </span>pattern InstanceDataFamilyGADTDef keyw instRule kind cons derivs &lt;- <span class="nottickedoff">Ann _ (UInstBodyGadtDataDecl keyw instRule kind cons derivs)</span>
-<span class="lineno">  205 </span>
-<span class="lineno">  206 </span>-- | Specialize instance pragma in a class instance  (no phase selection is allowed)
-<span class="lineno">  207 </span>pattern InstanceSpecializePragma :: Type -&gt; InstBodyDecl
-<span class="lineno">  208 </span>pattern InstanceSpecializePragma typ &lt;- <span class="nottickedoff">Ann _ (USpecializeInstance typ)</span>
-<span class="lineno">  209 </span>
-<span class="lineno">  210 </span>-- | Instance head as an instance rule (@ X a =&gt; Y a @)
-<span class="lineno">  211 </span>pattern InstanceRule :: AnnMaybe (AnnListG UTyVar) -&gt; MaybeContext -&gt; InstanceHead -&gt; InstanceRule
-<span class="lineno">  212 </span>pattern InstanceRule tvs ctx ih &lt;- <span class="istickedoff">Ann _ (UInstanceRule tvs ctx ih)</span>
-<span class="lineno">  213 </span>
-<span class="lineno">  214 </span>-- | Type or class name as an instance head
-<span class="lineno">  215 </span>pattern InstanceHead :: Name -&gt; InstanceHead
-<span class="lineno">  216 </span>pattern InstanceHead name &lt;- <span class="istickedoff">Ann _ (UInstanceHeadCon name)</span>
-<span class="lineno">  217 </span>
-<span class="lineno">  218 </span>-- | Infix application of the type/class name to the left operand as an instance head
-<span class="lineno">  219 </span>pattern InfixInstanceHead :: Type -&gt; Operator -&gt; InstanceHead
-<span class="lineno">  220 </span>pattern InfixInstanceHead typ n &lt;- <span class="istickedoff">Ann _ (UInstanceHeadInfix typ n)</span>
-<span class="lineno">  221 </span>
-<span class="lineno">  222 </span>-- | Parenthesized instance head
-<span class="lineno">  223 </span>pattern ParenInstanceHead :: InstanceHead -&gt; InstanceHead
-<span class="lineno">  224 </span>pattern ParenInstanceHead ih &lt;- <span class="istickedoff">Ann _ (UInstanceHeadParen ih)</span>
-<span class="lineno">  225 </span>
-<span class="lineno">  226 </span>-- | Type application as an instance head
-<span class="lineno">  227 </span>pattern AppInstanceHead :: InstanceHead -&gt; Type -&gt; InstanceHead
-<span class="lineno">  228 </span>pattern AppInstanceHead fun arg &lt;- <span class="istickedoff">Ann _ (UInstanceHeadApp fun arg)</span>
-<span class="lineno">  229 </span>
-<span class="lineno">  230 </span>-- | @OVERLAP@ pragma
-<span class="lineno">  231 </span>pattern EnableOverlap :: OverlapPragma
-<span class="lineno">  232 </span>pattern EnableOverlap &lt;- <span class="nottickedoff">Ann _ UEnableOverlap</span>
-<span class="lineno">  233 </span>
-<span class="lineno">  234 </span>-- | @NO_OVERLAP@ pragma
-<span class="lineno">  235 </span>pattern DisableOverlap :: OverlapPragma
-<span class="lineno">  236 </span>pattern DisableOverlap &lt;- <span class="nottickedoff">Ann _ UDisableOverlap</span>
-<span class="lineno">  237 </span>
-<span class="lineno">  238 </span>-- | @OVERLAPPABLE@ pragma
-<span class="lineno">  239 </span>pattern Overlappable :: OverlapPragma
-<span class="lineno">  240 </span>pattern Overlappable &lt;- <span class="nottickedoff">Ann _ UOverlappable</span>
-<span class="lineno">  241 </span>
-<span class="lineno">  242 </span>-- | @OVERLAPPING@ pragma
-<span class="lineno">  243 </span>pattern Overlapping :: OverlapPragma
-<span class="lineno">  244 </span>pattern Overlapping &lt;- <span class="nottickedoff">Ann _ UOverlapping</span>
-<span class="lineno">  245 </span>
-<span class="lineno">  246 </span>-- | @OVERLAPS@ pragma
-<span class="lineno">  247 </span>pattern Overlaps :: OverlapPragma
-<span class="lineno">  248 </span>pattern Overlaps &lt;- <span class="nottickedoff">Ann _ UOverlaps</span>
-<span class="lineno">  249 </span>
-<span class="lineno">  250 </span>-- | @INCOHERENT@ pragma
-<span class="lineno">  251 </span>pattern IncoherentOverlap :: OverlapPragma
-<span class="lineno">  252 </span>pattern IncoherentOverlap &lt;- <span class="nottickedoff">Ann _ UIncoherentOverlap</span>
-<span class="lineno">  253 </span>
-<span class="lineno">  254 </span>-- * Type roles
-<span class="lineno">  255 </span>
-<span class="lineno">  256 </span>-- | Role annotations (@ type role Ptr representational @)
-<span class="lineno">  257 </span>pattern RoleDecl :: QualifiedName -&gt; RoleList -&gt; Decl
-<span class="lineno">  258 </span>pattern RoleDecl name roles &lt;- <span class="nottickedoff">Ann _ (URoleDecl name roles)</span>
-<span class="lineno">  259 </span>
-<span class="lineno">  260 </span>pattern NominalRole :: Role
-<span class="lineno">  261 </span>pattern NominalRole &lt;- <span class="nottickedoff">Ann _ UNominal</span>
-<span class="lineno">  262 </span>
-<span class="lineno">  263 </span>pattern RepresentationalRole :: Role
-<span class="lineno">  264 </span>pattern RepresentationalRole &lt;- <span class="nottickedoff">Ann _ URepresentational</span>
-<span class="lineno">  265 </span>
-<span class="lineno">  266 </span>pattern PhantomRole :: Role
-<span class="lineno">  267 </span>pattern PhantomRole &lt;- <span class="nottickedoff">Ann _ UPhantom</span>
-<span class="lineno">  268 </span>
-<span class="lineno">  269 </span>-- * Foreign imports and exports
-<span class="lineno">  270 </span>
-<span class="lineno">  271 </span>-- | Foreign import (@ foreign import foo :: Int -&gt; IO Int @)
-<span class="lineno">  272 </span>pattern ForeignImport :: CallConv -&gt; MaybeSafety -&gt; Name -&gt; Type -&gt; Decl
-<span class="lineno">  273 </span>pattern ForeignImport cc safety name typ &lt;- <span class="nottickedoff">Ann _ (UForeignImport cc safety name typ)</span>
-<span class="lineno">  274 </span>
-<span class="lineno">  275 </span>-- | Foreign export (@ foreign export ccall foo :: Int -&gt; IO Int @)
-<span class="lineno">  276 </span>pattern ForeignExport :: CallConv -&gt; Name -&gt; Type -&gt; Decl
-<span class="lineno">  277 </span>pattern ForeignExport cc name typ &lt;- <span class="nottickedoff">Ann _ (UForeignExport cc name typ)</span>
-<span class="lineno">  278 </span>
-<span class="lineno">  279 </span>-- | Specifies @stdcall@ calling convention for foreign import/export.
-<span class="lineno">  280 </span>pattern StdCall :: CallConv
-<span class="lineno">  281 </span>pattern StdCall &lt;- <span class="nottickedoff">Ann _ UStdCall</span>
-<span class="lineno">  282 </span>
-<span class="lineno">  283 </span>-- | Specifies @ccall@ calling convention for foreign import/export.
-<span class="lineno">  284 </span>pattern CCall :: CallConv
-<span class="lineno">  285 </span>pattern CCall &lt;- <span class="nottickedoff">Ann _ UCCall</span>
-<span class="lineno">  286 </span>
-<span class="lineno">  287 </span>-- | Specifies @capi@ calling convention for foreign import/export.
-<span class="lineno">  288 </span>pattern CApi :: CallConv
-<span class="lineno">  289 </span>pattern CApi &lt;- <span class="nottickedoff">Ann _ UCApi</span>
-<span class="lineno">  290 </span>
-<span class="lineno">  291 </span>-- | Specifies that the given foreign import is @unsafe@.
-<span class="lineno">  292 </span>pattern Unsafe :: Safety
-<span class="lineno">  293 </span>pattern Unsafe &lt;- <span class="nottickedoff">Ann _ UUnsafe</span>
-<span class="lineno">  294 </span>
-<span class="lineno">  295 </span>-- * Pattern synonyms
-<span class="lineno">  296 </span>
-<span class="lineno">  297 </span>-- | Pattern synonyms (@ pattern Arrow t1 t2 = App \&quot;-&gt;\&quot; [t1, t2] @)
-<span class="lineno">  298 </span>pattern PatternSynonym :: PatSynLhs -&gt; PatSynRhs -&gt; Decl
-<span class="lineno">  299 </span>pattern PatternSynonym lhs rhs &lt;- <span class="nottickedoff">Ann _ (UPatternSynonymDecl (Ann _ (UPatternSynonym lhs rhs)))</span>
-<span class="lineno">  300 </span>
-<span class="lineno">  301 </span>-- | A left hand side with a constructor name and arguments (@ Arrow t1 t2 @)
-<span class="lineno">  302 </span>pattern ConPatSyn :: Name -&gt; NameList -&gt; PatSynLhs
-<span class="lineno">  303 </span>pattern ConPatSyn con args &lt;- <span class="nottickedoff">Ann _ (UNormalPatSyn con args)</span>
-<span class="lineno">  304 </span>
-<span class="lineno">  305 </span>-- | An infix pattern synonym left-hand side (@ t1 :+: t2 @)
-<span class="lineno">  306 </span>pattern InfixPatSyn :: Name -&gt; Operator -&gt; Name -&gt; PatSynLhs
-<span class="lineno">  307 </span>pattern InfixPatSyn lhs op rhs &lt;- <span class="nottickedoff">Ann _ (UInfixPatSyn lhs op rhs)</span>
-<span class="lineno">  308 </span>
-<span class="lineno">  309 </span>-- | A record-style pattern synonym left-hand side (@ Arrow { arrowFrom, arrowTo } @)
-<span class="lineno">  310 </span>pattern RecordPatSyn :: Name -&gt; NameList -&gt; PatSynLhs
-<span class="lineno">  311 </span>pattern RecordPatSyn con args &lt;- <span class="nottickedoff">Ann _ (URecordPatSyn con args)</span>
-<span class="lineno">  312 </span>
-<span class="lineno">  313 </span>-- | An automatically two-way pattern synonym (@ = App \&quot;Int\&quot; [] @)
-<span class="lineno">  314 </span>pattern SymmetricPatSyn :: Pattern -&gt; PatSynRhs
-<span class="lineno">  315 </span>pattern SymmetricPatSyn pat &lt;- <span class="nottickedoff">Ann _ (UBidirectionalPatSyn pat AnnNothing)</span>
-<span class="lineno">  316 </span>
-<span class="lineno">  317 </span>-- | A pattern synonym that can be only used for pattenr matching but not for combining (@ &lt;- App \&quot;Int\&quot; [] @)
-<span class="lineno">  318 </span>pattern OneWayPatSyn :: Pattern -&gt; PatSynRhs
-<span class="lineno">  319 </span>pattern OneWayPatSyn pat &lt;- <span class="nottickedoff">Ann _ (UOneDirectionalPatSyn pat)</span>
-<span class="lineno">  320 </span>
-<span class="lineno">  321 </span>-- | A pattern synonym with the other direction explicitly specified (@ &lt;- App \&quot;Int\&quot; [] where Int = App \&quot;Int\&quot; [] @)
-<span class="lineno">  322 </span>pattern TwoWayPatSyn :: Pattern -&gt; MatchList -&gt; PatSynRhs
-<span class="lineno">  323 </span>pattern TwoWayPatSyn pat match &lt;- <span class="nottickedoff">Ann _ (UBidirectionalPatSyn pat (AnnJust (Ann _ (UPatSynWhere match))))</span>
-<span class="lineno">  324 </span>
-<span class="lineno">  325 </span>-- | Pattern type signature declaration (@ pattern Succ :: Int -&gt; Int @)
-<span class="lineno">  326 </span>pattern PatternSignatureDecl :: PatternSignature -&gt; Decl
-<span class="lineno">  327 </span>pattern PatternSignatureDecl patsig &lt;- <span class="nottickedoff">Ann _ (UPatTypeSigDecl patsig)</span>
-<span class="lineno">  328 </span>
-<span class="lineno">  329 </span>pattern PatternSignature :: NameList -&gt; Type -&gt; PatternSignature
-<span class="lineno">  330 </span>pattern PatternSignature name typ &lt;- <span class="nottickedoff">Ann _ (UPatternTypeSignature name typ)</span>
-<span class="lineno">  331 </span>
-<span class="lineno">  332 </span>-- * Type families
-<span class="lineno">  333 </span>
-<span class="lineno">  334 </span>-- | Type family declaration (@ type family A a :: * -&gt; * @)
-<span class="lineno">  335 </span>pattern TypeFamily :: DeclHead -&gt; MaybeTypeFamilySpec -&gt; Decl
-<span class="lineno">  336 </span>pattern TypeFamily dh famSpec &lt;- <span class="nottickedoff">Ann _ (UTypeFamilyDecl (Ann _ (UTypeFamily dh famSpec)))</span>
-<span class="lineno">  337 </span>
-<span class="lineno">  338 </span>-- | Data family declaration (@ data family A a :: * -&gt; * @)
-<span class="lineno">  339 </span>pattern DataFamily :: DeclHead -&gt; MaybeKindConstraint -&gt; Decl
-<span class="lineno">  340 </span>pattern DataFamily dh kind &lt;- <span class="nottickedoff">Ann _ (UTypeFamilyDecl (Ann _ (UDataFamily dh kind)))</span>
-<span class="lineno">  341 </span>
-<span class="lineno">  342 </span>-- | Type family instance declaration (@ type instance Fam T = AssignedT @)
-<span class="lineno">  343 </span>pattern TypeInstance :: InstanceRule -&gt; Type -&gt; Decl
-<span class="lineno">  344 </span>pattern TypeInstance instRule typ &lt;- <span class="nottickedoff">Ann _ (UTypeInstDecl instRule typ)</span>
-<span class="lineno">  345 </span>
-<span class="lineno">  346 </span>-- | Data instance declaration (@ data instance Fam T = Con1 | Con2 @)
-<span class="lineno">  347 </span>pattern DataInstance :: DataOrNewtypeKeyword -&gt; InstanceRule -&gt; ConDeclList -&gt; DerivingList -&gt; Decl
-<span class="lineno">  348 </span>pattern DataInstance keyw instRule cons derivs  &lt;- <span class="istickedoff">Ann _ (UDataInstDecl keyw instRule cons derivs )</span>
-<span class="lineno">  349 </span>
-<span class="lineno">  350 </span>-- | GADT-style data instance declaration (@ data instance Fam T where ... @)
-<span class="lineno">  351 </span>pattern GadtDataInstance :: DataOrNewtypeKeyword -&gt; InstanceRule -&gt; MaybeKindConstraint -&gt; GadtConDeclList -&gt; Decl
-<span class="lineno">  352 </span>pattern GadtDataInstance keyw instRule kind cons  &lt;- <span class="nottickedoff">Ann _ (UGDataInstDecl keyw instRule kind cons )</span>
-<span class="lineno">  353 </span>
-<span class="lineno">  354 </span>-- | A closed type family declaration
-<span class="lineno">  355 </span>pattern ClosedTypeFamily :: DeclHead -&gt; MaybeTypeFamilySpec -&gt; TypeEqnList -&gt; Decl
-<span class="lineno">  356 </span>pattern ClosedTypeFamily dh kind typeqs &lt;- <span class="nottickedoff">Ann _ (UClosedTypeFamilyDecl dh kind typeqs)</span>
-<span class="lineno">  357 </span>
-<span class="lineno">  358 </span>-- | Specifies the kind of a type family (@ :: * -&gt; * @)
-<span class="lineno">  359 </span>pattern TypeFamilyKindSpec :: KindConstraint -&gt; TypeFamilySpec
-<span class="lineno">  360 </span>pattern TypeFamilyKindSpec kind &lt;- <span class="nottickedoff">Ann _ (UTypeFamilyKind kind)</span>
-<span class="lineno">  361 </span>
-<span class="lineno">  362 </span>-- | Specifies the injectivity of a type family (@ = r | r -&gt; a @)
-<span class="lineno">  363 </span>pattern TypeFamilyInjectivitySpec :: TyVar -&gt; NameList -&gt; TypeFamilySpec
-<span class="lineno">  364 </span>pattern TypeFamilyInjectivitySpec res dependent &lt;- <span class="nottickedoff">Ann _ (UTypeFamilyInjectivity (Ann _ (UInjectivityAnn res dependent)))</span>
-<span class="lineno">  365 </span>
-<span class="lineno">  366 </span>-- | Type equations as found in closed type families (@ T A = S @)
-<span class="lineno">  367 </span>pattern TypeEqn :: Type -&gt; Type -&gt; TypeEqn
-<span class="lineno">  368 </span>pattern TypeEqn lhs rhs &lt;- <span class="nottickedoff">Ann _ (UTypeEqn lhs rhs)</span>
-<span class="lineno">  369 </span>
-<span class="lineno">  370 </span>-- * Top level pragmas
-<span class="lineno">  371 </span>
-<span class="lineno">  372 </span>-- | Top-level pragmas
-<span class="lineno">  373 </span>pattern PragmaDecl :: TopLevelPragma -&gt; Decl
-<span class="lineno">  374 </span>pattern PragmaDecl pragma &lt;- <span class="nottickedoff">Ann _ (UPragmaDecl pragma)</span>
-<span class="lineno">  375 </span>
-<span class="lineno">  376 </span>-- | A pragma that introduces source rewrite rules (@ {-\# RULES &quot;map/map&quot; [2]  forall f g xs. map f (map g xs) = map (f.g) xs \#-} @)
-<span class="lineno">  377 </span>pattern RulePragma :: RuleList -&gt; TopLevelPragma
-<span class="lineno">  378 </span>pattern RulePragma rules &lt;- <span class="nottickedoff">Ann _ (URulePragma rules)</span>
-<span class="lineno">  379 </span>
-<span class="lineno">  380 </span>-- | A pragma that marks definitions as deprecated (@ {-\# DEPRECATED f &quot;f will be replaced by g&quot; \#-} @)
-<span class="lineno">  381 </span>pattern DeprPragma :: NameList -&gt; String -&gt; TopLevelPragma
-<span class="lineno">  382 </span>pattern DeprPragma defs msg &lt;- <span class="nottickedoff">Ann _ (UDeprPragma defs (AnnList [Ann _ (UStringNode msg)]))</span>
-<span class="lineno">  383 </span>
-<span class="lineno">  384 </span>-- | A pragma that marks definitions as deprecated (@ {-\# WARNING unsafePerformIO &quot;you should know what you are doing&quot; \#-} @)
-<span class="lineno">  385 </span>pattern WarningPragma :: NameList -&gt; String -&gt; TopLevelPragma
-<span class="lineno">  386 </span>pattern WarningPragma defs msg &lt;- <span class="nottickedoff">Ann _ (UWarningPragma defs (AnnList [Ann _ (UStringNode msg)]))</span>
-<span class="lineno">  387 </span>
-<span class="lineno">  388 </span>-- | A pragma that annotates a definition with an arbitrary value (@ {-\# ANN f 42 \#-} @)
-<span class="lineno">  389 </span>pattern AnnPragma :: AnnotationSubject -&gt; Expr -&gt; TopLevelPragma
-<span class="lineno">  390 </span>pattern AnnPragma subj ann &lt;- <span class="nottickedoff">Ann _ (UAnnPragma subj ann)</span>
-<span class="lineno">  391 </span>
-<span class="lineno">  392 </span>-- | A pragma that marks a function for inlining to the compiler (@ {-\# INLINE thenUs \#-} @)
-<span class="lineno">  393 </span>pattern InlinePragma :: MaybeConlikeAnnot -&gt; MaybePhaseControl -&gt; Name -&gt; TopLevelPragma
-<span class="lineno">  394 </span>pattern InlinePragma conlike phase name &lt;- <span class="nottickedoff">Ann _ (UInlinePragmaDecl (Ann _ (UInlinePragma conlike phase name)))</span>
-<span class="lineno">  395 </span>
-<span class="lineno">  396 </span>-- | A pragma that forbids a function from being inlined by the compiler (@ {-\# NOINLINE f \#-} @)
-<span class="lineno">  397 </span>pattern NoInlinePragma :: Name -&gt; TopLevelPragma
-<span class="lineno">  398 </span>pattern NoInlinePragma name &lt;- <span class="nottickedoff">Ann _ (UInlinePragmaDecl (Ann _ (UNoInlinePragma name)))</span>
-<span class="lineno">  399 </span>
-<span class="lineno">  400 </span>-- | A pragma that marks a function that it may be inlined by the compiler (@ {-\# INLINABLE thenUs \#-} @)
-<span class="lineno">  401 </span>pattern InlinablePragma :: MaybePhaseControl -&gt; Name -&gt; TopLevelPragma
-<span class="lineno">  402 </span>pattern InlinablePragma phase name &lt;- <span class="nottickedoff">Ann _ (UInlinePragmaDecl (Ann _ (UInlinablePragma phase name)))</span>
-<span class="lineno">  403 </span>
-<span class="lineno">  404 </span>-- | A pragma for maintaining line numbers in generated sources (@ {-\# LINE 123 \&quot;somefile\&quot; \#-} @)
-<span class="lineno">  405 </span>pattern LinePragma :: Int -&gt; MaybeStringNode -&gt; TopLevelPragma
-<span class="lineno">  406 </span>pattern LinePragma line filename &lt;- <span class="nottickedoff">Ann _ (ULinePragma (Ann _ (LineNumber line)) filename)</span>
-<span class="lineno">  407 </span>
-<span class="lineno">  408 </span>-- | A pragma that tells the compiler that a polymorph function should be optimized for a given type (@ {-\# SPECIALISE f :: Int -&gt; b -&gt; b \#-} @)
-<span class="lineno">  409 </span>pattern SpecializePragma :: MaybePhaseControl -&gt; Name -&gt; TypeList -&gt; TopLevelPragma
-<span class="lineno">  410 </span>pattern SpecializePragma phase def specTypes &lt;- <span class="nottickedoff">Ann _ (USpecializeDecl (Ann _ (USpecializePragma phase def specTypes)))</span>
-<span class="lineno">  411 </span>
-<span class="lineno">  412 </span>-- | Marks that the pragma should be applied from a given compile phase (@ [2] @)
-<span class="lineno">  413 </span>pattern PhaseControlFrom :: Integer -&gt; PhaseControl
-<span class="lineno">  414 </span>pattern PhaseControlFrom phaseNum &lt;- <span class="nottickedoff">Ann _ (UPhaseControl AnnNothing (AnnJust (Ann _ (PhaseNumber phaseNum))))</span>
-<span class="lineno">  415 </span>
-<span class="lineno">  416 </span>-- | Marks that the pragma should be applied until a given compile phase (@ [~2] @)
-<span class="lineno">  417 </span>pattern PhaseControlUntil :: Integer -&gt; PhaseControl
-<span class="lineno">  418 </span>pattern PhaseControlUntil phaseNum &lt;- <span class="nottickedoff">Ann _ (UPhaseControl (AnnJust _) (AnnJust (Ann _ (PhaseNumber phaseNum))))</span>
-<span class="lineno">  419 </span>
-<span class="lineno">  420 </span>-- | A rewrite rule (@ &quot;map/map&quot; forall f g xs. map f (map g xs) = map (f.g) xs @)
-<span class="lineno">  421 </span>pattern RewriteRule :: String -&gt; MaybePhaseControl -&gt; RuleVarList -&gt; Expr -&gt; Expr -&gt; Rule
-<span class="lineno">  422 </span>pattern RewriteRule name phase vars lhs rhs &lt;- <span class="nottickedoff">Ann _ (URule (Ann _ (UStringNode name)) phase vars lhs rhs)</span>
-<span class="lineno">  423 </span>
-<span class="lineno">  424 </span>-- | The definition with the given name is annotated
-<span class="lineno">  425 </span>pattern NameAnnotation :: Name -&gt; AnnotationSubject
-<span class="lineno">  426 </span>pattern NameAnnotation name &lt;- <span class="nottickedoff">Ann _ (UNameAnnotation name)</span>
-<span class="lineno">  427 </span>
-<span class="lineno">  428 </span>-- | A type with the given name is annotated
-<span class="lineno">  429 </span>pattern TypeAnnotation :: Name -&gt; AnnotationSubject
-<span class="lineno">  430 </span>pattern TypeAnnotation name &lt;- <span class="nottickedoff">Ann _ (UTypeAnnotation name)</span>
-<span class="lineno">  431 </span>
-<span class="lineno">  432 </span>-- | The whole module is annotated
-<span class="lineno">  433 </span>pattern ModuleAnnotation :: AnnotationSubject
-<span class="lineno">  434 </span>pattern ModuleAnnotation &lt;- <span class="nottickedoff">Ann _ UModuleAnnotation</span>
-<span class="lineno">  435 </span>
-<span class="lineno">  436 </span>-- | A @CONLIKE@ modifier for an @INLINE@ pragma.
-<span class="lineno">  437 </span>pattern ConlikeAnnotation :: ConlikeAnnot
-<span class="lineno">  438 </span>pattern ConlikeAnnotation &lt;- <span class="nottickedoff">Ann _ UConlikeAnnot</span>
+<span class="lineno">    3 </span>
+<span class="lineno">    4 </span>module Language.Haskell.Tools.Rewrite.Match.Decls where
+<span class="lineno">    5 </span>
+<span class="lineno">    6 </span>import Language.Haskell.Tools.AST
+<span class="lineno">    7 </span>import Language.Haskell.Tools.Rewrite.ElementTypes
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>-- WORKAROUND: nested pattern synonyms don't work in GHC 8.0, so I replaced them with longer but working pattern
+<span class="lineno">   10 </span>
+<span class="lineno">   11 </span>-- * Declarations
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>-- | A type synonym ( @type String = [Char]@ )
+<span class="lineno">   14 </span>pattern TypeDecl :: DeclHead -&gt; Type -&gt; Decl
+<span class="lineno">   15 </span>pattern TypeDecl dh typ &lt;- <span class="istickedoff">Ann _ (UTypeDecl dh typ)</span>
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>-- | Standalone deriving declaration (@ deriving instance X T @)
+<span class="lineno">   18 </span>pattern StandaloneDeriving :: Maybe DeriveStrategy -&gt; Maybe OverlapPragma -&gt; InstanceRule -&gt; Decl
+<span class="lineno">   19 </span>pattern StandaloneDeriving strat overlap instRule &lt;- <span class="istickedoff">Ann _ (UDerivDecl (AnnMaybeG _ strat) (AnnMaybeG _ overlap) instRule)</span>
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>-- | Fixity declaration (@ infixl 5 +, - @)
+<span class="lineno">   22 </span>pattern FixityDecl :: FixitySignature -&gt; Decl
+<span class="lineno">   23 </span>pattern FixityDecl fixity &lt;- <span class="nottickedoff">Ann _ (UFixityDecl fixity)</span>
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>-- | Default types (@ default (T1, T2) @)
+<span class="lineno">   26 </span>pattern DefaultDecl :: TypeList -&gt; Decl
+<span class="lineno">   27 </span>pattern DefaultDecl types &lt;- <span class="nottickedoff">Ann _ (UDefaultDecl types)</span>
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>-- | Type signature declaration (@ f :: Int -&gt; Int @)
+<span class="lineno">   30 </span>pattern TypeSigDecl :: TypeSignature -&gt; Decl
+<span class="lineno">   31 </span>pattern TypeSigDecl typeSig &lt;- <span class="istickedoff">Ann _ (UTypeSigDecl typeSig)</span>
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>-- | Function or value binding (@ f x = 12 @)
+<span class="lineno">   34 </span>pattern ValueBinding :: ValueBind -&gt; Decl
+<span class="lineno">   35 </span>pattern ValueBinding bind &lt;- <span class="istickedoff">Ann _ (UValueBinding bind)</span>
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>-- | A Template Haskell splice declaration (@ $(generateDecls) @)
+<span class="lineno">   38 </span>pattern SpliceDecl :: Splice -&gt; Decl
+<span class="lineno">   39 </span>pattern SpliceDecl sp &lt;- <span class="nottickedoff">Ann _ (USpliceDecl sp)</span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>-- * Data type definitions
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>-- | A data or newtype declaration. Empty data type declarations without
+<span class="lineno">   44 </span>-- where keyword are always belong to DataDecl.
+<span class="lineno">   45 </span>pattern DataDecl :: DataOrNewtypeKeyword -&gt; MaybeContext -&gt; DeclHead -&gt; ConDeclList -&gt; DerivingList -&gt; Decl
+<span class="lineno">   46 </span>pattern DataDecl keyw ctx dh cons derivs &lt;- <span class="istickedoff">Ann _ (UDataDecl keyw ctx dh cons derivs)</span>
+<span class="lineno">   47 </span>
+<span class="lineno">   48 </span>-- | A GADT-style data or newtype declaration.
+<span class="lineno">   49 </span>pattern GADTDataDecl :: DataOrNewtypeKeyword -&gt; MaybeContext -&gt; DeclHead -&gt; MaybeKindConstraint -&gt; AnnList UGadtConDecl -&gt; DerivingList -&gt; Decl
+<span class="lineno">   50 </span>pattern GADTDataDecl keyw ctx dh kind cons derivs  &lt;- <span class="istickedoff">Ann _ (UGDataDecl keyw ctx dh kind cons derivs )</span>
+<span class="lineno">   51 </span>
+<span class="lineno">   52 </span>-- | GADT constructor declaration (@ D1 :: Int -&gt; T String @)
+<span class="lineno">   53 </span>pattern GadtConDecl :: NameList -&gt; Type -&gt; GadtConDecl
+<span class="lineno">   54 </span>pattern GadtConDecl names typ &lt;- <span class="nottickedoff">Ann _ (UGadtConDecl names _ _ (Ann _ (UGadtNormalType typ)))</span>
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>-- | GADT constructor declaration with record syntax (@ D1 :: { val :: Int } -&gt; T String @)
+<span class="lineno">   57 </span>pattern GadtRecordConDecl :: NameList -&gt; FieldDeclList -&gt; Type -&gt; GadtConDecl
+<span class="lineno">   58 </span>pattern GadtRecordConDecl names fields typ &lt;- <span class="nottickedoff">Ann _ (UGadtConDecl names _ _ (Ann _ (UGadtRecordType fields typ)))</span>
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>-- | Ordinary data constructor (@ C t1 t2 @)
+<span class="lineno">   61 </span>pattern ConDecl :: Name -&gt; TypeList -&gt; ConDecl
+<span class="lineno">   62 </span>pattern ConDecl name args &lt;- <span class="istickedoff">Ann _ (UConDecl _ _ name args)</span>
+<span class="lineno">   63 </span>
+<span class="lineno">   64 </span>-- | Creates a record data constructor (@ Point { x :: Double, y :: Double } @)
+<span class="lineno">   65 </span>pattern RecordConDecl :: Name -&gt; FieldDeclList -&gt; ConDecl
+<span class="lineno">   66 </span>pattern RecordConDecl name fields &lt;- <span class="nottickedoff">Ann _ (URecordDecl _ _ name fields)</span>
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>-- | Infix data constructor (@ t1 :+: t2 @)
+<span class="lineno">   69 </span>pattern InfixConDecl :: Type -&gt; Operator -&gt; Type -&gt; ConDecl
+<span class="lineno">   70 </span>pattern InfixConDecl lhs op rhs &lt;- <span class="nottickedoff">Ann _ (UInfixConDecl _ _ lhs op rhs)</span>
+<span class="lineno">   71 </span>
+<span class="lineno">   72 </span>-- | Field declaration (@ fld :: Int @)
+<span class="lineno">   73 </span>pattern FieldDecl :: NameList -&gt; Type -&gt; FieldDecl
+<span class="lineno">   74 </span>pattern FieldDecl names typ &lt;- <span class="nottickedoff">Ann _ (UFieldDecl names typ)</span>
+<span class="lineno">   75 </span>
+<span class="lineno">   76 </span>-- | A deriving clause without parentheses (@ deriving Show @.
+<span class="lineno">   77 </span>pattern DerivingOne :: InstanceHead -&gt; Deriving
+<span class="lineno">   78 </span>pattern DerivingOne deriv &lt;- <span class="istickedoff">Ann _ (UDerivingOne _ deriv)</span>
+<span class="lineno">   79 </span>
+<span class="lineno">   80 </span>-- | A deriving clause without parentheses, with/witohut strategy (@ deriving stock Show @.
+<span class="lineno">   81 </span>pattern DerivingOne' :: MaybeDeriveStrategy -&gt; InstanceHead -&gt; Deriving
+<span class="lineno">   82 </span>pattern DerivingOne' strat deriv &lt;- <span class="nottickedoff">Ann _ (UDerivingOne strat deriv)</span>
+<span class="lineno">   83 </span>
+<span class="lineno">   84 </span>-- | A deriving clause with parentheses @ deriving (Show, Eq) @)
+<span class="lineno">   85 </span>pattern DerivingMulti :: InstanceHeadList -&gt; Deriving
+<span class="lineno">   86 </span>pattern DerivingMulti derivs &lt;- <span class="istickedoff">Ann _ (UDerivings _ derivs)</span>
+<span class="lineno">   87 </span>
+<span class="lineno">   88 </span>-- | A deriving clause with parentheses, with/witohut strategy (@ deriving stock (Show, Eq) @.
+<span class="lineno">   89 </span>pattern DerivingMulti' :: MaybeDeriveStrategy -&gt; InstanceHeadList -&gt; Deriving
+<span class="lineno">   90 </span>pattern DerivingMulti' strat derivs &lt;- <span class="nottickedoff">Ann _ (UDerivings strat derivs)</span>
+<span class="lineno">   91 </span>
+<span class="lineno">   92 </span>pattern DataKeyword :: DataOrNewtypeKeyword
+<span class="lineno">   93 </span>pattern DataKeyword &lt;- <span class="istickedoff">Ann _ UDataKeyword</span>
+<span class="lineno">   94 </span>
+<span class="lineno">   95 </span>pattern NewtypeKeyword :: DataOrNewtypeKeyword
+<span class="lineno">   96 </span>pattern NewtypeKeyword &lt;- <span class="nottickedoff">Ann _ UNewtypeKeyword</span>
+<span class="lineno">   97 </span>
+<span class="lineno">   98 </span>-- | A list of functional dependencies: @ | a -&gt; b, c -&gt; d @ separated by commas
+<span class="lineno">   99 </span>pattern FunDeps :: FunDepList -&gt; FunDeps
+<span class="lineno">  100 </span>pattern FunDeps fds &lt;- <span class="nottickedoff">Ann _ (UFunDeps fds)</span>
+<span class="lineno">  101 </span>
+<span class="lineno">  102 </span>-- | A functional dependency, given on the form @l1 ... ln -&gt; r1 ... rn@
+<span class="lineno">  103 </span>pattern FunDep :: NameList -&gt; NameList -&gt; FunDep
+<span class="lineno">  104 </span>pattern FunDep lhs rhs &lt;- <span class="nottickedoff">Ann _ (UFunDep lhs rhs)</span>
+<span class="lineno">  105 </span>
+<span class="lineno">  106 </span>-- * Type class declarations
+<span class="lineno">  107 </span>
+<span class="lineno">  108 </span>-- | Type class declaration (@ class X a [where f = ...] @)
+<span class="lineno">  109 </span>pattern ClassDecl :: MaybeContext -&gt; DeclHead -&gt; MaybeFunDeps -&gt; MaybeClassBody -&gt; Decl
+<span class="lineno">  110 </span>pattern ClassDecl ctx dh fdeps body &lt;- <span class="istickedoff">Ann _ (UClassDecl ctx dh fdeps body)</span>
+<span class="lineno">  111 </span>
+<span class="lineno">  112 </span>-- | The list of declarations that can appear in a typeclass
+<span class="lineno">  113 </span>pattern ClassBody :: ClassElementList -&gt; ClassBody
+<span class="lineno">  114 </span>pattern ClassBody body &lt;- <span class="nottickedoff">Ann _ (UClassBody body)</span>
+<span class="lineno">  115 </span>
+<span class="lineno">  116 </span>-- | Type signature: @ f :: A -&gt; B @ as a class member
+<span class="lineno">  117 </span>pattern ClassElemSig :: TypeSignature -&gt; ClassElement
+<span class="lineno">  118 </span>pattern ClassElemSig typeSig &lt;- <span class="nottickedoff">Ann _ (UClsSig typeSig)</span>
+<span class="lineno">  119 </span>
+<span class="lineno">  120 </span>-- | Default binding: @ f x = &quot;aaa&quot; @ as a class member
+<span class="lineno">  121 </span>pattern ClassElemDef :: ValueBind -&gt; ClassElement
+<span class="lineno">  122 </span>pattern ClassElemDef def &lt;- <span class="nottickedoff">Ann _ (UClsDef def)</span>
+<span class="lineno">  123 </span>
+<span class="lineno">  124 </span>-- | Declaration of an associated type synonym: @ type T x :: * @ in a class
+<span class="lineno">  125 </span>pattern ClassElemTypeFam :: DeclHead -&gt; MaybeTypeFamilySpec -&gt; ClassElement
+<span class="lineno">  126 </span>pattern ClassElemTypeFam dh tfSpec &lt;- <span class="istickedoff">Ann _ (UClsTypeFam (Ann _ (UTypeFamily dh tfSpec)))</span>
+<span class="lineno">  127 </span>
+<span class="lineno">  128 </span>-- | Declaration of an associated data synonym: @ data T x :: * @ in a class
+<span class="lineno">  129 </span>pattern ClassElemDataFam :: DeclHead -&gt; MaybeKindConstraint -&gt; ClassElement
+<span class="lineno">  130 </span>pattern ClassElemDataFam dh kind &lt;- <span class="istickedoff">Ann _ (UClsTypeFam (Ann _ (UDataFamily dh kind)))</span>
+<span class="lineno">  131 </span>
+<span class="lineno">  132 </span>-- | Default choice for type synonym: @ type T x = TE @ or @ type instance T x = TE @ in a class
+<span class="lineno">  133 </span>pattern ClsDefaultType :: DeclHead -&gt; Type -&gt; ClassElement
+<span class="lineno">  134 </span>pattern ClsDefaultType dh typ &lt;- <span class="istickedoff">Ann _ (UClsTypeDef dh typ)</span>
+<span class="lineno">  135 </span>
+<span class="lineno">  136 </span>-- | Default signature (by using @DefaultSignatures@): @ default enum :: (Generic a, GEnum (Rep a)) =&gt; [a] @
+<span class="lineno">  137 </span>pattern ClsDefaultSig :: Name -&gt; Type -&gt; ClassElement
+<span class="lineno">  138 </span>pattern ClsDefaultSig name typ &lt;- <span class="istickedoff">Ann _ (UClsDefSig name typ)</span>
+<span class="lineno">  139 </span>
+<span class="lineno">  140 </span>-- | Minimal pragma: @ {-\# MINIMAL (==) | (/=) \#-} @ in a class
+<span class="lineno">  141 </span>pattern ClsMinimal :: MinimalFormula -&gt; ClassElement
+<span class="lineno">  142 </span>pattern ClsMinimal min &lt;- <span class="nottickedoff">Ann _ (UClsMinimal min)</span>
+<span class="lineno">  143 </span>
+<span class="lineno">  144 </span>pattern MinimalName :: Name -&gt; MinimalFormula
+<span class="lineno">  145 </span>pattern MinimalName name &lt;- <span class="nottickedoff">Ann _ (UMinimalName name)</span>
+<span class="lineno">  146 </span>
+<span class="lineno">  147 </span>pattern MinimalParen :: MinimalFormula -&gt; MinimalFormula
+<span class="lineno">  148 </span>pattern MinimalParen min &lt;- <span class="nottickedoff">Ann _ (UMinimalParen min)</span>
+<span class="lineno">  149 </span>
+<span class="lineno">  150 </span>-- | One of the minimal formulas are needed (@ min1 | min2 @)
+<span class="lineno">  151 </span>pattern MinimalOr :: MinimalFormulaList -&gt; MinimalFormula
+<span class="lineno">  152 </span>pattern MinimalOr mins &lt;- <span class="nottickedoff">Ann _ (UMinimalOr mins)</span>
+<span class="lineno">  153 </span>
+<span class="lineno">  154 </span>-- | Both of the minimal formulas are needed (@ min1 , min2 @)
+<span class="lineno">  155 </span>pattern MinimalAnd :: MinimalFormulaList -&gt; MinimalFormula
+<span class="lineno">  156 </span>pattern MinimalAnd mins &lt;- <span class="nottickedoff">Ann _ (UMinimalAnd mins)</span>
+<span class="lineno">  157 </span>
+<span class="lineno">  158 </span>-- * Declaration heads
+<span class="lineno">  159 </span>
+<span class="lineno">  160 </span>-- | Type or class name as a declaration head
+<span class="lineno">  161 </span>pattern NameDeclHead :: Name -&gt; DeclHead
+<span class="lineno">  162 </span>pattern NameDeclHead name &lt;- <span class="istickedoff">Ann _ (UDeclHead name)</span>
+<span class="lineno">  163 </span>
+<span class="lineno">  164 </span>-- | Parenthesized type as a declaration head
+<span class="lineno">  165 </span>pattern ParenDeclHead :: DeclHead -&gt; DeclHead
+<span class="lineno">  166 </span>pattern ParenDeclHead dh &lt;- <span class="istickedoff">Ann _ (UDHParen dh)</span>
+<span class="lineno">  167 </span>
+<span class="lineno">  168 </span>-- | Type application as a declaration head
+<span class="lineno">  169 </span>pattern DeclHeadApp :: DeclHead -&gt; TyVar -&gt; DeclHead
+<span class="lineno">  170 </span>pattern DeclHeadApp dh tv &lt;- <span class="istickedoff">Ann _ (UDHApp dh tv)</span>
+<span class="lineno">  171 </span>
+<span class="lineno">  172 </span>-- | Infix type application as a declaration head
+<span class="lineno">  173 </span>pattern InfixDeclHead :: TyVar -&gt; Operator -&gt; TyVar -&gt; DeclHead
+<span class="lineno">  174 </span>pattern InfixDeclHead lhs op rhs &lt;- <span class="istickedoff">Ann _ (UDHInfix lhs op rhs)</span>
+<span class="lineno">  175 </span>
+<span class="lineno">  176 </span>-- * Type class instance declarations
+<span class="lineno">  177 </span>
+<span class="lineno">  178 </span>-- | Instance declaration (@ instance X T [where f = ...] @)
+<span class="lineno">  179 </span>pattern InstanceDecl :: InstanceRule -&gt; MaybeInstBody -&gt; Decl
+<span class="lineno">  180 </span>pattern InstanceDecl instRule body &lt;- <span class="istickedoff">Ann _ (UInstDecl _ instRule body)</span>
+<span class="lineno">  181 </span>
+<span class="lineno">  182 </span>-- | Instance body is the implementation of the class functions (@ where a x = 1; b x = 2 @)
+<span class="lineno">  183 </span>pattern InstanceBody :: InstBodyDeclList -&gt; InstBody
+<span class="lineno">  184 </span>pattern InstanceBody defs &lt;- <span class="nottickedoff">Ann _ (UInstBody defs)</span>
+<span class="lineno">  185 </span>
+<span class="lineno">  186 </span>-- | A normal value binding (@ f x = 12 @) inside a class instance
+<span class="lineno">  187 </span>pattern InstanceBind :: ValueBind -&gt; InstBodyDecl
+<span class="lineno">  188 </span>pattern InstanceBind bind &lt;- <span class="nottickedoff">Ann _ (UInstBodyNormalDecl bind)</span>
+<span class="lineno">  189 </span>
+<span class="lineno">  190 </span>-- | Type signature in instance definition with @InstanceSigs@
+<span class="lineno">  191 </span>pattern InstanceTypeSig :: TypeSignature -&gt; InstBodyDecl
+<span class="lineno">  192 </span>pattern InstanceTypeSig typeSig &lt;- <span class="nottickedoff">Ann _ (UInstBodyTypeSig typeSig)</span>
+<span class="lineno">  193 </span>
+<span class="lineno">  194 </span>-- | An associated type definition (@ type A X = B @) in a class instance
+<span class="lineno">  195 </span>pattern InstanceTypeFamilyDef :: TypeEqn -&gt; InstBodyDecl
+<span class="lineno">  196 </span>pattern InstanceTypeFamilyDef typeEq &lt;- <span class="istickedoff">Ann _ (UInstBodyTypeDecl typeEq)</span>
+<span class="lineno">  197 </span>
+<span class="lineno">  198 </span>-- | An associated data definition (@ data A X = B Int | C @) in a class instance
+<span class="lineno">  199 </span>pattern InstanceDataFamilyDef :: DataOrNewtypeKeyword -&gt; InstanceRule -&gt; ConDeclList -&gt; DerivingList -&gt; InstBodyDecl
+<span class="lineno">  200 </span>pattern InstanceDataFamilyDef keyw instRule cons derivs  &lt;- <span class="istickedoff">Ann _ (UInstBodyDataDecl keyw instRule cons derivs )</span>
+<span class="lineno">  201 </span>
+<span class="lineno">  202 </span>-- | An associated data definition as a GADT (@ data A X where B :: Int -&gt; A X @) in a class instance
+<span class="lineno">  203 </span>pattern InstanceDataFamilyGADTDef :: DataOrNewtypeKeyword -&gt; InstanceRule -&gt; MaybeKindConstraint -&gt; AnnList UGadtConDecl
+<span class="lineno">  204 </span>                                       -&gt; DerivingList -&gt; InstBodyDecl
+<span class="lineno">  205 </span>pattern InstanceDataFamilyGADTDef keyw instRule kind cons derivs &lt;- <span class="istickedoff">Ann _ (UInstBodyGadtDataDecl keyw instRule kind cons derivs)</span>
+<span class="lineno">  206 </span>
+<span class="lineno">  207 </span>-- | Specialize instance pragma in a class instance  (no phase selection is allowed)
+<span class="lineno">  208 </span>pattern InstanceSpecializePragma :: Type -&gt; InstBodyDecl
+<span class="lineno">  209 </span>pattern InstanceSpecializePragma typ &lt;- <span class="nottickedoff">Ann _ (USpecializeInstance typ)</span>
+<span class="lineno">  210 </span>
+<span class="lineno">  211 </span>-- | Instance head as an instance rule (@ X a =&gt; Y a @)
+<span class="lineno">  212 </span>pattern InstanceRule :: AnnMaybe (AnnListG UTyVar) -&gt; MaybeContext -&gt; InstanceHead -&gt; InstanceRule
+<span class="lineno">  213 </span>pattern InstanceRule tvs ctx ih &lt;- <span class="istickedoff">Ann _ (UInstanceRule tvs ctx ih)</span>
+<span class="lineno">  214 </span>
+<span class="lineno">  215 </span>-- | Type or class name as an instance head
+<span class="lineno">  216 </span>pattern InstanceHead :: Name -&gt; InstanceHead
+<span class="lineno">  217 </span>pattern InstanceHead name &lt;- <span class="istickedoff">Ann _ (UInstanceHeadCon name)</span>
+<span class="lineno">  218 </span>
+<span class="lineno">  219 </span>-- | Infix application of the type/class name to the left operand as an instance head
+<span class="lineno">  220 </span>pattern InfixInstanceHead :: Type -&gt; Operator -&gt; InstanceHead
+<span class="lineno">  221 </span>pattern InfixInstanceHead typ n &lt;- <span class="istickedoff">Ann _ (UInstanceHeadInfix typ n)</span>
+<span class="lineno">  222 </span>
+<span class="lineno">  223 </span>-- | Parenthesized instance head
+<span class="lineno">  224 </span>pattern ParenInstanceHead :: InstanceHead -&gt; InstanceHead
+<span class="lineno">  225 </span>pattern ParenInstanceHead ih &lt;- <span class="istickedoff">Ann _ (UInstanceHeadParen ih)</span>
+<span class="lineno">  226 </span>
+<span class="lineno">  227 </span>-- | Type application as an instance head
+<span class="lineno">  228 </span>pattern AppInstanceHead :: InstanceHead -&gt; Type -&gt; InstanceHead
+<span class="lineno">  229 </span>pattern AppInstanceHead fun arg &lt;- <span class="istickedoff">Ann _ (UInstanceHeadApp fun arg)</span>
+<span class="lineno">  230 </span>
+<span class="lineno">  231 </span>-- | @OVERLAP@ pragma
+<span class="lineno">  232 </span>pattern EnableOverlap :: OverlapPragma
+<span class="lineno">  233 </span>pattern EnableOverlap &lt;- <span class="nottickedoff">Ann _ UEnableOverlap</span>
+<span class="lineno">  234 </span>
+<span class="lineno">  235 </span>-- | @NO_OVERLAP@ pragma
+<span class="lineno">  236 </span>pattern DisableOverlap :: OverlapPragma
+<span class="lineno">  237 </span>pattern DisableOverlap &lt;- <span class="nottickedoff">Ann _ UDisableOverlap</span>
+<span class="lineno">  238 </span>
+<span class="lineno">  239 </span>-- | @OVERLAPPABLE@ pragma
+<span class="lineno">  240 </span>pattern Overlappable :: OverlapPragma
+<span class="lineno">  241 </span>pattern Overlappable &lt;- <span class="nottickedoff">Ann _ UOverlappable</span>
+<span class="lineno">  242 </span>
+<span class="lineno">  243 </span>-- | @OVERLAPPING@ pragma
+<span class="lineno">  244 </span>pattern Overlapping :: OverlapPragma
+<span class="lineno">  245 </span>pattern Overlapping &lt;- <span class="nottickedoff">Ann _ UOverlapping</span>
+<span class="lineno">  246 </span>
+<span class="lineno">  247 </span>-- | @OVERLAPS@ pragma
+<span class="lineno">  248 </span>pattern Overlaps :: OverlapPragma
+<span class="lineno">  249 </span>pattern Overlaps &lt;- <span class="nottickedoff">Ann _ UOverlaps</span>
+<span class="lineno">  250 </span>
+<span class="lineno">  251 </span>-- | @INCOHERENT@ pragma
+<span class="lineno">  252 </span>pattern IncoherentOverlap :: OverlapPragma
+<span class="lineno">  253 </span>pattern IncoherentOverlap &lt;- <span class="nottickedoff">Ann _ UIncoherentOverlap</span>
+<span class="lineno">  254 </span>
+<span class="lineno">  255 </span>-- * Type roles
+<span class="lineno">  256 </span>
+<span class="lineno">  257 </span>-- | Role annotations (@ type role Ptr representational @)
+<span class="lineno">  258 </span>pattern RoleDecl :: QualifiedName -&gt; RoleList -&gt; Decl
+<span class="lineno">  259 </span>pattern RoleDecl name roles &lt;- <span class="nottickedoff">Ann _ (URoleDecl name roles)</span>
+<span class="lineno">  260 </span>
+<span class="lineno">  261 </span>pattern NominalRole :: Role
+<span class="lineno">  262 </span>pattern NominalRole &lt;- <span class="nottickedoff">Ann _ UNominal</span>
+<span class="lineno">  263 </span>
+<span class="lineno">  264 </span>pattern RepresentationalRole :: Role
+<span class="lineno">  265 </span>pattern RepresentationalRole &lt;- <span class="nottickedoff">Ann _ URepresentational</span>
+<span class="lineno">  266 </span>
+<span class="lineno">  267 </span>pattern PhantomRole :: Role
+<span class="lineno">  268 </span>pattern PhantomRole &lt;- <span class="nottickedoff">Ann _ UPhantom</span>
+<span class="lineno">  269 </span>
+<span class="lineno">  270 </span>-- * Foreign imports and exports
+<span class="lineno">  271 </span>
+<span class="lineno">  272 </span>-- | Foreign import (@ foreign import foo :: Int -&gt; IO Int @)
+<span class="lineno">  273 </span>pattern ForeignImport :: CallConv -&gt; MaybeSafety -&gt; Name -&gt; Type -&gt; Decl
+<span class="lineno">  274 </span>pattern ForeignImport cc safety name typ &lt;- <span class="nottickedoff">Ann _ (UForeignImport cc safety name typ)</span>
+<span class="lineno">  275 </span>
+<span class="lineno">  276 </span>-- | Foreign export (@ foreign export ccall foo :: Int -&gt; IO Int @)
+<span class="lineno">  277 </span>pattern ForeignExport :: CallConv -&gt; Name -&gt; Type -&gt; Decl
+<span class="lineno">  278 </span>pattern ForeignExport cc name typ &lt;- <span class="nottickedoff">Ann _ (UForeignExport cc name typ)</span>
+<span class="lineno">  279 </span>
+<span class="lineno">  280 </span>-- | Specifies @stdcall@ calling convention for foreign import/export.
+<span class="lineno">  281 </span>pattern StdCall :: CallConv
+<span class="lineno">  282 </span>pattern StdCall &lt;- <span class="nottickedoff">Ann _ UStdCall</span>
+<span class="lineno">  283 </span>
+<span class="lineno">  284 </span>-- | Specifies @ccall@ calling convention for foreign import/export.
+<span class="lineno">  285 </span>pattern CCall :: CallConv
+<span class="lineno">  286 </span>pattern CCall &lt;- <span class="nottickedoff">Ann _ UCCall</span>
+<span class="lineno">  287 </span>
+<span class="lineno">  288 </span>-- | Specifies @capi@ calling convention for foreign import/export.
+<span class="lineno">  289 </span>pattern CApi :: CallConv
+<span class="lineno">  290 </span>pattern CApi &lt;- <span class="nottickedoff">Ann _ UCApi</span>
+<span class="lineno">  291 </span>
+<span class="lineno">  292 </span>-- | Specifies that the given foreign import is @unsafe@.
+<span class="lineno">  293 </span>pattern Unsafe :: Safety
+<span class="lineno">  294 </span>pattern Unsafe &lt;- <span class="nottickedoff">Ann _ UUnsafe</span>
+<span class="lineno">  295 </span>
+<span class="lineno">  296 </span>-- * Pattern synonyms
+<span class="lineno">  297 </span>
+<span class="lineno">  298 </span>-- | Pattern synonyms (@ pattern Arrow t1 t2 = App \&quot;-&gt;\&quot; [t1, t2] @)
+<span class="lineno">  299 </span>pattern PatternSynonym :: PatSynLhs -&gt; PatSynRhs -&gt; Decl
+<span class="lineno">  300 </span>pattern PatternSynonym lhs rhs &lt;- <span class="nottickedoff">Ann _ (UPatternSynonymDecl (Ann _ (UPatternSynonym lhs rhs)))</span>
+<span class="lineno">  301 </span>
+<span class="lineno">  302 </span>-- | A left hand side with a constructor name and arguments (@ Arrow t1 t2 @)
+<span class="lineno">  303 </span>pattern ConPatSyn :: Name -&gt; NameList -&gt; PatSynLhs
+<span class="lineno">  304 </span>pattern ConPatSyn con args &lt;- <span class="nottickedoff">Ann _ (UNormalPatSyn con args)</span>
+<span class="lineno">  305 </span>
+<span class="lineno">  306 </span>-- | An infix pattern synonym left-hand side (@ t1 :+: t2 @)
+<span class="lineno">  307 </span>pattern InfixPatSyn :: Name -&gt; Operator -&gt; Name -&gt; PatSynLhs
+<span class="lineno">  308 </span>pattern InfixPatSyn lhs op rhs &lt;- <span class="nottickedoff">Ann _ (UInfixPatSyn lhs op rhs)</span>
+<span class="lineno">  309 </span>
+<span class="lineno">  310 </span>-- | A record-style pattern synonym left-hand side (@ Arrow { arrowFrom, arrowTo } @)
+<span class="lineno">  311 </span>pattern RecordPatSyn :: Name -&gt; NameList -&gt; PatSynLhs
+<span class="lineno">  312 </span>pattern RecordPatSyn con args &lt;- <span class="nottickedoff">Ann _ (URecordPatSyn con args)</span>
+<span class="lineno">  313 </span>
+<span class="lineno">  314 </span>-- | An automatically two-way pattern synonym (@ = App \&quot;Int\&quot; [] @)
+<span class="lineno">  315 </span>pattern SymmetricPatSyn :: Pattern -&gt; PatSynRhs
+<span class="lineno">  316 </span>pattern SymmetricPatSyn pat &lt;- <span class="nottickedoff">Ann _ (UBidirectionalPatSyn pat AnnNothing)</span>
+<span class="lineno">  317 </span>
+<span class="lineno">  318 </span>-- | A pattern synonym that can be only used for pattenr matching but not for combining (@ &lt;- App \&quot;Int\&quot; [] @)
+<span class="lineno">  319 </span>pattern OneWayPatSyn :: Pattern -&gt; PatSynRhs
+<span class="lineno">  320 </span>pattern OneWayPatSyn pat &lt;- <span class="nottickedoff">Ann _ (UOneDirectionalPatSyn pat)</span>
+<span class="lineno">  321 </span>
+<span class="lineno">  322 </span>-- | A pattern synonym with the other direction explicitly specified (@ &lt;- App \&quot;Int\&quot; [] where Int = App \&quot;Int\&quot; [] @)
+<span class="lineno">  323 </span>pattern TwoWayPatSyn :: Pattern -&gt; MatchList -&gt; PatSynRhs
+<span class="lineno">  324 </span>pattern TwoWayPatSyn pat match &lt;- <span class="nottickedoff">Ann _ (UBidirectionalPatSyn pat (AnnJust (Ann _ (UPatSynWhere match))))</span>
+<span class="lineno">  325 </span>
+<span class="lineno">  326 </span>-- | Pattern type signature declaration (@ pattern Succ :: Int -&gt; Int @)
+<span class="lineno">  327 </span>pattern PatternSignatureDecl :: PatternSignature -&gt; Decl
+<span class="lineno">  328 </span>pattern PatternSignatureDecl patsig &lt;- <span class="nottickedoff">Ann _ (UPatTypeSigDecl patsig)</span>
+<span class="lineno">  329 </span>
+<span class="lineno">  330 </span>pattern PatternSignature :: NameList -&gt; Type -&gt; PatternSignature
+<span class="lineno">  331 </span>pattern PatternSignature name typ &lt;- <span class="nottickedoff">Ann _ (UPatternTypeSignature name typ)</span>
+<span class="lineno">  332 </span>
+<span class="lineno">  333 </span>-- * Type families
+<span class="lineno">  334 </span>
+<span class="lineno">  335 </span>-- | Type family declaration (@ type family A a :: * -&gt; * @)
+<span class="lineno">  336 </span>pattern TypeFamily :: DeclHead -&gt; MaybeTypeFamilySpec -&gt; Decl
+<span class="lineno">  337 </span>pattern TypeFamily dh famSpec &lt;- <span class="istickedoff">Ann _ (UTypeFamilyDecl (Ann _ (UTypeFamily dh famSpec)))</span>
+<span class="lineno">  338 </span>
+<span class="lineno">  339 </span>-- | Data family declaration (@ data family A a :: * -&gt; * @)
+<span class="lineno">  340 </span>pattern DataFamily :: DeclHead -&gt; MaybeKindConstraint -&gt; Decl
+<span class="lineno">  341 </span>pattern DataFamily dh kind &lt;- <span class="istickedoff">Ann _ (UTypeFamilyDecl (Ann _ (UDataFamily dh kind)))</span>
+<span class="lineno">  342 </span>
+<span class="lineno">  343 </span>-- | Type family instance declaration (@ type instance Fam T = AssignedT @)
+<span class="lineno">  344 </span>pattern TypeInstance :: InstanceRule -&gt; Type -&gt; Decl
+<span class="lineno">  345 </span>pattern TypeInstance instRule typ &lt;- <span class="istickedoff">Ann _ (UTypeInstDecl instRule typ)</span>
+<span class="lineno">  346 </span>
+<span class="lineno">  347 </span>-- | Data instance declaration (@ data instance Fam T = Con1 | Con2 @)
+<span class="lineno">  348 </span>pattern DataInstance :: DataOrNewtypeKeyword -&gt; InstanceRule -&gt; ConDeclList -&gt; DerivingList -&gt; Decl
+<span class="lineno">  349 </span>pattern DataInstance keyw instRule cons derivs  &lt;- <span class="istickedoff">Ann _ (UDataInstDecl keyw instRule cons derivs )</span>
+<span class="lineno">  350 </span>
+<span class="lineno">  351 </span>-- | GADT-style data instance declaration (@ data instance Fam T where ... @)
+<span class="lineno">  352 </span>pattern GadtDataInstance :: DataOrNewtypeKeyword -&gt; InstanceRule -&gt; MaybeKindConstraint -&gt; GadtConDeclList -&gt; Decl
+<span class="lineno">  353 </span>pattern GadtDataInstance keyw instRule kind cons  &lt;- <span class="istickedoff">Ann _ (UGDataInstDecl keyw instRule kind cons )</span>
+<span class="lineno">  354 </span>
+<span class="lineno">  355 </span>-- | A closed type family declaration
+<span class="lineno">  356 </span>pattern ClosedTypeFamily :: DeclHead -&gt; MaybeTypeFamilySpec -&gt; TypeEqnList -&gt; Decl
+<span class="lineno">  357 </span>pattern ClosedTypeFamily dh kind typeqs &lt;- <span class="istickedoff">Ann _ (UClosedTypeFamilyDecl dh kind typeqs)</span>
+<span class="lineno">  358 </span>
+<span class="lineno">  359 </span>-- | Specifies the kind of a type family (@ :: * -&gt; * @)
+<span class="lineno">  360 </span>pattern TypeFamilyKindSpec :: KindConstraint -&gt; TypeFamilySpec
+<span class="lineno">  361 </span>pattern TypeFamilyKindSpec kind &lt;- <span class="nottickedoff">Ann _ (UTypeFamilyKind kind)</span>
+<span class="lineno">  362 </span>
+<span class="lineno">  363 </span>-- | Specifies the injectivity of a type family (@ = r | r -&gt; a @)
+<span class="lineno">  364 </span>pattern TypeFamilyInjectivitySpec :: TyVar -&gt; NameList -&gt; TypeFamilySpec
+<span class="lineno">  365 </span>pattern TypeFamilyInjectivitySpec res dependent &lt;- <span class="nottickedoff">Ann _ (UTypeFamilyInjectivity (Ann _ (UInjectivityAnn res dependent)))</span>
+<span class="lineno">  366 </span>
+<span class="lineno">  367 </span>-- | Type equations as found in closed type families (@ T A = S @)
+<span class="lineno">  368 </span>pattern TypeEqn :: Type -&gt; Type -&gt; TypeEqn
+<span class="lineno">  369 </span>pattern TypeEqn lhs rhs &lt;- <span class="nottickedoff">Ann _ (UTypeEqn lhs rhs)</span>
+<span class="lineno">  370 </span>
+<span class="lineno">  371 </span>-- * Top level pragmas
+<span class="lineno">  372 </span>
+<span class="lineno">  373 </span>-- | Top-level pragmas
+<span class="lineno">  374 </span>pattern PragmaDecl :: TopLevelPragma -&gt; Decl
+<span class="lineno">  375 </span>pattern PragmaDecl pragma &lt;- <span class="nottickedoff">Ann _ (UPragmaDecl pragma)</span>
+<span class="lineno">  376 </span>
+<span class="lineno">  377 </span>-- | A pragma that introduces source rewrite rules (@ {-\# RULES &quot;map/map&quot; [2]  forall f g xs. map f (map g xs) = map (f.g) xs \#-} @)
+<span class="lineno">  378 </span>pattern RulePragma :: RuleList -&gt; TopLevelPragma
+<span class="lineno">  379 </span>pattern RulePragma rules &lt;- <span class="nottickedoff">Ann _ (URulePragma rules)</span>
+<span class="lineno">  380 </span>
+<span class="lineno">  381 </span>-- | A pragma that marks definitions as deprecated (@ {-\# DEPRECATED f &quot;f will be replaced by g&quot; \#-} @)
+<span class="lineno">  382 </span>pattern DeprPragma :: NameList -&gt; String -&gt; TopLevelPragma
+<span class="lineno">  383 </span>pattern DeprPragma defs msg &lt;- <span class="nottickedoff">Ann _ (UDeprPragma defs (AnnList [Ann _ (UStringNode msg)]))</span>
+<span class="lineno">  384 </span>
+<span class="lineno">  385 </span>-- | A pragma that marks definitions as deprecated (@ {-\# WARNING unsafePerformIO &quot;you should know what you are doing&quot; \#-} @)
+<span class="lineno">  386 </span>pattern WarningPragma :: NameList -&gt; String -&gt; TopLevelPragma
+<span class="lineno">  387 </span>pattern WarningPragma defs msg &lt;- <span class="nottickedoff">Ann _ (UWarningPragma defs (AnnList [Ann _ (UStringNode msg)]))</span>
+<span class="lineno">  388 </span>
+<span class="lineno">  389 </span>-- | A pragma that annotates a definition with an arbitrary value (@ {-\# ANN f 42 \#-} @)
+<span class="lineno">  390 </span>pattern AnnPragma :: AnnotationSubject -&gt; Expr -&gt; TopLevelPragma
+<span class="lineno">  391 </span>pattern AnnPragma subj ann &lt;- <span class="nottickedoff">Ann _ (UAnnPragma subj ann)</span>
+<span class="lineno">  392 </span>
+<span class="lineno">  393 </span>-- | A pragma that marks a function for inlining to the compiler (@ {-\# INLINE thenUs \#-} @)
+<span class="lineno">  394 </span>pattern InlinePragma :: MaybeConlikeAnnot -&gt; MaybePhaseControl -&gt; Name -&gt; TopLevelPragma
+<span class="lineno">  395 </span>pattern InlinePragma conlike phase name &lt;- <span class="nottickedoff">Ann _ (UInlinePragmaDecl (Ann _ (UInlinePragma conlike phase name)))</span>
+<span class="lineno">  396 </span>
+<span class="lineno">  397 </span>-- | A pragma that forbids a function from being inlined by the compiler (@ {-\# NOINLINE f \#-} @)
+<span class="lineno">  398 </span>pattern NoInlinePragma :: Name -&gt; TopLevelPragma
+<span class="lineno">  399 </span>pattern NoInlinePragma name &lt;- <span class="nottickedoff">Ann _ (UInlinePragmaDecl (Ann _ (UNoInlinePragma name)))</span>
+<span class="lineno">  400 </span>
+<span class="lineno">  401 </span>-- | A pragma that marks a function that it may be inlined by the compiler (@ {-\# INLINABLE thenUs \#-} @)
+<span class="lineno">  402 </span>pattern InlinablePragma :: MaybePhaseControl -&gt; Name -&gt; TopLevelPragma
+<span class="lineno">  403 </span>pattern InlinablePragma phase name &lt;- <span class="nottickedoff">Ann _ (UInlinePragmaDecl (Ann _ (UInlinablePragma phase name)))</span>
+<span class="lineno">  404 </span>
+<span class="lineno">  405 </span>-- | A pragma for maintaining line numbers in generated sources (@ {-\# LINE 123 \&quot;somefile\&quot; \#-} @)
+<span class="lineno">  406 </span>pattern LinePragma :: Int -&gt; MaybeStringNode -&gt; TopLevelPragma
+<span class="lineno">  407 </span>pattern LinePragma line filename &lt;- <span class="nottickedoff">Ann _ (ULinePragma (Ann _ (LineNumber line)) filename)</span>
+<span class="lineno">  408 </span>
+<span class="lineno">  409 </span>-- | A pragma that tells the compiler that a polymorph function should be optimized for a given type (@ {-\# SPECIALISE f :: Int -&gt; b -&gt; b \#-} @)
+<span class="lineno">  410 </span>pattern SpecializePragma :: MaybePhaseControl -&gt; Name -&gt; TypeList -&gt; TopLevelPragma
+<span class="lineno">  411 </span>pattern SpecializePragma phase def specTypes &lt;- <span class="nottickedoff">Ann _ (USpecializeDecl (Ann _ (USpecializePragma phase def specTypes)))</span>
+<span class="lineno">  412 </span>
+<span class="lineno">  413 </span>-- | Marks that the pragma should be applied from a given compile phase (@ [2] @)
+<span class="lineno">  414 </span>pattern PhaseControlFrom :: Integer -&gt; PhaseControl
+<span class="lineno">  415 </span>pattern PhaseControlFrom phaseNum &lt;- <span class="nottickedoff">Ann _ (UPhaseControl AnnNothing (AnnJust (Ann _ (PhaseNumber phaseNum))))</span>
+<span class="lineno">  416 </span>
+<span class="lineno">  417 </span>-- | Marks that the pragma should be applied until a given compile phase (@ [~2] @)
+<span class="lineno">  418 </span>pattern PhaseControlUntil :: Integer -&gt; PhaseControl
+<span class="lineno">  419 </span>pattern PhaseControlUntil phaseNum &lt;- <span class="nottickedoff">Ann _ (UPhaseControl (AnnJust _) (AnnJust (Ann _ (PhaseNumber phaseNum))))</span>
+<span class="lineno">  420 </span>
+<span class="lineno">  421 </span>-- | A rewrite rule (@ &quot;map/map&quot; forall f g xs. map f (map g xs) = map (f.g) xs @)
+<span class="lineno">  422 </span>pattern RewriteRule :: String -&gt; MaybePhaseControl -&gt; RuleVarList -&gt; Expr -&gt; Expr -&gt; Rule
+<span class="lineno">  423 </span>pattern RewriteRule name phase vars lhs rhs &lt;- <span class="nottickedoff">Ann _ (URule (Ann _ (UStringNode name)) phase vars lhs rhs)</span>
+<span class="lineno">  424 </span>
+<span class="lineno">  425 </span>-- | The definition with the given name is annotated
+<span class="lineno">  426 </span>pattern NameAnnotation :: Name -&gt; AnnotationSubject
+<span class="lineno">  427 </span>pattern NameAnnotation name &lt;- <span class="nottickedoff">Ann _ (UNameAnnotation name)</span>
+<span class="lineno">  428 </span>
+<span class="lineno">  429 </span>-- | A type with the given name is annotated
+<span class="lineno">  430 </span>pattern TypeAnnotation :: Name -&gt; AnnotationSubject
+<span class="lineno">  431 </span>pattern TypeAnnotation name &lt;- <span class="nottickedoff">Ann _ (UTypeAnnotation name)</span>
+<span class="lineno">  432 </span>
+<span class="lineno">  433 </span>-- | The whole module is annotated
+<span class="lineno">  434 </span>pattern ModuleAnnotation :: AnnotationSubject
+<span class="lineno">  435 </span>pattern ModuleAnnotation &lt;- <span class="nottickedoff">Ann _ UModuleAnnotation</span>
+<span class="lineno">  436 </span>
+<span class="lineno">  437 </span>-- | A @CONLIKE@ modifier for an @INLINE@ pragma.
+<span class="lineno">  438 </span>pattern ConlikeAnnotation :: ConlikeAnnot
+<span class="lineno">  439 </span>pattern ConlikeAnnotation &lt;- <span class="nottickedoff">Ann _ UConlikeAnnot</span>
 
 </pre>
 </body>
