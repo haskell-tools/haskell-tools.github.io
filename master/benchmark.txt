@@ -5,15 +5,43 @@ Still running (1 of 20): stack bench haskell-tools-cli
 
 [32;1mLog:[0m
 
+haskell-tools-cli-1.0.1.2: unregistering (missing dependencies: haskell-tools-daemon)
+haskell-tools-daemon-1.0.1.1: unregistering (local file changes: examples/Project/source-error/A.hs)
+haskell-tools-daemon-1.0.1.1: configure (lib + exe)
+haskell-tools-daemon-1.0.1.1: build (lib + exe)
+haskell-tools-daemon-1.0.1.1: copy/register
+haskell-tools-cli-1.0.1.2: configure (lib + exe + bench)
+Configuring haskell-tools-cli-1.0.1.2...
+haskell-tools-cli-1.0.1.2: build (lib + exe + bench)
+Preprocessing library for haskell-tools-cli-1.0.1.2..
+Building library for haskell-tools-cli-1.0.1.2..
+[1 of 2] Compiling Paths_haskell_tools_cli ( .stack-work/dist/x86_64-linux/Cabal-2.0.1.0/build/autogen/Paths_haskell_tools_cli.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.1.0/build/Paths_haskell_tools_cli.o )
+[2 of 2] Compiling Language.Haskell.Tools.Refactor.CLI ( Language/Haskell/Tools/Refactor/CLI.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.1.0/build/Language/Haskell/Tools/Refactor/CLI.o )
+Preprocessing benchmark 'cli-benchmark' for haskell-tools-cli-1.0.1.2..
+Building benchmark 'cli-benchmark' for haskell-tools-cli-1.0.1.2..
+[1 of 1] Compiling Main             ( benchmark/Main.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.1.0/build/cli-benchmark/cli-benchmark-tmp/Main.o ) [Language.Haskell.Tools.Refactor.CLI changed]
+Linking .stack-work/dist/x86_64-linux/Cabal-2.0.1.0/build/cli-benchmark/cli-benchmark ...
+Preprocessing executable 'ht-refact' for haskell-tools-cli-1.0.1.2..
+Building executable 'ht-refact' for haskell-tools-cli-1.0.1.2..
+[1 of 1] Compiling Main             ( exe/Main.hs, .stack-work/dist/x86_64-linux/Cabal-2.0.1.0/build/ht-refact/ht-refact-tmp/Main.o ) [Language.Haskell.Tools.Refactor.CLI changed]
+Linking .stack-work/dist/x86_64-linux/Cabal-2.0.1.0/build/ht-refact/ht-refact ...
+Preprocessing executable 'ht-test-stackage' for haskell-tools-cli-1.0.1.2..
+Building executable 'ht-test-stackage' for haskell-tools-cli-1.0.1.2..
+haskell-tools-cli-1.0.1.2: copy/register
+Installing library in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/lts-10.8/8.2.2/lib/x86_64-linux-ghc-8.2.2/haskell-tools-cli-1.0.1.2-7ZfhYGili1RD6XzJgdJjUs
+Installing executable ht-refact in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/lts-10.8/8.2.2/bin
+Installing executable ht-test-stackage in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/lts-10.8/8.2.2/bin
+Registering library for haskell-tools-cli-1.0.1.2..
 haskell-tools-cli-1.0.1.2: benchmarks
 Running 1 benchmarks...
 Benchmark cli-benchmark: RUNNING...
-[{"dt":{"day":28,"year":2018,"month":4},"bm":{"bmId":"full-1","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 182:8-182:36 parseResult","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 181:1 gDefined","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 47:46-47:64 linesFixed","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 46:1 cppIfDef","OrganizeImports Language.Preprocessor.Cpphs.CppIfdef","Exit"]},"ms":[2.8078130790017894,2.719400727,7862031723,1,null,null,null,null,null,null,null]},{"dt":{"day":28,"year":2018,"month":4},"bm":{"bmId":"full-2","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.MacroPass 96:29-96:47 tokenizeTT","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 90:11-90:67 fun","OrganizeImports Language.Preprocessor.Cpphs.MacroPass","Exit"]},"ms":[0.7544191710003361,0.732388491,2112447732,1,null,null,null,null,null,null,null]},{"dt":{"day":28,"year":2018,"month":4},"bm":{"bmId":"full-3","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 182:8-182:36 parseResult","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 181:1 gDefined","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 96:29-96:47 tokenizeTT","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 90:11-90:67 fun","ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 47:46-47:64 linesFixed","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 46:1 cppIfDef","OrganizeImports Language.Preprocessor.Cpphs.CppIfdef","Exit"]},"ms":[0.6245544339981279,0.6041578269999999,1748773612,1,null,null,null,null,null,null,null]},{"dt":{"day":28,"year":2018,"month":4},"bm":{"bmId":"3xGenerateTypeSignature","workingDir":"examples/CppHs","refactors":["GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","Exit"]},"ms":[0.6983888499999011,0.6721913970000006,1955517875,1,null,null,null,null,null,null,null]},{"dt":{"day":28,"year":2018,"month":4},"bm":{"bmId":"empty","workingDir":"examples/CppHs","refactors":["Exit"]},"ms":[0.6371756610024022,0.6167411549999997,1784153446,1,null,null,null,null,null,null,null]}]
+[{"dt":{"day":29,"year":2018,"month":4},"bm":{"bmId":"full-1","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 182:8-182:36 parseResult","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 181:1 gDefined","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 47:46-47:64 linesFixed","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 46:1 cppIfDef","OrganizeImports Language.Preprocessor.Cpphs.CppIfdef","Exit"]},"ms":[2.9300840180003433,2.904151025,8204365688,1,null,null,null,null,null,null,null]},{"dt":{"day":29,"year":2018,"month":4},"bm":{"bmId":"full-2","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.MacroPass 96:29-96:47 tokenizeTT","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 90:11-90:67 fun","OrganizeImports Language.Preprocessor.Cpphs.MacroPass","Exit"]},"ms":[0.7485870370001066,0.7265809069999998,2096050749,1,null,null,null,null,null,null,null]},{"dt":{"day":29,"year":2018,"month":4},"bm":{"bmId":"full-3","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 182:8-182:36 parseResult","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 181:1 gDefined","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 96:29-96:47 tokenizeTT","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 90:11-90:67 fun","ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 47:46-47:64 linesFixed","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 46:1 cppIfDef","OrganizeImports Language.Preprocessor.Cpphs.CppIfdef","Exit"]},"ms":[0.6337372840007447,0.6125832339999997,1774450401,1,null,null,null,null,null,null,null]},{"dt":{"day":29,"year":2018,"month":4},"bm":{"bmId":"3xGenerateTypeSignature","workingDir":"examples/CppHs","refactors":["GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","Exit"]},"ms":[0.6562083249991701,0.6347719779999998,1837374445,1,null,null,null,null,null,null,null]},{"dt":{"day":29,"year":2018,"month":4},"bm":{"bmId":"empty","workingDir":"examples/CppHs","refactors":["Exit"]},"ms":[0.6320758760011813,0.6103545500000003,1769915520,1,null,null,null,null,null,null,null]}]
 Execution times (cycles):
-# full-1: 7 862 031 723
-# full-2: 2 112 447 732
-# full-3: 1 748 773 612
-# 3xGenerateTypeSignature: 1 955 517 875
-# empty: 1 784 153 446
+# full-1: 8 204 365 688
+# full-2: 2 096 050 749
+# full-3: 1 774 450 401
+# 3xGenerateTypeSignature: 1 837 374 445
+# empty: 1 769 915 520
 Benchmark cli-benchmark: FINISH
-/home/travis/.travis/job_stages: line 169:  7218 Terminated              travis_jigger $! $timeout $cmd
+Completed 3 action(s).
+/home/travis/.travis/job_stages: line 169:  8528 Terminated              travis_jigger $! $timeout $cmd
