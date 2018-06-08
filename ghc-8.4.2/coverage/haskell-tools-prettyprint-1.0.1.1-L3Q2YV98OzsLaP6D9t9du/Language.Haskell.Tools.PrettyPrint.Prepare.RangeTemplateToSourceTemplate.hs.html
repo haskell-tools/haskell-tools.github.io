@@ -1,0 +1,128 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts #-}
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>-- | This module converts range templates into source templates.
+<span class="lineno">    4 </span>-- Basically it reads the source file and attaches parts of the source file to the AST elements that have the range of the given source code fragment.
+<span class="lineno">    5 </span>module Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplateToSourceTemplate where
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>import Control.Monad.Identity
+<span class="lineno">    8 </span>import Control.Monad.State
+<span class="lineno">    9 </span>import Control.Reference
+<span class="lineno">   10 </span>import Data.List as List
+<span class="lineno">   11 </span>import Data.List.Split (splitOn)
+<span class="lineno">   12 </span>import Data.Map as Map
+<span class="lineno">   13 </span>import Data.Ord (Ord(..), Ordering(..))
+<span class="lineno">   14 </span>import Data.Set as Set
+<span class="lineno">   15 </span>import FastString (mkFastString)
+<span class="lineno">   16 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   17 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplate
+<span class="lineno">   18 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate
+<span class="lineno">   19 </span>import SrcLoc
+<span class="lineno">   20 </span>import StringBuffer (StringBuffer, nextChar, atEnd)
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>rangeToSource :: SourceInfoTraversal node =&gt; StringBuffer -&gt; Ann node dom RngTemplateStage
+<span class="lineno">   23 </span>                                                          -&gt; Ann node dom SrcTemplateStage
+<span class="lineno">   24 </span><span class="decl"><span class="istickedoff">rangeToSource srcInput tree = let locIndices = getLocIndices tree</span>
+<span class="lineno">   25 </span><span class="spaces">                                  </span><span class="istickedoff">srcMap = mapLocIndices srcInput locIndices</span>
+<span class="lineno">   26 </span><span class="spaces">                               </span><span class="istickedoff">in applyFragments (Map.elems srcMap) tree</span></span>
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>-- maps could be strict
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>-- | Assigns an index (in the order they are used) for each range
+<span class="lineno">   31 </span>getLocIndices :: SourceInfoTraversal e =&gt; Ann e dom RngTemplateStage -&gt; Set (RealSrcLoc, Int)
+<span class="lineno">   32 </span><span class="decl"><span class="istickedoff">getLocIndices = snd . flip execState (0, Set.empty) .</span>
+<span class="lineno">   33 </span><span class="spaces">  </span><span class="istickedoff">sourceInfoTraverseDown (SourceInfoTrf</span>
+<span class="lineno">   34 </span><span class="spaces">      </span><span class="istickedoff">(\ni -&gt; do { mapM_ (\el -&gt; case getRangeElemSpan el of Just sp -&gt; modify (insertElem sp); _ -&gt; return <span class="nottickedoff">()</span>) (ni ^. rngTemplateNodeElems); return <span class="nottickedoff">ni</span> })</span>
+<span class="lineno">   35 </span><span class="spaces">      </span><span class="istickedoff">(\ni -&gt; do { mapM_ (modify . insertElem) (ni ^. rngTmpSeparators); return <span class="nottickedoff">ni</span> })</span>
+<span class="lineno">   36 </span><span class="spaces">      </span><span class="istickedoff">pure )</span>
+<span class="lineno">   37 </span><span class="spaces">    </span><span class="istickedoff">(return <span class="nottickedoff">()</span>) (return <span class="nottickedoff">()</span>)</span>
+<span class="lineno">   38 </span><span class="spaces">  </span><span class="istickedoff">where insertElem sp (i,m) = (i+1, Set.insert (realSrcSpanEnd sp, i) m)</span></span>
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>-- | Partitions the source file in the order where the parts are used in the AST
+<span class="lineno">   41 </span>mapLocIndices :: Ord k =&gt; StringBuffer -&gt; Set (RealSrcLoc, k) -&gt; Map k String
+<span class="lineno">   42 </span><span class="decl"><span class="istickedoff">mapLocIndices inp = (^. _1) . Set.foldl (\(new, str, pos) (sp, k) -&gt; let (rem, val, newPos) = takeSpan str pos sp</span>
+<span class="lineno">   43 </span><span class="spaces">                                                                      </span><span class="istickedoff">in (Map.insert k (reverse val) new, rem, newPos))</span>
+<span class="lineno">   44 </span><span class="spaces">                                        </span><span class="istickedoff">(Map.empty, inp, mkRealSrcLoc <span class="nottickedoff">(mkFastString &quot;&quot;)</span> 1 1)</span>
+<span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">where takeSpan :: StringBuffer -&gt; RealSrcLoc -&gt; RealSrcLoc -&gt; (StringBuffer, String, RealSrcLoc)</span>
+<span class="lineno">   46 </span><span class="spaces">        </span><span class="istickedoff">takeSpan str pos end = takeSpan' end (str,&quot;&quot;, pos)</span>
+<span class="lineno">   47 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   48 </span><span class="spaces">        </span><span class="istickedoff">takeSpan' :: RealSrcLoc -&gt; (StringBuffer, String, RealSrcLoc) -&gt; (StringBuffer, String, RealSrcLoc)</span>
+<span class="lineno">   49 </span><span class="spaces">        </span><span class="istickedoff">takeSpan' end (sb, taken, pos) | (srcLocLine pos `compare` srcLocLine end) `thenCmp` (srcLocCol pos `compare` srcLocCol end) == LT &amp;&amp; not (atEnd sb)</span>
+<span class="lineno">   50 </span><span class="spaces">          </span><span class="istickedoff">= let (c,rem) = nextChar sb in takeSpan' end (rem, c:taken, advanceSrcLoc pos c)</span>
+<span class="lineno">   51 </span><span class="spaces">        </span><span class="istickedoff">takeSpan' _ (rem, taken, pos) = (rem, taken, pos)</span>
+<span class="lineno">   52 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   53 </span><span class="spaces">        </span><span class="istickedoff">thenCmp EQ o2 = o2</span>
+<span class="lineno">   54 </span><span class="spaces">        </span><span class="istickedoff">thenCmp o1 _  = o1</span></span>
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>-- | Replaces the ranges in the AST with the source file parts
+<span class="lineno">   57 </span>applyFragments :: SourceInfoTraversal node =&gt; [String] -&gt; Ann node dom RngTemplateStage
+<span class="lineno">   58 </span>                                                       -&gt; Ann node dom SrcTemplateStage
+<span class="lineno">   59 </span><span class="decl"><span class="istickedoff">applyFragments srcs = flip evalState srcs</span>
+<span class="lineno">   60 </span><span class="spaces">  </span><span class="istickedoff">. sourceInfoTraverseDown (SourceInfoTrf</span>
+<span class="lineno">   61 </span><span class="spaces">     </span><span class="istickedoff">(\ni -&gt; do template &lt;- mapM getTextFor (ni ^. rngTemplateNodeElems)</span>
+<span class="lineno">   62 </span><span class="spaces">                </span><span class="istickedoff">return $ SourceTemplateNode (RealSrcSpan $ ni ^. rngTemplateNodeRange) (concat template) 0 Nothing)</span>
+<span class="lineno">   63 </span><span class="spaces">     </span><span class="istickedoff">(\(RangeTemplateList rng bef aft sep indented seps)</span>
+<span class="lineno">   64 </span><span class="spaces">         </span><span class="istickedoff">-&gt; do (own, rest) &lt;- List.splitAt (length seps) &lt;$&gt; get</span>
+<span class="lineno">   65 </span><span class="spaces">               </span><span class="istickedoff">put rest</span>
+<span class="lineno">   66 </span><span class="spaces">               </span><span class="istickedoff">return (SourceTemplateList (RealSrcSpan rng) bef aft sep indented (Prelude.zip (Prelude.map ((:[]) . NormalText) own) (Prelude.map <span class="nottickedoff">RealSrcSpan</span> seps)) 0 Nothing))</span>
+<span class="lineno">   67 </span><span class="spaces">     </span><span class="istickedoff">(\(RangeTemplateOpt rng bef aft) -&gt; return (SourceTemplateOpt (RealSrcSpan rng) bef aft <span class="nottickedoff">0</span> <span class="nottickedoff">Nothing</span>)))</span>
+<span class="lineno">   68 </span><span class="spaces">     </span><span class="istickedoff">(return <span class="nottickedoff">()</span>) (return <span class="nottickedoff">()</span>)</span>
+<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">where getTextFor RangeChildElem = return [ChildElem]</span>
+<span class="lineno">   70 </span><span class="spaces">        </span><span class="istickedoff">getTextFor (RangeElem rng) = do (src:rest) &lt;- get</span>
+<span class="lineno">   71 </span><span class="spaces">                                        </span><span class="istickedoff">put rest</span>
+<span class="lineno">   72 </span><span class="spaces">                                        </span><span class="istickedoff">return [TextElem [NormalText src] <span class="nottickedoff">(RealSrcSpan rng)</span>]</span></span>
+<span class="lineno">   73 </span>
+<span class="lineno">   74 </span>-- | Marks template elements in the AST that should always be present in the source code, regardless of their
+<span class="lineno">   75 </span>-- containing elements being deleted.
+<span class="lineno">   76 </span>-- Currently it recognizes CPP pragmas (lines starting with #)
+<span class="lineno">   77 </span>-- This function should only be applied to an AST if CPP is enabled.
+<span class="lineno">   78 </span>extractStayingElems :: SourceInfoTraversal node =&gt; Ann node dom SrcTemplateStage -&gt; Ann node dom SrcTemplateStage
+<span class="lineno">   79 </span><span class="decl"><span class="nottickedoff">extractStayingElems = runIdentity . sourceInfoTraverse (SourceInfoTrf</span>
+<span class="lineno">   80 </span><span class="spaces">    </span><span class="nottickedoff">(sourceTemplateNodeElems &amp; traversal &amp; sourceTemplateTextElem !- breakStaying)</span>
+<span class="lineno">   81 </span><span class="spaces">    </span><span class="nottickedoff">(srcTmpSeparators &amp; traversal &amp; _1 !- breakStaying)</span>
+<span class="lineno">   82 </span><span class="spaces">    </span><span class="nottickedoff">pure)</span>
+<span class="lineno">   83 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   84 </span><span class="spaces">    </span><span class="nottickedoff">where -- splits the elements into separate lines and then recombines them</span>
+<span class="lineno">   85 </span><span class="spaces">          </span><span class="nottickedoff">breakStaying :: [SourceTemplateTextElem] -&gt; [SourceTemplateTextElem]</span>
+<span class="lineno">   86 </span><span class="spaces">          </span><span class="nottickedoff">breakStaying = concat . Prelude.map (\(NormalText s) -&gt; toTxtElems s)</span>
+<span class="lineno">   87 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   88 </span><span class="spaces">          </span><span class="nottickedoff">toTxtElems :: String -&gt; [SourceTemplateTextElem]</span>
+<span class="lineno">   89 </span><span class="spaces">          </span><span class="nottickedoff">toTxtElems str = extractStaying $ splitOn &quot;\n&quot; $ str</span>
+<span class="lineno">   90 </span><span class="spaces">            </span><span class="nottickedoff">where</span>
+<span class="lineno">   91 </span><span class="spaces">              </span><span class="nottickedoff">extractStaying lines | not (any (&quot;#&quot; `isPrefixOf`) lines) = [NormalText str]</span>
+<span class="lineno">   92 </span><span class="spaces">              </span><span class="nottickedoff">extractStaying lines = Prelude.foldr appendTxt []</span>
+<span class="lineno">   93 </span><span class="spaces">                                       </span><span class="nottickedoff">$ Prelude.map (\ln -&gt; if &quot;#&quot; `isPrefixOf` ln then StayingText ln &quot;\n&quot; else NormalText ln) lines</span>
+<span class="lineno">   94 </span><span class="spaces">          </span><span class="nottickedoff">-- recombines the lines if they are both normal text</span>
+<span class="lineno">   95 </span><span class="spaces">          </span><span class="nottickedoff">-- otherwise it moves the windows '\r' characters to the correct position</span>
+<span class="lineno">   96 </span><span class="spaces">          </span><span class="nottickedoff">appendTxt (NormalText n1) (NormalText n2 : rest) = NormalText (n1 ++ '\n':n2) : rest</span>
+<span class="lineno">   97 </span><span class="spaces">          </span><span class="nottickedoff">appendTxt e (next@NormalText{} : ls) = case reverse (e ^. sourceTemplateText) of</span>
+<span class="lineno">   98 </span><span class="spaces">                                              </span><span class="nottickedoff">-- fix '\r' characters that are separated from '\n'</span>
+<span class="lineno">   99 </span><span class="spaces">                                    </span><span class="nottickedoff">'\r':_ -&gt; ((sourceTemplateText .- init) . (lineEndings .= &quot;\r\n&quot;) $ e) : (sourceTemplateText .- (&quot;\r\n&quot; ++) $ next) : ls</span>
+<span class="lineno">  100 </span><span class="spaces">                                    </span><span class="nottickedoff">_      -&gt; e : (sourceTemplateText .- ('\n':) $ next) : ls</span>
+<span class="lineno">  101 </span><span class="spaces">          </span><span class="nottickedoff">appendTxt e (next : ls) = case reverse (e ^. sourceTemplateText) of</span>
+<span class="lineno">  102 </span><span class="spaces">                                              </span><span class="nottickedoff">-- fix '\r' characters that are separated from '\n'</span>
+<span class="lineno">  103 </span><span class="spaces">                                    </span><span class="nottickedoff">'\r':_ -&gt; ((sourceTemplateText .- init) . (lineEndings .= &quot;\r\n&quot;) $ e) : NormalText &quot;\r\n&quot; : next : ls</span>
+<span class="lineno">  104 </span><span class="spaces">                                    </span><span class="nottickedoff">_      -&gt; e : NormalText &quot;\n&quot; : next : ls</span>
+<span class="lineno">  105 </span><span class="spaces">          </span><span class="nottickedoff">appendTxt e [] = [e]</span></span>
+
+</pre>
+</body>
+</html>

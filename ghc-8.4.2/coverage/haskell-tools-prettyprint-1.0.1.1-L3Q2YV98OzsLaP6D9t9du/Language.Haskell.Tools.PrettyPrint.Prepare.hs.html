@@ -1,0 +1,65 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | A module for preparing the representation of the AST for pretty printing.
+<span class="lineno">    2 </span>module Language.Haskell.Tools.PrettyPrint.Prepare
+<span class="lineno">    3 </span>  ( prepareAST, prepareASTCpp
+<span class="lineno">    4 </span>  -- comment handling
+<span class="lineno">    5 </span>  , placeComments, getNormalComments, getPragmaComments
+<span class="lineno">    6 </span>  -- generating source templates
+<span class="lineno">    7 </span>  , child, opt, list, after, followedBy, relativeIndented, minimumIndented, separatedBy, indented
+<span class="lineno">    8 </span>  -- references on source templates
+<span class="lineno">    9 </span>  , sourceTemplateNodeRange, sourceTemplateNodeElems
+<span class="lineno">   10 </span>  , sourceTemplateListRange, srcTmpListBefore, srcTmpListAfter, srcTmpDefaultSeparator, srcTmpIndented, srcTmpSeparators
+<span class="lineno">   11 </span>  , sourceTemplateOptRange, srcTmpOptBefore, srcTmpOptAfter
+<span class="lineno">   12 </span>  , SourceTemplateElem(..), sourceTemplateTextElem, sourceTemplateTextRange, SourceTemplateTextElem(..), sourceTemplateText, lineEndings, isStayingText
+<span class="lineno">   13 </span>  -- parts of the transformation, used for debugging purposes
+<span class="lineno">   14 </span>  , rangeToSource, fixRanges, cutUpRanges, getLocIndices, mapLocIndices, fixMainRange, extractStayingElems
+<span class="lineno">   15 </span>  , sourceTemplateMinimalIndent, srcTmpListMinimalIndent, srcTmpOptMinimalIndent
+<span class="lineno">   16 </span>  , TransformationProblem(..), BreakUpProblem(..)
+<span class="lineno">   17 </span>  ) where
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.PlaceComments (getNormalComments, getPragmaComments, placeComments)
+<span class="lineno">   20 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplate (TransformationProblem(..))
+<span class="lineno">   21 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplateToSourceTemplate (rangeToSource, getLocIndices, mapLocIndices, extractStayingElems)
+<span class="lineno">   22 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.RangeToRangeTemplate (cutUpRanges, fixRanges, BreakUpProblem(..))
+<span class="lineno">   23 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate
+<span class="lineno">   24 </span>import Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplateHelpers
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>import FastString (mkFastString)
+<span class="lineno">   27 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   28 </span>import SrcLoc
+<span class="lineno">   29 </span>import StringBuffer (StringBuffer, nextChar, atEnd)
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span>-- | Prepares the AST for pretty printing
+<span class="lineno">   32 </span>prepareAST :: StringBuffer -&gt; Ann UModule dom RangeStage -&gt; Ann UModule dom SrcTemplateStage
+<span class="lineno">   33 </span><span class="decl"><span class="istickedoff">prepareAST srcBuffer = rangeToSource srcBuffer . cutUpRanges . fixRanges</span></span>
+<span class="lineno">   34 </span>
+<span class="lineno">   35 </span>prepareASTCpp :: StringBuffer -&gt; Ann UModule dom RangeStage -&gt; Ann UModule dom SrcTemplateStage
+<span class="lineno">   36 </span><span class="decl"><span class="nottickedoff">prepareASTCpp srcBuffer = extractStayingElems . rangeToSource srcBuffer . cutUpRanges . fixRanges . fixMainRange srcBuffer</span></span>
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>fixMainRange :: StringBuffer -&gt; Ann UModule dom RangeStage -&gt; Ann UModule dom RangeStage
+<span class="lineno">   39 </span><span class="decl"><span class="nottickedoff">fixMainRange buffer mod = setRange (mkSrcSpan (srcSpanStart $ getRange mod) (RealSrcLoc (endPos startPos buffer))) mod</span>
+<span class="lineno">   40 </span><span class="spaces">  </span><span class="nottickedoff">where startPos = mkRealSrcLoc (mkFastString &quot;&quot;) 1 1</span>
+<span class="lineno">   41 </span><span class="spaces">        </span><span class="nottickedoff">endPos pos buf | atEnd buf = pos</span>
+<span class="lineno">   42 </span><span class="spaces">        </span><span class="nottickedoff">endPos pos buf = let (ch,buf') = nextChar buf in endPos (advanceSrcLoc pos ch) buf'</span></span>
+
+</pre>
+</body>
+</html>

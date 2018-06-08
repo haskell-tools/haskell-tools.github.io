@@ -1,0 +1,200 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>
+<span class="lineno">    2 </span>-- | The transformation monad carries the necessary information that is passed top-down
+<span class="lineno">    3 </span>-- during the conversion from GHC AST to our representation.
+<span class="lineno">    4 </span>module Language.Haskell.Tools.BackendGHC.Monad where
+<span class="lineno">    5 </span>
+<span class="lineno">    6 </span>import Control.Applicative ((&lt;|&gt;))
+<span class="lineno">    7 </span>import Control.Exception (Exception, evaluate, throw)
+<span class="lineno">    8 </span>import Control.Monad.Reader
+<span class="lineno">    9 </span>import Control.Reference
+<span class="lineno">   10 </span>import Data.Function (on)
+<span class="lineno">   11 </span>import Data.List
+<span class="lineno">   12 </span>import Data.Map as Map (Map, lookup, empty)
+<span class="lineno">   13 </span>import Data.Maybe
+<span class="lineno">   14 </span>import Data.Maybe (fromMaybe)
+<span class="lineno">   15 </span>import Data.Monoid (Monoid(..))
+<span class="lineno">   16 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   17 </span>import Language.Haskell.Tools.AST.SemaInfoTypes (PName(..), UsageSpec(..))
+<span class="lineno">   18 </span>import Language.Haskell.Tools.BackendGHC.GHCUtils (HsHasName(..), rdrNameStr)
+<span class="lineno">   19 </span>import Language.Haskell.Tools.BackendGHC.SourceMap (SourceMap, annotationsToSrcMap)
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>import ApiAnnotation (ApiAnnKey)
+<span class="lineno">   22 </span>import DynFlags (xopt_set)
+<span class="lineno">   23 </span>import ErrUtils (pprErrMsgBagWithLoc)
+<span class="lineno">   24 </span>import GHC
+<span class="lineno">   25 </span>import GHC.LanguageExtensions.Type (Extension(..))
+<span class="lineno">   26 </span>import HscTypes (HscEnv(..))
+<span class="lineno">   27 </span>import Name (Name, isVarName, isTyVarName)
+<span class="lineno">   28 </span>import OccName as GHC (HasOccName(..), mkOccEnv)
+<span class="lineno">   29 </span>import Outputable hiding (empty)
+<span class="lineno">   30 </span>import RdrName
+<span class="lineno">   31 </span>import RnUnbound (mkUnboundNameRdr)
+<span class="lineno">   32 </span>import RnExpr (rnLExpr)
+<span class="lineno">   33 </span>import TcRnMonad
+<span class="lineno">   34 </span>import TcRnTypes (TcGblEnv(..))
+<span class="lineno">   35 </span>
+<span class="lineno">   36 </span>-- | The transformation monad type
+<span class="lineno">   37 </span>type Trf = ReaderT TrfInput Ghc
+<span class="lineno">   38 </span>
+<span class="lineno">   39 </span>-- | The (immutable) data for the transformation
+<span class="lineno">   40 </span>data TrfInput
+<span class="lineno">   41 </span>  = TrfInput { <span class="istickedoff"><span class="decl"><span class="istickedoff">srcMap</span></span></span> :: SourceMap -- ^ The lexical tokens of the source file
+<span class="lineno">   42 </span>             , <span class="istickedoff"><span class="decl"><span class="istickedoff">pragmaComms</span></span></span> :: Map String [Located String] -- ^ Pragma comments
+<span class="lineno">   43 </span>             , <span class="istickedoff"><span class="decl"><span class="istickedoff">declsToInsert</span></span></span> :: [Ann UDecl (Dom GhcPs) RangeStage] -- ^ Declarations that are from the parsed AST
+<span class="lineno">   44 </span>             , <span class="istickedoff"><span class="decl"><span class="istickedoff">contRange</span></span></span> :: SrcSpan -- ^ The focus of the transformation
+<span class="lineno">   45 </span>             , <span class="istickedoff"><span class="decl"><span class="istickedoff">localsInScope</span></span></span> :: [[(GHC.Name, Maybe [UsageSpec], Maybe Name)]] -- ^ Local names visible
+<span class="lineno">   46 </span>             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">defining</span></span></span> :: Bool -- ^ True, if names are defined in the transformed AST element.
+<span class="lineno">   47 </span>             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">definingTypeVars</span></span></span> :: Bool -- ^ True, if type variable names are defined in the transformed AST element.
+<span class="lineno">   48 </span>             , <span class="istickedoff"><span class="decl"><span class="istickedoff">originalNames</span></span></span> :: Map SrcSpan RdrName -- ^ Stores the original format of names.
+<span class="lineno">   49 </span>             , <span class="istickedoff"><span class="decl"><span class="istickedoff">declSplices</span></span></span> :: [Located (HsSplice GhcPs)] -- ^ Location of the TH splices for extracting declarations from the renamed AST.
+<span class="lineno">   50 </span>                 -- ^ It is possible that multiple declarations stand in the place of the declaration splice or none at all.
+<span class="lineno">   51 </span>             , <span class="istickedoff"><span class="decl"><span class="istickedoff">typeSplices</span></span></span> :: [Located (HsSplice GhcPs)] -- ^ Type splices
+<span class="lineno">   52 </span>             , <span class="istickedoff"><span class="decl"><span class="istickedoff">exprSplices</span></span></span> :: [Located (HsSplice GhcPs)] -- ^ Expression splices
+<span class="lineno">   53 </span>             }
+<span class="lineno">   54 </span>
+<span class="lineno">   55 </span>trfInit :: Map ApiAnnKey [SrcSpan] -&gt; Map String [Located String] -&gt; TrfInput
+<span class="lineno">   56 </span><span class="decl"><span class="istickedoff">trfInit annots comments</span>
+<span class="lineno">   57 </span><span class="spaces">  </span><span class="istickedoff">= TrfInput { srcMap = annotationsToSrcMap annots</span>
+<span class="lineno">   58 </span><span class="spaces">             </span><span class="istickedoff">, pragmaComms = comments</span>
+<span class="lineno">   59 </span><span class="spaces">             </span><span class="istickedoff">, declsToInsert = <span class="nottickedoff">[]</span></span>
+<span class="lineno">   60 </span><span class="spaces">             </span><span class="istickedoff">, contRange = <span class="nottickedoff">noSrcSpan</span></span>
+<span class="lineno">   61 </span><span class="spaces">             </span><span class="istickedoff">, localsInScope = <span class="nottickedoff">[]</span></span>
+<span class="lineno">   62 </span><span class="spaces">             </span><span class="istickedoff">, defining = <span class="nottickedoff">False</span></span>
+<span class="lineno">   63 </span><span class="spaces">             </span><span class="istickedoff">, definingTypeVars = <span class="nottickedoff">False</span></span>
+<span class="lineno">   64 </span><span class="spaces">             </span><span class="istickedoff">, originalNames = <span class="nottickedoff">empty</span></span>
+<span class="lineno">   65 </span><span class="spaces">             </span><span class="istickedoff">, declSplices = <span class="nottickedoff">[]</span></span>
+<span class="lineno">   66 </span><span class="spaces">             </span><span class="istickedoff">, typeSplices = []</span>
+<span class="lineno">   67 </span><span class="spaces">             </span><span class="istickedoff">, exprSplices = []</span>
+<span class="lineno">   68 </span><span class="spaces">             </span><span class="istickedoff">}</span></span>
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>liftGhc :: Ghc a -&gt; Trf a
+<span class="lineno">   71 </span><span class="decl"><span class="istickedoff">liftGhc = lift</span></span>
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>-- | Perform the transformation taking names as defined.
+<span class="lineno">   74 </span>define :: Trf a -&gt; Trf a
+<span class="lineno">   75 </span><span class="decl"><span class="istickedoff">define = local (\s -&gt; s { defining = <span class="nottickedoff">True</span> })</span></span>
+<span class="lineno">   76 </span>
+<span class="lineno">   77 </span>-- | Perform the transformation taking type variable names as defined.
+<span class="lineno">   78 </span>defineTypeVars :: Trf a -&gt; Trf a
+<span class="lineno">   79 </span><span class="decl"><span class="istickedoff">defineTypeVars = local (\s -&gt; s { definingTypeVars = <span class="nottickedoff">True</span> })</span></span>
+<span class="lineno">   80 </span>
+<span class="lineno">   81 </span>-- | Transform as type variables
+<span class="lineno">   82 </span>typeVarTransform :: Trf a -&gt; Trf a
+<span class="lineno">   83 </span><span class="decl"><span class="nottickedoff">typeVarTransform = local (\s -&gt; s { defining = defining s || definingTypeVars s })</span></span>
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>-- | Transform a name as a type variable if it is one.
+<span class="lineno">   86 </span>transformingPossibleVar :: HsHasName n =&gt; n -&gt; Trf a -&gt; Trf a
+<span class="lineno">   87 </span><span class="decl"><span class="istickedoff">transformingPossibleVar n = case hsGetNames <span class="nottickedoff">Nothing</span> n of</span>
+<span class="lineno">   88 </span><span class="spaces">  </span><span class="istickedoff">[(name,_)] | <span class="tickonlyfalse">isVarName name || isTyVarName name</span> -&gt; <span class="nottickedoff">typeVarTransform</span></span>
+<span class="lineno">   89 </span><span class="spaces">  </span><span class="istickedoff">_                                               -&gt; id</span></span>
+<span class="lineno">   90 </span>
+<span class="lineno">   91 </span>-- | Perform the transformation putting the given definition in a new local scope.
+<span class="lineno">   92 </span>addEmptyScope :: Trf a -&gt; Trf a
+<span class="lineno">   93 </span><span class="decl"><span class="istickedoff">addEmptyScope = local (\s -&gt; s { localsInScope = [] : localsInScope s })</span></span>
+<span class="lineno">   94 </span>
+<span class="lineno">   95 </span>-- | Perform the transformation putting the given definition in a new local scope.
+<span class="lineno">   96 </span>addToScopeImported :: [(String, Maybe String, Bool, [PName GhcRn])] -&gt; Trf a -&gt; Trf a
+<span class="lineno">   97 </span><span class="decl"><span class="istickedoff">addToScopeImported ls = local (\s -&gt; s { localsInScope = concatMap (\(mn, asName, q, e) -&gt; map (\(PName n p) -&gt; (n, <span class="nottickedoff">Just [UsageSpec q mn (fromMaybe mn asName)]</span>, <span class="nottickedoff">p</span>)) e) ls : <span class="nottickedoff">localsInScope s</span> })</span></span>
+<span class="lineno">   98 </span>
+<span class="lineno">   99 </span>
+<span class="lineno">  100 </span>-- | Perform the transformation putting the given definition in a new local scope.
+<span class="lineno">  101 </span>addToScope :: HsHasName e =&gt; e -&gt; Trf a -&gt; Trf a
+<span class="lineno">  102 </span><span class="decl"><span class="istickedoff">addToScope e = local (\s -&gt; s { localsInScope = <span class="nottickedoff">map (\(n,p) -&gt; (n, Nothing, p)) (hsGetNames Nothing e)</span> : localsInScope s })</span></span>
+<span class="lineno">  103 </span>
+<span class="lineno">  104 </span>-- | Perform the transformation putting the given definitions in the current scope.
+<span class="lineno">  105 </span>addToCurrentScope :: HsHasName e =&gt; e -&gt; Trf a -&gt; Trf a
+<span class="lineno">  106 </span><span class="decl"><span class="istickedoff">addToCurrentScope e = local (\s -&gt; s { localsInScope = case localsInScope s of lastScope:rest -&gt; (map (\(n,p) -&gt; (n, <span class="nottickedoff">Nothing</span>, <span class="nottickedoff">p</span>)) (hsGetNames <span class="nottickedoff">Nothing</span> e) ++ lastScope):<span class="nottickedoff">rest</span></span>
+<span class="lineno">  107 </span><span class="spaces">                                                                               </span><span class="istickedoff">[]             -&gt; <span class="nottickedoff">[map (\(n,p) -&gt; (n, Nothing, p)) (hsGetNames Nothing e)]</span> })</span></span>
+<span class="lineno">  108 </span>
+<span class="lineno">  109 </span>-- | Performs the transformation given the tokens of the source file
+<span class="lineno">  110 </span>runTrf :: Map ApiAnnKey [SrcSpan] -&gt; Map String [Located String] -&gt; Trf a -&gt; Ghc a
+<span class="lineno">  111 </span><span class="decl"><span class="istickedoff">runTrf annots comments trf = runReaderT trf (trfInit annots comments)</span></span>
+<span class="lineno">  112 </span>
+<span class="lineno">  113 </span>setOriginalNames :: Map SrcSpan RdrName -&gt; Trf a -&gt; Trf a
+<span class="lineno">  114 </span><span class="decl"><span class="istickedoff">setOriginalNames names = local (\s -&gt; s { originalNames = names })</span></span>
+<span class="lineno">  115 </span>
+<span class="lineno">  116 </span>-- | Get the original format of a name (before scoping).
+<span class="lineno">  117 </span>getOriginalName :: RdrName -&gt; Trf String
+<span class="lineno">  118 </span><span class="decl"><span class="istickedoff">getOriginalName n = do sp &lt;- asks contRange</span>
+<span class="lineno">  119 </span><span class="spaces">                       </span><span class="istickedoff">asks (rdrNameStr . fromMaybe <span class="nottickedoff">n</span> . (Map.lookup sp) . originalNames)</span></span>
+<span class="lineno">  120 </span>
+<span class="lineno">  121 </span>-- | Set splices that must replace the elements that are generated into the AST representation.
+<span class="lineno">  122 </span>setSplices :: [Located (HsSplice GhcPs)] -&gt; [Located (HsSplice GhcPs)] -&gt; [Located (HsSplice GhcPs)] -&gt; Trf a -&gt; Trf a
+<span class="lineno">  123 </span><span class="decl"><span class="istickedoff">setSplices declSpls typeSpls exprSpls</span>
+<span class="lineno">  124 </span><span class="spaces">  </span><span class="istickedoff">= local (\s -&gt; s { typeSplices = typeSpls, exprSplices = exprSpls, declSplices = declSpls })</span></span>
+<span class="lineno">  125 </span>
+<span class="lineno">  126 </span>-- | Set the list of declarations that will be missing from AST
+<span class="lineno">  127 </span>setDeclsToInsert :: [Ann UDecl (Dom GhcPs) RangeStage] -&gt; Trf a -&gt; Trf a
+<span class="lineno">  128 </span><span class="decl"><span class="istickedoff">setDeclsToInsert decls = local (\s -&gt; s {declsToInsert = decls})</span></span>
+<span class="lineno">  129 </span>
+<span class="lineno">  130 </span>-- Remove the splice that has already been added
+<span class="lineno">  131 </span>exprSpliceInserted :: Located (HsSplice n) -&gt; Trf a -&gt; Trf a
+<span class="lineno">  132 </span><span class="decl"><span class="nottickedoff">exprSpliceInserted spl = local (\s -&gt; s { exprSplices = Prelude.filter (\sp -&gt; getLoc sp /= getLoc spl) (exprSplices s) })</span></span>
+<span class="lineno">  133 </span>
+<span class="lineno">  134 </span>-- Remove the splice that has already been added
+<span class="lineno">  135 </span>typeSpliceInserted :: Located (HsSplice n) -&gt; Trf a -&gt; Trf a
+<span class="lineno">  136 </span><span class="decl"><span class="nottickedoff">typeSpliceInserted spl = local (\s -&gt; s { typeSplices = Prelude.filter (\sp -&gt; getLoc sp /= getLoc spl) (typeSplices s) })</span></span>
+<span class="lineno">  137 </span>
+<span class="lineno">  138 </span>rdrSplice :: HsSplice GhcPs -&gt; Trf (HsSplice GhcRn)
+<span class="lineno">  139 </span><span class="decl"><span class="nottickedoff">rdrSplice spl = do</span>
+<span class="lineno">  140 </span><span class="spaces">    </span><span class="nottickedoff">rng &lt;- asks contRange</span>
+<span class="lineno">  141 </span><span class="spaces">    </span><span class="nottickedoff">env &lt;- liftGhc getSession</span>
+<span class="lineno">  142 </span><span class="spaces">    </span><span class="nottickedoff">locals &lt;- unifyScopes [] &lt;$&gt; asks localsInScope</span>
+<span class="lineno">  143 </span><span class="spaces">    </span><span class="nottickedoff">let createLocalGRE (n,imp,p) = [GRE n (maybe NoParent ParentIs p) (isNothing imp) (maybe [] (map createGREImport) imp) ]</span>
+<span class="lineno">  144 </span><span class="spaces">        </span><span class="nottickedoff">createGREImport (UsageSpec q useQ asQ) = ImpSpec (ImpDeclSpec (mkModuleName useQ) (mkModuleName asQ) q noSrcSpan) ImpAll</span>
+<span class="lineno">  145 </span><span class="spaces">    </span><span class="nottickedoff">let readEnv = mkOccEnv $ map (foldl1 (\e1 e2 -&gt; (fst e1, snd e1 ++ snd e2))) $ groupBy ((==) `on` fst) $ sortOn fst</span>
+<span class="lineno">  146 </span><span class="spaces">                   </span><span class="nottickedoff">$ map (\n -&gt; (GHC.occName ((^. _1) n), createLocalGRE n))</span>
+<span class="lineno">  147 </span><span class="spaces">                   </span><span class="nottickedoff">-- group up locals by name</span>
+<span class="lineno">  148 </span><span class="spaces">                   </span><span class="nottickedoff">$ map (foldl1 (\e1 e2 -&gt; ((^. _1) e1, (^. _2) e1 `mappend` (^. _2) e2, (^. _3) e1 &lt;|&gt; (^. _3) e2)))</span>
+<span class="lineno">  149 </span><span class="spaces">                   </span><span class="nottickedoff">$ groupBy ((==) `on` (^. _1)) $ sortBy (compare `on` (^. _1)) locals</span>
+<span class="lineno">  150 </span><span class="spaces">    </span><span class="nottickedoff">tcSpl &lt;- liftIO $ runTcInteractive env { hsc_dflags = xopt_set (hsc_dflags env) TemplateHaskellQuotes }</span>
+<span class="lineno">  151 </span><span class="spaces">      </span><span class="nottickedoff">$ updGblEnv (\gbl -&gt; gbl { tcg_rdr_env = readEnv })</span>
+<span class="lineno">  152 </span><span class="spaces">      </span><span class="nottickedoff">$ tcHsSplice' spl</span>
+<span class="lineno">  153 </span><span class="spaces">    </span><span class="nottickedoff">let typecheckErrors = showSDocUnsafe (vcat (pprErrMsgBagWithLoc (fst (fst tcSpl)))</span>
+<span class="lineno">  154 </span><span class="spaces">                                            </span><span class="nottickedoff">&lt;+&gt; vcat (pprErrMsgBagWithLoc (snd (fst tcSpl))))</span>
+<span class="lineno">  155 </span><span class="spaces">    </span><span class="nottickedoff">-- This function refers the ghc environment, we must evaluate the result or the reference</span>
+<span class="lineno">  156 </span><span class="spaces">    </span><span class="nottickedoff">-- may be kept preventing garbage collection.</span>
+<span class="lineno">  157 </span><span class="spaces">    </span><span class="nottickedoff">liftIO $ evaluate (snd tcSpl)</span>
+<span class="lineno">  158 </span><span class="spaces">    </span><span class="nottickedoff">return $ fromMaybe (throw $ SpliceInsertionProblem rng typecheckErrors)</span>
+<span class="lineno">  159 </span><span class="spaces">                       </span><span class="nottickedoff">(snd tcSpl)</span>
+<span class="lineno">  160 </span><span class="spaces">  </span><span class="nottickedoff">where</span>
+<span class="lineno">  161 </span><span class="spaces">    </span><span class="nottickedoff">tcHsSplice' (HsTypedSplice dec id e)</span>
+<span class="lineno">  162 </span><span class="spaces">      </span><span class="nottickedoff">= HsTypedSplice dec (mkUnboundNameRdr id) &lt;$&gt; (fst &lt;$&gt; rnLExpr e)</span>
+<span class="lineno">  163 </span><span class="spaces">    </span><span class="nottickedoff">tcHsSplice' (HsUntypedSplice dec id e)</span>
+<span class="lineno">  164 </span><span class="spaces">      </span><span class="nottickedoff">= HsUntypedSplice dec (mkUnboundNameRdr id) &lt;$&gt; (fst &lt;$&gt; rnLExpr e)</span>
+<span class="lineno">  165 </span><span class="spaces">    </span><span class="nottickedoff">tcHsSplice' (HsQuasiQuote id1 id2 sp fs)</span>
+<span class="lineno">  166 </span><span class="spaces">      </span><span class="nottickedoff">= pure $ HsQuasiQuote (mkUnboundNameRdr id1) (mkUnboundNameRdr id2) sp fs</span>
+<span class="lineno">  167 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  168 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  169 </span><span class="spaces">    </span><span class="nottickedoff">unifyScopes :: [GHC.Name] -&gt; [[(GHC.Name, Maybe [UsageSpec], Maybe GHC.Name)]] -&gt; [(GHC.Name, Maybe [UsageSpec], Maybe GHC.Name)]</span>
+<span class="lineno">  170 </span><span class="spaces">    </span><span class="nottickedoff">unifyScopes _ [] = []</span>
+<span class="lineno">  171 </span><span class="spaces">    </span><span class="nottickedoff">unifyScopes ex (sc:scs) = filteredSc ++ unifyScopes (ex ++ map (^. _1) filteredSc) scs</span>
+<span class="lineno">  172 </span><span class="spaces">      </span><span class="nottickedoff">where filteredSc = filter ((\s -&gt; isNothing $ find (\e -&gt; occName e == occName s) ex) . (^. _1)) sc</span></span>
+<span class="lineno">  173 </span>
+<span class="lineno">  174 </span>data SpliceInsertionProblem = SpliceInsertionProblem SrcSpan String
+<span class="lineno">  175 </span>  deriving <span class="decl"><span class="nottickedoff">Show</span></span>
+<span class="lineno">  176 </span>
+<span class="lineno">  177 </span>instance Exception SpliceInsertionProblem
+
+</pre>
+</body>
+</html>
