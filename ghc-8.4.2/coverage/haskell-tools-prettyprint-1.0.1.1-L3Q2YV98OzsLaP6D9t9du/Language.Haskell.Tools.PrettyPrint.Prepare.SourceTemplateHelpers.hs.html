@@ -41,7 +41,7 @@ span.spaces    { background: white }
 <span class="lineno">   22 </span><span class="decl"><span class="istickedoff">child = SourceTemplateNode noSrcSpan [ChildElem] <span class="nottickedoff">0</span> <span class="nottickedoff">Nothing</span></span></span>
 <span class="lineno">   23 </span>
 <span class="lineno">   24 </span>opt :: OptionalInfo SrcTemplateStage
-<span class="lineno">   25 </span><span class="decl"><span class="istickedoff">opt = SourceTemplateOpt noSrcSpan &quot;&quot; &quot;&quot; <span class="nottickedoff">0</span> <span class="nottickedoff">Nothing</span></span></span>
+<span class="lineno">   25 </span><span class="decl"><span class="istickedoff">opt = SourceTemplateOpt noSrcSpan &quot;&quot; &quot;&quot; 0 <span class="nottickedoff">Nothing</span></span></span>
 <span class="lineno">   26 </span>
 <span class="lineno">   27 </span>list :: ListInfo SrcTemplateStage
 <span class="lineno">   28 </span><span class="decl"><span class="istickedoff">list = SourceTemplateList noSrcSpan &quot;&quot; &quot;&quot; <span class="nottickedoff">&quot;&quot;</span> Nothing [] 0 Nothing</span></span>
@@ -73,7 +73,7 @@ span.spaces    { background: white }
 <span class="lineno">   54 </span>  <span class="decl"><span class="nottickedoff">relativeIndented i = srcTmpListRelPos .= Just i</span></span>
 <span class="lineno">   55 </span>
 <span class="lineno">   56 </span>instance RelativeIndent (OptionalInfo SrcTemplateStage) where
-<span class="lineno">   57 </span>  <span class="decl"><span class="nottickedoff">relativeIndented i = srcTmpOptRelPos .= Just i</span></span>
+<span class="lineno">   57 </span>  <span class="decl"><span class="istickedoff">relativeIndented i = srcTmpOptRelPos .= Just i</span></span>
 <span class="lineno">   58 </span>
 <span class="lineno">   59 </span>
 <span class="lineno">   60 </span>class MinimumIndent i where

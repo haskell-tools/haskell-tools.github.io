@@ -65,26 +65,26 @@ span.spaces    { background: white }
 <span class="lineno">   46 </span><span class="decl"><span class="istickedoff">createModuleInfo mod nameLoc (filter (not . ideclImplicit . unLoc) -&gt; imports) = do</span>
 <span class="lineno">   47 </span><span class="spaces">  </span><span class="istickedoff">let prelude = (xopt ImplicitPrelude $ ms_hspp_opts mod)</span>
 <span class="lineno">   48 </span><span class="spaces">                  </span><span class="istickedoff">&amp;&amp; all (\idecl -&gt; (&quot;Prelude&quot; /= (GHC.moduleNameString $ unLoc $ ideclName $ unLoc idecl))</span>
-<span class="lineno">   49 </span><span class="spaces">                                      </span><span class="istickedoff">|| <span class="nottickedoff">nameLoc == getLoc idecl</span>) imports</span>
+<span class="lineno">   49 </span><span class="spaces">                                      </span><span class="istickedoff">|| nameLoc == getLoc idecl) imports</span>
 <span class="lineno">   50 </span><span class="spaces">  </span><span class="istickedoff">(_, preludeImports) &lt;- if prelude then getImportedNames &quot;Prelude&quot; Nothing else return (<span class="nottickedoff">ms_mod mod</span>, [])</span>
 <span class="lineno">   51 </span><span class="spaces">  </span><span class="istickedoff">deps &lt;- if prelude then lift $ getDeps (Module baseUnitId (GHC.mkModuleName &quot;Prelude&quot;))</span>
-<span class="lineno">   52 </span><span class="spaces">                     </span><span class="istickedoff">else return <span class="nottickedoff">[]</span></span>
+<span class="lineno">   52 </span><span class="spaces">                     </span><span class="istickedoff">else return []</span>
 <span class="lineno">   53 </span><span class="spaces">  </span><span class="istickedoff">-- This function (via getInstances) refers the ghc environment,</span>
 <span class="lineno">   54 </span><span class="spaces">  </span><span class="istickedoff">-- we must evaluate the result or the reference may be kept preventing garbage collection.</span>
-<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">return $ mkModuleInfo (ms_mod mod) <span class="nottickedoff">(ms_hspp_opts mod)</span> <span class="nottickedoff">(case ms_hsc_src mod of HsSrcFile -&gt; False; _ -&gt; True)</span></span>
-<span class="lineno">   56 </span><span class="spaces">                        </span><span class="istickedoff">(forceElements preludeImports) <span class="nottickedoff">deps</span></span></span>
+<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">return $ mkModuleInfo (ms_mod mod) (ms_hspp_opts mod) (case ms_hsc_src mod of HsSrcFile -&gt; False; _ -&gt; <span class="nottickedoff">True</span>)</span>
+<span class="lineno">   56 </span><span class="spaces">                        </span><span class="istickedoff">(forceElements preludeImports) deps</span></span>
 <span class="lineno">   57 </span>
 <span class="lineno">   58 </span>-- | Creates a semantic information for a name
 <span class="lineno">   59 </span>createNameInfo :: IdP n -&gt; Trf (NameInfo n)
 <span class="lineno">   60 </span><span class="decl"><span class="istickedoff">createNameInfo name = do locals &lt;- asks localsInScope</span>
-<span class="lineno">   61 </span><span class="spaces">                         </span><span class="istickedoff">isDefining &lt;- asks <span class="nottickedoff">defining</span></span>
-<span class="lineno">   62 </span><span class="spaces">                         </span><span class="istickedoff">return (mkNameInfo locals <span class="nottickedoff">isDefining</span> name)</span></span>
+<span class="lineno">   61 </span><span class="spaces">                         </span><span class="istickedoff">isDefining &lt;- asks defining</span>
+<span class="lineno">   62 </span><span class="spaces">                         </span><span class="istickedoff">return (mkNameInfo locals isDefining name)</span></span>
 <span class="lineno">   63 </span>
 <span class="lineno">   64 </span>-- | Creates a semantic information for an ambiguous name (caused by field disambiguation for example)
 <span class="lineno">   65 </span>createAmbigousNameInfo :: RdrName -&gt; SrcSpan -&gt; Trf (NameInfo n)
-<span class="lineno">   66 </span><span class="decl"><span class="nottickedoff">createAmbigousNameInfo name span = do locals &lt;- asks localsInScope</span>
-<span class="lineno">   67 </span><span class="spaces">                                      </span><span class="nottickedoff">isDefining &lt;- asks defining</span>
-<span class="lineno">   68 </span><span class="spaces">                                      </span><span class="nottickedoff">return (mkAmbiguousNameInfo locals isDefining name span)</span></span>
+<span class="lineno">   66 </span><span class="decl"><span class="istickedoff">createAmbigousNameInfo name span = do locals &lt;- asks localsInScope</span>
+<span class="lineno">   67 </span><span class="spaces">                                      </span><span class="istickedoff">isDefining &lt;- asks defining</span>
+<span class="lineno">   68 </span><span class="spaces">                                      </span><span class="istickedoff">return (mkAmbiguousNameInfo locals isDefining <span class="nottickedoff">name</span> span)</span></span>
 <span class="lineno">   69 </span>
 <span class="lineno">   70 </span>-- | Creates a semantic information for an implicit name
 <span class="lineno">   71 </span>createImplicitNameInfo :: String -&gt; Trf (NameInfo n)
@@ -95,16 +95,16 @@ span.spaces    { background: white }
 <span class="lineno">   76 </span>
 <span class="lineno">   77 </span>-- | Creates a semantic information for an implicit name
 <span class="lineno">   78 </span>createImplicitFldInfo :: (GHCName n, HsHasName (IdP n)) =&gt; (a -&gt; IdP n) -&gt; [HsRecField n a] -&gt; Trf ImplicitFieldInfo
-<span class="lineno">   79 </span><span class="decl"><span class="nottickedoff">createImplicitFldInfo select flds = return (mkImplicitFieldInfo (map getLabelAndExpr flds))</span>
-<span class="lineno">   80 </span><span class="spaces">  </span><span class="nottickedoff">where getLabelAndExpr fld = ( getTheName $ unLoc (getFieldOccName (hsRecFieldLbl fld))</span>
-<span class="lineno">   81 </span><span class="spaces">                              </span><span class="nottickedoff">, getTheName $ select (hsRecFieldArg fld) )</span>
-<span class="lineno">   82 </span><span class="spaces">        </span><span class="nottickedoff">getTheName = (\case e:_ -&gt; e; [] -&gt; convProblem &quot;createImplicitFldInfo: missing names&quot;) . hsGetNames'</span></span>
+<span class="lineno">   79 </span><span class="decl"><span class="istickedoff">createImplicitFldInfo select flds = return (mkImplicitFieldInfo (map getLabelAndExpr flds))</span>
+<span class="lineno">   80 </span><span class="spaces">  </span><span class="istickedoff">where getLabelAndExpr fld = ( getTheName $ unLoc (getFieldOccName (hsRecFieldLbl fld))</span>
+<span class="lineno">   81 </span><span class="spaces">                              </span><span class="istickedoff">, getTheName $ select (hsRecFieldArg fld) )</span>
+<span class="lineno">   82 </span><span class="spaces">        </span><span class="istickedoff">getTheName = (\case e:_ -&gt; e; [] -&gt; <span class="nottickedoff">convProblem &quot;createImplicitFldInfo: missing names&quot;</span>) . hsGetNames'</span></span>
 <span class="lineno">   83 </span>
 <span class="lineno">   84 </span>-- | Adds semantic information to an impord declaration. See ImportInfo.
 <span class="lineno">   85 </span>createImportData :: forall r n . (GHCName r, HsHasName (IdP n)) =&gt; GHC.ImportDecl n -&gt; Trf (ImportInfo r)
 <span class="lineno">   86 </span><span class="decl"><span class="istickedoff">createImportData (GHC.ImportDecl _ name pkg _ _ _ _ _ declHiding) =</span>
 <span class="lineno">   87 </span><span class="spaces">  </span><span class="istickedoff">do (mod,importedNames) &lt;- getImportedNames (GHC.moduleNameString $ unLoc name) (fmap <span class="nottickedoff">(unpackFS . sl_fs)</span> pkg)</span>
-<span class="lineno">   88 </span><span class="spaces">     </span><span class="istickedoff">names &lt;- liftGhc $ filterM (checkImportVisible declHiding . <span class="nottickedoff">(^. pName)</span>) importedNames</span>
+<span class="lineno">   88 </span><span class="spaces">     </span><span class="istickedoff">names &lt;- liftGhc $ filterM (checkImportVisible declHiding . (^. pName)) importedNames</span>
 <span class="lineno">   89 </span><span class="spaces">     </span><span class="istickedoff">-- TODO: only use getFromNameUsing once</span>
 <span class="lineno">   90 </span><span class="spaces">     </span><span class="istickedoff">lookedUpNames &lt;- liftGhc $ mapM translatePName $ names</span>
 <span class="lineno">   91 </span><span class="spaces">     </span><span class="istickedoff">lookedUpImported &lt;- liftGhc $ mapM ((getFromNameUsing @r) getTopLevelId . (^. pName)) $ importedNames</span>
@@ -113,10 +113,10 @@ span.spaces    { background: white }
 <span class="lineno">   94 </span><span class="spaces">     </span><span class="istickedoff">-- we must evaluate the result or the reference may be kept preventing garbage collection.</span>
 <span class="lineno">   95 </span><span class="spaces">     </span><span class="istickedoff">return $ mkImportInfo <span class="nottickedoff">mod</span> (forceElements $ catMaybes lookedUpImported)</span>
 <span class="lineno">   96 </span><span class="spaces">                               </span><span class="istickedoff">(forceElements $ catMaybes lookedUpNames)</span>
-<span class="lineno">   97 </span><span class="spaces">                               </span><span class="istickedoff"><span class="nottickedoff">deps</span></span>
+<span class="lineno">   97 </span><span class="spaces">                               </span><span class="istickedoff">deps</span>
 <span class="lineno">   98 </span><span class="spaces">  </span><span class="istickedoff">where translatePName :: PName GhcRn -&gt; Ghc (Maybe (PName r))</span>
 <span class="lineno">   99 </span><span class="spaces">        </span><span class="istickedoff">translatePName (PName n p) = do n' &lt;- (getFromNameUsing @r) getTopLevelId n</span>
-<span class="lineno">  100 </span><span class="spaces">                                        </span><span class="istickedoff">p' &lt;- maybe (return Nothing) <span class="nottickedoff">((getFromNameUsing @r) getTopLevelId)</span> p</span>
+<span class="lineno">  100 </span><span class="spaces">                                        </span><span class="istickedoff">p' &lt;- maybe (return Nothing) ((getFromNameUsing @r) getTopLevelId) p</span>
 <span class="lineno">  101 </span><span class="spaces">                                        </span><span class="istickedoff">return (PName &lt;$&gt; n' &lt;*&gt; Just p')</span></span>
 <span class="lineno">  102 </span>
 <span class="lineno">  103 </span>getDeps :: Module -&gt; Ghc [Module]
@@ -124,14 +124,14 @@ span.spaces    { background: white }
 <span class="lineno">  105 </span><span class="spaces">  </span><span class="istickedoff">env &lt;- GHC.getSession</span>
 <span class="lineno">  106 </span><span class="spaces">  </span><span class="istickedoff">eps &lt;- liftIO $ hscEPS env</span>
 <span class="lineno">  107 </span><span class="spaces">  </span><span class="istickedoff">case lookupIfaceByModule <span class="nottickedoff">(hsc_dflags env)</span> (hsc_HPT env) (eps_PIT eps) mod of</span>
-<span class="lineno">  108 </span><span class="spaces">    </span><span class="istickedoff">Just ifc -&gt; <span class="nottickedoff">(mod :)</span> &lt;$&gt; mapM (liftIO . getModule env . fst) (dep_mods (mi_deps ifc))</span>
+<span class="lineno">  108 </span><span class="spaces">    </span><span class="istickedoff">Just ifc -&gt; (mod :) &lt;$&gt; mapM (liftIO . getModule env . fst) (dep_mods (mi_deps ifc))</span>
 <span class="lineno">  109 </span><span class="spaces">    </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">return [mod]</span></span>
 <span class="lineno">  110 </span><span class="spaces">  </span><span class="istickedoff">where getModule env modName = do</span>
 <span class="lineno">  111 </span><span class="spaces">          </span><span class="istickedoff">res &lt;- findHomeModule env modName</span>
-<span class="lineno">  112 </span><span class="spaces">          </span><span class="istickedoff">case res of Found _ m -&gt; <span class="nottickedoff">return m</span></span>
+<span class="lineno">  112 </span><span class="spaces">          </span><span class="istickedoff">case res of Found _ m -&gt; return m</span>
 <span class="lineno">  113 </span><span class="spaces">                      </span><span class="istickedoff">_ -&gt; case lookupPluginModuleWithSuggestions (hsc_dflags env) modName Nothing of</span>
-<span class="lineno">  114 </span><span class="spaces">                             </span><span class="istickedoff">LookupFound m _ -&gt; return <span class="nottickedoff">m</span></span>
-<span class="lineno">  115 </span><span class="spaces">                             </span><span class="istickedoff">LookupHidden hiddenPack hiddenMod -&gt; return <span class="nottickedoff">(head $ map fst hiddenMod ++ map fst hiddenPack)</span></span>
+<span class="lineno">  114 </span><span class="spaces">                             </span><span class="istickedoff">LookupFound m _ -&gt; return m</span>
+<span class="lineno">  115 </span><span class="spaces">                             </span><span class="istickedoff">LookupHidden hiddenPack hiddenMod -&gt; return (head $ map fst hiddenMod ++ <span class="nottickedoff">map fst hiddenPack</span>)</span>
 <span class="lineno">  116 </span><span class="spaces">                             </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">error $ &quot;getDeps: module not found: &quot; ++ GHC.moduleNameString modName</span></span></span>
 <span class="lineno">  117 </span>
 <span class="lineno">  118 </span>-- | Get names that are imported from a given import
@@ -152,8 +152,8 @@ span.spaces    { background: white }
 <span class="lineno">  133 </span>checkImportVisible :: (HsHasName (IdP name), GhcMonad m)
 <span class="lineno">  134 </span>                   =&gt; Maybe (Bool, Located [LIE name]) -&gt; GHC.Name -&gt; m Bool
 <span class="lineno">  135 </span><span class="decl"><span class="istickedoff">checkImportVisible (Just (isHiding, specs)) name</span>
-<span class="lineno">  136 </span><span class="spaces">  </span><span class="istickedoff">| <span class="nottickedoff">isHiding</span>  = <span class="nottickedoff">not . or @[] &lt;$&gt; mapM (`ieSpecMatches` name) (map unLoc (unLoc specs))</span></span>
-<span class="lineno">  137 </span><span class="spaces">  </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">or @[] &lt;$&gt; mapM (`ieSpecMatches` name) (map unLoc (unLoc specs))</span></span>
+<span class="lineno">  136 </span><span class="spaces">  </span><span class="istickedoff">| isHiding  = not . or @[] &lt;$&gt; mapM (`ieSpecMatches` name) (map unLoc (unLoc specs))</span>
+<span class="lineno">  137 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = or @[] &lt;$&gt; mapM (`ieSpecMatches` name) (map unLoc (unLoc specs))</span>
 <span class="lineno">  138 </span><span class="spaces"></span><span class="istickedoff">checkImportVisible _ _ = return True</span></span>
 <span class="lineno">  139 </span>
 <span class="lineno">  140 </span>-- | Forces strict evaluation of a list. Forces elements into WHNF.
@@ -163,28 +163,28 @@ span.spaces    { background: white }
 <span class="lineno">  144 </span><span class="spaces">                          </span><span class="istickedoff">in a `seq` res `seq` (a : ls)</span></span>
 <span class="lineno">  145 </span>
 <span class="lineno">  146 </span>ieSpecMatches :: (HsHasName (IdP name), GhcMonad m) =&gt; IE name -&gt; GHC.Name -&gt; m Bool
-<span class="lineno">  147 </span><span class="decl"><span class="nottickedoff">ieSpecMatches (concatMap hsGetNames' . HsSyn.ieNames -&gt; ls) name</span>
-<span class="lineno">  148 </span><span class="spaces">  </span><span class="nottickedoff">| name `elem` ls = return True</span>
-<span class="lineno">  149 </span><span class="spaces"></span><span class="nottickedoff">-- ieNames does not consider field names</span>
-<span class="lineno">  150 </span><span class="spaces"></span><span class="nottickedoff">ieSpecMatches (IEThingWith thing _ with flds) name</span>
-<span class="lineno">  151 </span><span class="spaces">  </span><span class="nottickedoff">| name `elem` concatMap hsGetNames' (map (ieWrappedName . unLoc) (thing : with) ++ map (flSelector . unLoc) flds)</span>
-<span class="lineno">  152 </span><span class="spaces">  </span><span class="nottickedoff">= return True</span>
-<span class="lineno">  153 </span><span class="spaces"></span><span class="nottickedoff">ieSpecMatches ie@(IEThingAll _) name | [n] &lt;- hsGetNames' (HsSyn.ieName ie), isTyConName n</span>
-<span class="lineno">  154 </span><span class="spaces">  </span><span class="nottickedoff">= do entity &lt;- lookupName n</span>
-<span class="lineno">  155 </span><span class="spaces">       </span><span class="nottickedoff">return $ case entity of Just (ATyCon tc)</span>
-<span class="lineno">  156 </span><span class="spaces">                                 </span><span class="nottickedoff">| Just cls &lt;- tyConClass_maybe tc</span>
-<span class="lineno">  157 </span><span class="spaces">                                     </span><span class="nottickedoff">-&gt; name `elem` map getName (classMethods cls)</span>
-<span class="lineno">  158 </span><span class="spaces">                                 </span><span class="nottickedoff">| otherwise -&gt; name `elem` concatMap (\dc -&gt; getName dc : map flSelector (dataConFieldLabels dc))</span>
-<span class="lineno">  159 </span><span class="spaces">                                                                      </span><span class="nottickedoff">(tyConDataCons tc)</span>
-<span class="lineno">  160 </span><span class="spaces">                               </span><span class="nottickedoff">_             -&gt; False</span>
-<span class="lineno">  161 </span><span class="spaces"></span><span class="nottickedoff">ieSpecMatches _ _ = return False</span></span>
+<span class="lineno">  147 </span><span class="decl"><span class="istickedoff">ieSpecMatches (concatMap hsGetNames' . HsSyn.ieNames -&gt; ls) name</span>
+<span class="lineno">  148 </span><span class="spaces">  </span><span class="istickedoff">| name `elem` ls = return True</span>
+<span class="lineno">  149 </span><span class="spaces"></span><span class="istickedoff">-- ieNames does not consider field names</span>
+<span class="lineno">  150 </span><span class="spaces"></span><span class="istickedoff">ieSpecMatches (IEThingWith thing _ with flds) name</span>
+<span class="lineno">  151 </span><span class="spaces">  </span><span class="istickedoff">| name `elem` concatMap hsGetNames' (map (ieWrappedName . unLoc) (thing : with) ++ map (flSelector . unLoc) flds)</span>
+<span class="lineno">  152 </span><span class="spaces">  </span><span class="istickedoff">= return True</span>
+<span class="lineno">  153 </span><span class="spaces"></span><span class="istickedoff">ieSpecMatches ie@(IEThingAll _) name | [n] &lt;- hsGetNames' (HsSyn.ieName ie), <span class="tickonlytrue">isTyConName n</span></span>
+<span class="lineno">  154 </span><span class="spaces">  </span><span class="istickedoff">= do entity &lt;- lookupName n</span>
+<span class="lineno">  155 </span><span class="spaces">       </span><span class="istickedoff">return $ case entity of Just (ATyCon tc)</span>
+<span class="lineno">  156 </span><span class="spaces">                                 </span><span class="istickedoff">| Just cls &lt;- tyConClass_maybe tc</span>
+<span class="lineno">  157 </span><span class="spaces">                                     </span><span class="istickedoff">-&gt; name `elem` map getName (classMethods cls)</span>
+<span class="lineno">  158 </span><span class="spaces">                                 </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> -&gt; name `elem` concatMap (\dc -&gt; getName dc : map flSelector (dataConFieldLabels dc))</span>
+<span class="lineno">  159 </span><span class="spaces">                                                                      </span><span class="istickedoff">(tyConDataCons tc)</span>
+<span class="lineno">  160 </span><span class="spaces">                               </span><span class="istickedoff">_             -&gt; <span class="nottickedoff">False</span></span>
+<span class="lineno">  161 </span><span class="spaces"></span><span class="istickedoff">ieSpecMatches _ _ = return False</span></span>
 <span class="lineno">  162 </span>
 <span class="lineno">  163 </span>noSemaInfo :: src -&gt; NodeInfo NoSemanticInfo src
 <span class="lineno">  164 </span><span class="decl"><span class="istickedoff">noSemaInfo = NodeInfo <span class="nottickedoff">mkNoSemanticInfo</span></span></span>
 <span class="lineno">  165 </span>
 <span class="lineno">  166 </span>-- | Creates a place for a missing node with a default location
 <span class="lineno">  167 </span>nothing :: String -&gt; String -&gt; Trf SrcLoc -&gt; Trf (AnnMaybeG e (Dom n) RangeStage)
-<span class="lineno">  168 </span><span class="decl"><span class="istickedoff">nothing bef aft pos = annNothing . noSemaInfo . OptionalPos <span class="nottickedoff">bef</span> <span class="nottickedoff">aft</span> &lt;$&gt; pos</span></span>
+<span class="lineno">  168 </span><span class="decl"><span class="istickedoff">nothing bef aft pos = annNothing . noSemaInfo . OptionalPos bef aft &lt;$&gt; pos</span></span>
 <span class="lineno">  169 </span>
 <span class="lineno">  170 </span>emptyList :: String -&gt; Trf SrcLoc -&gt; Trf (AnnListG e (Dom n) RangeStage)
 <span class="lineno">  171 </span><span class="decl"><span class="nottickedoff">emptyList sep ann = AnnListG &lt;$&gt; (noSemaInfo . ListPos &quot;&quot; &quot;&quot; sep Nothing &lt;$&gt; ann) &lt;*&gt; pure []</span></span>
@@ -202,29 +202,29 @@ span.spaces    { background: white }
 <span class="lineno">  183 </span><span class="spaces">                                  </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">(if isEmpty then aft else &quot;&quot;)</span> <span class="nottickedoff">sep</span> <span class="nottickedoff">Nothing</span> &lt;$&gt; ann) &lt;*&gt; ls</span></span>
 <span class="lineno">  184 </span>
 <span class="lineno">  185 </span>makeNonemptyList :: String -&gt; Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
-<span class="lineno">  186 </span><span class="decl"><span class="nottickedoff">makeNonemptyList sep ls = AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; sep Nothing noSrcLoc) &lt;$&gt; ls</span></span>
+<span class="lineno">  186 </span><span class="decl"><span class="istickedoff">makeNonemptyList sep ls = AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; <span class="nottickedoff">sep</span> Nothing noSrcLoc) &lt;$&gt; ls</span></span>
 <span class="lineno">  187 </span>
 <span class="lineno">  188 </span>-- | Creates a place for an indented list of nodes with a default place if the list is empty.
 <span class="lineno">  189 </span>makeIndentedList :: Trf SrcLoc -&gt; Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
 <span class="lineno">  190 </span><span class="decl"><span class="istickedoff">makeIndentedList ann ls = do</span>
 <span class="lineno">  191 </span><span class="spaces">  </span><span class="istickedoff">elems &lt;- ls</span>
 <span class="lineno">  192 </span><span class="spaces">  </span><span class="istickedoff">indent &lt;- elementsWithoutSemi elems</span>
-<span class="lineno">  193 </span><span class="spaces">  </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos  <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">&quot;\n&quot;</span> <span class="nottickedoff">(Just indent)</span> &lt;$&gt; ann) &lt;*&gt; pure elems</span></span>
+<span class="lineno">  193 </span><span class="spaces">  </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos  &quot;&quot; &quot;&quot; <span class="nottickedoff">&quot;\n&quot;</span> (Just indent) &lt;$&gt; ann) &lt;*&gt; pure elems</span></span>
 <span class="lineno">  194 </span>
 <span class="lineno">  195 </span>makeIndentedListNewlineBefore :: Trf SrcLoc -&gt; Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
 <span class="lineno">  196 </span><span class="decl"><span class="istickedoff">makeIndentedListNewlineBefore ann ls = do elems &lt;- ls</span>
 <span class="lineno">  197 </span><span class="spaces">                                          </span><span class="istickedoff">indent &lt;- elementsWithoutSemi elems</span>
-<span class="lineno">  198 </span><span class="spaces">                                          </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos (if <span class="tickonlyfalse">null elems</span> then <span class="nottickedoff">&quot;\n&quot;</span> else &quot;&quot;) &quot;&quot; <span class="nottickedoff">&quot;\n&quot;</span> (Just indent) &lt;$&gt; ann) &lt;*&gt; pure elems</span></span>
+<span class="lineno">  198 </span><span class="spaces">                                          </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos (if <span class="tickonlyfalse">null elems</span> then <span class="nottickedoff">&quot;\n&quot;</span> else &quot;&quot;) &quot;&quot; &quot;\n&quot; (Just indent) &lt;$&gt; ann) &lt;*&gt; pure elems</span></span>
 <span class="lineno">  199 </span>
 <span class="lineno">  200 </span>makeIndentedListBefore :: String -&gt; Trf SrcLoc -&gt; Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
-<span class="lineno">  201 </span><span class="decl"><span class="nottickedoff">makeIndentedListBefore bef sp ls = do elems &lt;- ls</span>
-<span class="lineno">  202 </span><span class="spaces">                                      </span><span class="nottickedoff">indent &lt;- elementsWithoutSemi elems</span>
-<span class="lineno">  203 </span><span class="spaces">                                      </span><span class="nottickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos (if null elems then bef else &quot;&quot;) &quot;&quot; &quot;\n&quot; (Just indent) &lt;$&gt; sp) &lt;*&gt; pure elems</span></span>
+<span class="lineno">  201 </span><span class="decl"><span class="istickedoff">makeIndentedListBefore bef sp ls = do elems &lt;- ls</span>
+<span class="lineno">  202 </span><span class="spaces">                                      </span><span class="istickedoff">indent &lt;- elementsWithoutSemi elems</span>
+<span class="lineno">  203 </span><span class="spaces">                                      </span><span class="istickedoff">AnnListG &lt;$&gt; (noSemaInfo . ListPos (if null elems then bef else &quot;&quot;) &quot;&quot; &quot;\n&quot; (Just indent) &lt;$&gt; sp) &lt;*&gt; pure elems</span></span>
 <span class="lineno">  204 </span>
 <span class="lineno">  205 </span>makeNonemptyIndentedList :: Trf [Ann e (Dom n) RangeStage] -&gt; Trf (AnnListG e (Dom n) RangeStage)
 <span class="lineno">  206 </span><span class="decl"><span class="istickedoff">makeNonemptyIndentedList ls = do elems &lt;- ls</span>
 <span class="lineno">  207 </span><span class="spaces">                                 </span><span class="istickedoff">indent &lt;- elementsWithoutSemi elems</span>
-<span class="lineno">  208 </span><span class="spaces">                                 </span><span class="istickedoff">AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; <span class="nottickedoff">&quot;\n&quot;</span> (Just <span class="nottickedoff">indent</span>) noSrcLoc) &lt;$&gt; pure elems</span></span>
+<span class="lineno">  208 </span><span class="spaces">                                 </span><span class="istickedoff">AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; <span class="nottickedoff">&quot;\n&quot;</span> (Just indent) noSrcLoc) &lt;$&gt; pure elems</span></span>
 <span class="lineno">  209 </span>
 <span class="lineno">  210 </span>-- | Get the elements where there is no ; before
 <span class="lineno">  211 </span>elementsWithoutSemi :: [Ann e (Dom n) RangeStage] -&gt; Trf [Bool]
@@ -234,7 +234,7 @@ span.spaces    { background: white }
 <span class="lineno">  215 </span><span class="spaces">          </span><span class="istickedoff">= let sepRange = mkSrcSpan lastEnd (srcSpanStart $ getRange elem)</span>
 <span class="lineno">  216 </span><span class="spaces">             </span><span class="istickedoff">in (:) &lt;$&gt; (not . (\l -&gt; isGoodSrcSpan l &amp;&amp; srcSpanStart l &lt; srcSpanEnd l) &lt;$&gt; focusOn sepRange (tokenLoc AnnSemi))</span>
 <span class="lineno">  217 </span><span class="spaces">                    </span><span class="istickedoff">&lt;*&gt; indentedElements' (srcSpanEnd $ getRange elem) rest</span>
-<span class="lineno">  218 </span><span class="spaces">        </span><span class="istickedoff">indentedElements' _ [] = return <span class="nottickedoff">[]</span></span></span>
+<span class="lineno">  218 </span><span class="spaces">        </span><span class="istickedoff">indentedElements' _ [] = return []</span></span>
 <span class="lineno">  219 </span>
 <span class="lineno">  220 </span>-- | Transform a located part of the AST by automatically transforming the location.
 <span class="lineno">  221 </span>-- Sets the source range for transforming children.
@@ -246,12 +246,12 @@ span.spaces    { background: white }
 <span class="lineno">  227 </span>
 <span class="lineno">  228 </span>-- | Transforms a possibly-missing node with the default location of the end of the focus.
 <span class="lineno">  229 </span>trfMaybe :: String -&gt; String -&gt; (Located a -&gt; Trf (Ann e (Dom n) RangeStage)) -&gt; Maybe (Located a) -&gt; Trf (AnnMaybeG e (Dom n) RangeStage)
-<span class="lineno">  230 </span><span class="decl"><span class="nottickedoff">trfMaybe bef aft f = trfMaybeDefault bef aft f atTheEnd</span></span>
+<span class="lineno">  230 </span><span class="decl"><span class="istickedoff">trfMaybe bef aft f = trfMaybeDefault <span class="nottickedoff">bef</span> <span class="nottickedoff">aft</span> f atTheEnd</span></span>
 <span class="lineno">  231 </span>
 <span class="lineno">  232 </span>-- | Transforms a possibly-missing node with a default location
 <span class="lineno">  233 </span>trfMaybeDefault :: String -&gt; String -&gt; (Located a -&gt; Trf (Ann e (Dom n) RangeStage)) -&gt; Trf SrcLoc -&gt; Maybe (Located a) -&gt; Trf (AnnMaybeG e (Dom n) RangeStage)
-<span class="lineno">  234 </span><span class="decl"><span class="istickedoff">trfMaybeDefault _   _   f _   (Just e) = <span class="nottickedoff">makeJust &lt;$&gt; f e</span></span>
-<span class="lineno">  235 </span><span class="spaces"></span><span class="istickedoff">trfMaybeDefault bef aft _ loc Nothing  = nothing <span class="nottickedoff">bef</span> <span class="nottickedoff">aft</span> loc</span></span>
+<span class="lineno">  234 </span><span class="decl"><span class="istickedoff">trfMaybeDefault _   _   f _   (Just e) = makeJust &lt;$&gt; f e</span>
+<span class="lineno">  235 </span><span class="spaces"></span><span class="istickedoff">trfMaybeDefault bef aft _ loc Nothing  = nothing bef aft loc</span></span>
 <span class="lineno">  236 </span>
 <span class="lineno">  237 </span>-- | Transform a located part of the AST by automatically transforming the location
 <span class="lineno">  238 </span>-- with correction by applying the given function. Sets the source range for transforming children.
@@ -261,24 +261,24 @@ span.spaces    { background: white }
 <span class="lineno">  242 </span>-- | Transform a located part of the AST by automatically transforming the location.
 <span class="lineno">  243 </span>-- Sets the source range for transforming children.
 <span class="lineno">  244 </span>trfMaybeLoc :: (a -&gt; Trf (Maybe (b (Dom n) RangeStage))) -&gt; SemanticInfo (Dom n) b -&gt; Located a -&gt; Trf (Maybe (Ann b (Dom n) RangeStage))
-<span class="lineno">  245 </span><span class="decl"><span class="nottickedoff">trfMaybeLoc f sema (L l e) = do fmap (Ann (NodeInfo sema (NodeSpan l))) &lt;$&gt; local (\s -&gt; s { contRange = l }) (f e)</span></span>
+<span class="lineno">  245 </span><span class="decl"><span class="istickedoff">trfMaybeLoc f sema (L l e) = do fmap (Ann (NodeInfo <span class="nottickedoff">sema</span> (NodeSpan l))) &lt;$&gt; local (\s -&gt; s { contRange = l }) (f e)</span></span>
 <span class="lineno">  246 </span>
 <span class="lineno">  247 </span>trfMaybeLocNoSema :: SemanticInfo (Dom n) b ~ NoSemanticInfo =&gt; (a -&gt; Trf (Maybe (b (Dom n) RangeStage))) -&gt; Located a -&gt; Trf (Maybe (Ann b (Dom n) RangeStage))
-<span class="lineno">  248 </span><span class="decl"><span class="nottickedoff">trfMaybeLocNoSema f = trfMaybeLoc f mkNoSemanticInfo</span></span>
+<span class="lineno">  248 </span><span class="decl"><span class="istickedoff">trfMaybeLocNoSema f = trfMaybeLoc f <span class="nottickedoff">mkNoSemanticInfo</span></span></span>
 <span class="lineno">  249 </span>
 <span class="lineno">  250 </span>-- | Creates a place for a list of nodes with the default place at the end of the focus if the list is empty.
 <span class="lineno">  251 </span>trfAnnList :: SemanticInfo (Dom n) b ~ NoSemanticInfo =&gt; String -&gt; (a -&gt; Trf (b (Dom n) RangeStage)) -&gt; [Located a] -&gt; Trf (AnnListG b (Dom n) RangeStage)
-<span class="lineno">  252 </span><span class="decl"><span class="nottickedoff">trfAnnList sep _ [] = makeList sep atTheEnd (pure [])</span>
-<span class="lineno">  253 </span><span class="spaces"></span><span class="nottickedoff">trfAnnList sep f ls = makeList sep (pure $ noSrcLoc) (mapM (trfLoc f (pure mkNoSemanticInfo)) ls)</span></span>
+<span class="lineno">  252 </span><span class="decl"><span class="istickedoff">trfAnnList sep _ [] = makeList <span class="nottickedoff">sep</span> atTheEnd (pure [])</span>
+<span class="lineno">  253 </span><span class="spaces"></span><span class="istickedoff">trfAnnList sep f ls = makeList <span class="nottickedoff">sep</span> (pure $ noSrcLoc) (mapM (trfLoc f (pure <span class="nottickedoff">mkNoSemanticInfo</span>)) ls)</span></span>
 <span class="lineno">  254 </span>
 <span class="lineno">  255 </span>trfAnnList' :: String -&gt; (Located a -&gt; Trf (Ann b (Dom n) RangeStage)) -&gt; [Located a] -&gt; Trf (AnnListG b (Dom n) RangeStage)
-<span class="lineno">  256 </span><span class="decl"><span class="nottickedoff">trfAnnList' sep _ [] = makeList sep atTheEnd (pure [])</span>
-<span class="lineno">  257 </span><span class="spaces"></span><span class="nottickedoff">trfAnnList' sep f ls = makeList sep (pure $ noSrcLoc) (mapM f ls)</span></span>
+<span class="lineno">  256 </span><span class="decl"><span class="istickedoff">trfAnnList' sep _ [] = makeList <span class="nottickedoff">sep</span> atTheEnd (pure [])</span>
+<span class="lineno">  257 </span><span class="spaces"></span><span class="istickedoff">trfAnnList' sep f ls = makeList <span class="nottickedoff">sep</span> (pure $ noSrcLoc) (mapM f ls)</span></span>
 <span class="lineno">  258 </span>
 <span class="lineno">  259 </span>
 <span class="lineno">  260 </span>-- | Creates a place for a list of nodes that cannot be empty.
 <span class="lineno">  261 </span>nonemptyAnnList :: [Ann e (Dom n) RangeStage] -&gt; AnnListG e (Dom n) RangeStage
-<span class="lineno">  262 </span><span class="decl"><span class="nottickedoff">nonemptyAnnList = AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; &quot;&quot; Nothing noSrcLoc)</span></span>
+<span class="lineno">  262 </span><span class="decl"><span class="istickedoff">nonemptyAnnList = AnnListG (noSemaInfo $ ListPos &quot;&quot; &quot;&quot; <span class="nottickedoff">&quot;&quot;</span> Nothing noSrcLoc)</span></span>
 <span class="lineno">  263 </span>
 <span class="lineno">  264 </span>-- | Creates an optional node from an existing element
 <span class="lineno">  265 </span>makeJust :: Ann e (Dom n) RangeStage -&gt; AnnMaybeG e (Dom n) RangeStage
@@ -300,18 +300,18 @@ span.spaces    { background: white }
 <span class="lineno">  281 </span><span class="decl"><span class="istickedoff">focusOn sp = local (\s -&gt; s { contRange = sp })</span></span>
 <span class="lineno">  282 </span>
 <span class="lineno">  283 </span>updateFocus :: (SrcSpan -&gt; Trf SrcSpan) -&gt; Trf a -&gt; Trf a
-<span class="lineno">  284 </span><span class="decl"><span class="nottickedoff">updateFocus f trf = do newSpan &lt;- f =&lt;&lt; asks contRange</span>
-<span class="lineno">  285 </span><span class="spaces">                       </span><span class="nottickedoff">focusOn newSpan trf</span></span>
+<span class="lineno">  284 </span><span class="decl"><span class="istickedoff">updateFocus f trf = do newSpan &lt;- f =&lt;&lt; asks contRange</span>
+<span class="lineno">  285 </span><span class="spaces">                       </span><span class="istickedoff">focusOn newSpan trf</span></span>
 <span class="lineno">  286 </span>
 <span class="lineno">  287 </span>focusAfterLoc :: SrcLoc -&gt; Trf a -&gt; Trf a
 <span class="lineno">  288 </span><span class="decl"><span class="istickedoff">focusAfterLoc loc = local (\s -&gt; s { contRange = mkSrcSpan loc (srcSpanEnd (contRange s)) })</span></span>
 <span class="lineno">  289 </span>
 <span class="lineno">  290 </span>focusBeforeLoc :: SrcLoc -&gt; Trf a -&gt; Trf a
-<span class="lineno">  291 </span><span class="decl"><span class="nottickedoff">focusBeforeLoc loc = local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) loc })</span></span>
+<span class="lineno">  291 </span><span class="decl"><span class="istickedoff">focusBeforeLoc loc = local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) loc })</span></span>
 <span class="lineno">  292 </span>
 <span class="lineno">  293 </span>-- | Focuses the transformation to go between tokens. The tokens must be found inside the current range.
 <span class="lineno">  294 </span>between :: AnnKeywordId -&gt; AnnKeywordId -&gt; Trf a -&gt; Trf a
-<span class="lineno">  295 </span><span class="decl"><span class="nottickedoff">between firstTok lastTok = focusAfter firstTok . focusBefore lastTok</span></span>
+<span class="lineno">  295 </span><span class="decl"><span class="istickedoff">between firstTok lastTok = focusAfter firstTok . focusBefore lastTok</span></span>
 <span class="lineno">  296 </span>
 <span class="lineno">  297 </span>-- | Focuses the transformation to go between tokens if they are present
 <span class="lineno">  298 </span>betweenIfPresent :: AnnKeywordId -&gt; AnnKeywordId -&gt; Trf a -&gt; Trf a
@@ -319,34 +319,34 @@ span.spaces    { background: white }
 <span class="lineno">  300 </span>
 <span class="lineno">  301 </span>-- | Focuses the transformation to be performed after the given token. The token must be found inside the current range.
 <span class="lineno">  302 </span>focusAfter :: AnnKeywordId -&gt; Trf a -&gt; Trf a
-<span class="lineno">  303 </span><span class="decl"><span class="nottickedoff">focusAfter firstTok trf</span>
-<span class="lineno">  304 </span><span class="spaces">  </span><span class="nottickedoff">= do firstToken &lt;- tokenLoc firstTok</span>
-<span class="lineno">  305 </span><span class="spaces">       </span><span class="nottickedoff">if (isGoodSrcSpan firstToken)</span>
-<span class="lineno">  306 </span><span class="spaces">          </span><span class="nottickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf</span>
-<span class="lineno">  307 </span><span class="spaces">          </span><span class="nottickedoff">else do rng &lt;- asks contRange</span>
-<span class="lineno">  308 </span><span class="spaces">                  </span><span class="nottickedoff">convertionProblem $ &quot;focusAfter: token not found in &quot; ++ show rng ++ &quot;: &quot; ++ show firstTok</span></span>
+<span class="lineno">  303 </span><span class="decl"><span class="istickedoff">focusAfter firstTok trf</span>
+<span class="lineno">  304 </span><span class="spaces">  </span><span class="istickedoff">= do firstToken &lt;- tokenLoc firstTok</span>
+<span class="lineno">  305 </span><span class="spaces">       </span><span class="istickedoff">if <span class="tickonlytrue">(isGoodSrcSpan firstToken)</span></span>
+<span class="lineno">  306 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf</span>
+<span class="lineno">  307 </span><span class="spaces">          </span><span class="istickedoff">else <span class="nottickedoff">do rng &lt;- asks contRange</span></span>
+<span class="lineno">  308 </span><span class="spaces">                  </span><span class="istickedoff"><span class="nottickedoff">convertionProblem $ &quot;focusAfter: token not found in &quot; ++ show rng ++ &quot;: &quot; ++ show firstTok</span></span></span>
 <span class="lineno">  309 </span>
 <span class="lineno">  310 </span>focusAfterIfPresent :: AnnKeywordId -&gt; Trf a -&gt; Trf a
 <span class="lineno">  311 </span><span class="decl"><span class="istickedoff">focusAfterIfPresent firstTok trf</span>
 <span class="lineno">  312 </span><span class="spaces">  </span><span class="istickedoff">= do firstToken &lt;- tokenLoc firstTok</span>
-<span class="lineno">  313 </span><span class="spaces">       </span><span class="istickedoff">if <span class="tickonlytrue">(isGoodSrcSpan firstToken)</span></span>
+<span class="lineno">  313 </span><span class="spaces">       </span><span class="istickedoff">if (isGoodSrcSpan firstToken)</span>
 <span class="lineno">  314 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf</span>
-<span class="lineno">  315 </span><span class="spaces">          </span><span class="istickedoff">else <span class="nottickedoff">trf</span></span></span>
+<span class="lineno">  315 </span><span class="spaces">          </span><span class="istickedoff">else trf</span></span>
 <span class="lineno">  316 </span>
 <span class="lineno">  317 </span>-- | Focuses the transformation to be performed before the given token. The token must be found inside the current range.
 <span class="lineno">  318 </span>focusBefore :: AnnKeywordId -&gt; Trf a -&gt; Trf a
-<span class="lineno">  319 </span><span class="decl"><span class="nottickedoff">focusBefore lastTok trf</span>
-<span class="lineno">  320 </span><span class="spaces">  </span><span class="nottickedoff">= do lastToken &lt;- tokenLocBack lastTok</span>
-<span class="lineno">  321 </span><span class="spaces">       </span><span class="nottickedoff">if (isGoodSrcSpan lastToken)</span>
-<span class="lineno">  322 </span><span class="spaces">          </span><span class="nottickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)}) trf</span>
-<span class="lineno">  323 </span><span class="spaces">          </span><span class="nottickedoff">else do rng &lt;- asks contRange</span>
-<span class="lineno">  324 </span><span class="spaces">                  </span><span class="nottickedoff">convertionProblem $ &quot;focusBefore: token not found in &quot; ++ show rng ++ &quot;: &quot; ++ show lastTok</span></span>
+<span class="lineno">  319 </span><span class="decl"><span class="istickedoff">focusBefore lastTok trf</span>
+<span class="lineno">  320 </span><span class="spaces">  </span><span class="istickedoff">= do lastToken &lt;- tokenLocBack lastTok</span>
+<span class="lineno">  321 </span><span class="spaces">       </span><span class="istickedoff">if <span class="tickonlytrue">(isGoodSrcSpan lastToken)</span></span>
+<span class="lineno">  322 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)}) trf</span>
+<span class="lineno">  323 </span><span class="spaces">          </span><span class="istickedoff">else <span class="nottickedoff">do rng &lt;- asks contRange</span></span>
+<span class="lineno">  324 </span><span class="spaces">                  </span><span class="istickedoff"><span class="nottickedoff">convertionProblem $ &quot;focusBefore: token not found in &quot; ++ show rng ++ &quot;: &quot; ++ show lastTok</span></span></span>
 <span class="lineno">  325 </span>
 <span class="lineno">  326 </span>focusBeforeIfPresent :: AnnKeywordId -&gt; Trf a -&gt; Trf a
 <span class="lineno">  327 </span><span class="decl"><span class="istickedoff">focusBeforeIfPresent lastTok trf</span>
 <span class="lineno">  328 </span><span class="spaces">  </span><span class="istickedoff">= do lastToken &lt;- tokenLocBack lastTok</span>
 <span class="lineno">  329 </span><span class="spaces">       </span><span class="istickedoff">if (isGoodSrcSpan lastToken)</span>
-<span class="lineno">  330 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = <span class="nottickedoff">mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)</span>}) trf</span>
+<span class="lineno">  330 </span><span class="spaces">          </span><span class="istickedoff">then local (\s -&gt; s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)}) trf</span>
 <span class="lineno">  331 </span><span class="spaces">          </span><span class="istickedoff">else trf</span></span>
 <span class="lineno">  332 </span>
 <span class="lineno">  333 </span>-- | Gets the position before the given token
@@ -377,7 +377,7 @@ span.spaces    { background: white }
 <span class="lineno">  358 </span><span class="decl"><span class="istickedoff">tokenLoc keyw = fromMaybe noSrcSpan &lt;$&gt; (getKeywordInside keyw &lt;$&gt; asks contRange &lt;*&gt; asks srcMap)</span></span>
 <span class="lineno">  359 </span>
 <span class="lineno">  360 </span>allTokenLoc :: AnnKeywordId -&gt; Trf [SrcSpan]
-<span class="lineno">  361 </span><span class="decl"><span class="nottickedoff">allTokenLoc keyw = getKeywordsInside keyw &lt;$&gt; asks contRange &lt;*&gt; asks srcMap</span></span>
+<span class="lineno">  361 </span><span class="decl"><span class="istickedoff">allTokenLoc keyw = getKeywordsInside keyw &lt;$&gt; asks contRange &lt;*&gt; asks srcMap</span></span>
 <span class="lineno">  362 </span>
 <span class="lineno">  363 </span>-- | Searches for a token backward inside the focus and retrieves its location
 <span class="lineno">  364 </span>tokenLocBack :: AnnKeywordId -&gt; Trf SrcSpan
@@ -385,14 +385,14 @@ span.spaces    { background: white }
 <span class="lineno">  366 </span>
 <span class="lineno">  367 </span>tokenBefore :: SrcLoc -&gt; AnnKeywordId -&gt; Trf SrcSpan
 <span class="lineno">  368 </span><span class="decl"><span class="istickedoff">tokenBefore loc keyw</span>
-<span class="lineno">  369 </span><span class="spaces">  </span><span class="istickedoff">= fromMaybe <span class="nottickedoff">noSrcSpan</span> &lt;$&gt; (getKeywordInsideBack keyw &lt;$&gt; (mkSrcSpan &lt;$&gt; (asks (srcSpanStart . contRange)) &lt;*&gt; pure loc) &lt;*&gt; asks srcMap)</span></span>
+<span class="lineno">  369 </span><span class="spaces">  </span><span class="istickedoff">= fromMaybe noSrcSpan &lt;$&gt; (getKeywordInsideBack keyw &lt;$&gt; (mkSrcSpan &lt;$&gt; (asks (srcSpanStart . contRange)) &lt;*&gt; pure loc) &lt;*&gt; asks srcMap)</span></span>
 <span class="lineno">  370 </span>
 <span class="lineno">  371 </span>allTokensAfter :: SrcLoc -&gt; Trf [(SrcSpan, AnnKeywordId)]
-<span class="lineno">  372 </span><span class="decl"><span class="nottickedoff">allTokensAfter loc = getTokensAfter loc &lt;$&gt; asks srcMap</span></span>
+<span class="lineno">  372 </span><span class="decl"><span class="istickedoff">allTokensAfter loc = getTokensAfter loc &lt;$&gt; asks srcMap</span></span>
 <span class="lineno">  373 </span>
 <span class="lineno">  374 </span>tokensAfter :: AnnKeywordId -&gt; Trf [SrcSpan]
-<span class="lineno">  375 </span><span class="decl"><span class="nottickedoff">tokensAfter keyw</span>
-<span class="lineno">  376 </span><span class="spaces">  </span><span class="nottickedoff">= map fst . filter ((==keyw) . snd) &lt;$&gt; (asks (srcSpanEnd . contRange) &gt;&gt;= allTokensAfter)</span></span>
+<span class="lineno">  375 </span><span class="decl"><span class="istickedoff">tokensAfter keyw</span>
+<span class="lineno">  376 </span><span class="spaces">  </span><span class="istickedoff">= map fst . filter ((==keyw) . snd) &lt;$&gt; (asks (srcSpanEnd . contRange) &gt;&gt;= allTokensAfter)</span></span>
 <span class="lineno">  377 </span>
 <span class="lineno">  378 </span>
 <span class="lineno">  379 </span>-- | Searches for tokens in the given order inside the parent element and returns their combined location
@@ -429,8 +429,8 @@ span.spaces    { background: white }
 <span class="lineno">  410 </span>
 <span class="lineno">  411 </span>-- | The location after the given string
 <span class="lineno">  412 </span>advanceStr :: String -&gt; SrcLoc -&gt; SrcLoc
-<span class="lineno">  413 </span><span class="decl"><span class="nottickedoff">advanceStr str (RealSrcLoc l) = RealSrcLoc $ foldl advanceSrcLoc l str</span>
-<span class="lineno">  414 </span><span class="spaces"></span><span class="nottickedoff">advanceStr _ l = l</span></span>
+<span class="lineno">  413 </span><span class="decl"><span class="istickedoff">advanceStr str (RealSrcLoc l) = RealSrcLoc $ foldl advanceSrcLoc l str</span>
+<span class="lineno">  414 </span><span class="spaces"></span><span class="istickedoff">advanceStr _ l = <span class="nottickedoff">l</span></span></span>
 <span class="lineno">  415 </span>
 <span class="lineno">  416 </span>-- | Update column information in a source location
 <span class="lineno">  417 </span>updateCol :: (Int -&gt; Int) -&gt; SrcLoc -&gt; SrcLoc
@@ -447,7 +447,7 @@ span.spaces    { background: white }
 <span class="lineno">  428 </span>
 <span class="lineno">  429 </span>-- | Combine source spans of elements into one that contains them all
 <span class="lineno">  430 </span>collectLocs :: [Located e] -&gt; SrcSpan
-<span class="lineno">  431 </span><span class="decl"><span class="nottickedoff">collectLocs = foldLocs . map getLoc</span></span>
+<span class="lineno">  431 </span><span class="decl"><span class="istickedoff">collectLocs = foldLocs . map getLoc</span></span>
 <span class="lineno">  432 </span>
 <span class="lineno">  433 </span>-- | Rearrange definitions to appear in the order they are defined in the source file.
 <span class="lineno">  434 </span>orderDefs :: [Ann e (Dom n) RangeStage] -&gt; [Ann e (Dom n) RangeStage]
@@ -459,17 +459,17 @@ span.spaces    { background: white }
 <span class="lineno">  440 </span>
 <span class="lineno">  441 </span>-- | Only keeps one of the elements that are on the same source location
 <span class="lineno">  442 </span>removeDuplicates :: [Located e] -&gt; [Located e]
-<span class="lineno">  443 </span><span class="decl"><span class="nottickedoff">removeDuplicates (fst:rest) = fst : removeDuplicates (filter ((/= getLoc fst) . getLoc) rest)</span>
-<span class="lineno">  444 </span><span class="spaces"></span><span class="nottickedoff">removeDuplicates [] = []</span></span>
+<span class="lineno">  443 </span><span class="decl"><span class="istickedoff">removeDuplicates (fst:rest) = fst : removeDuplicates (filter ((/= getLoc fst) . getLoc) rest)</span>
+<span class="lineno">  444 </span><span class="spaces"></span><span class="istickedoff">removeDuplicates [] = []</span></span>
 <span class="lineno">  445 </span>
 <span class="lineno">  446 </span>-- | Orders a list of elements to the order they are defined in the source file.
 <span class="lineno">  447 </span>orderLocated :: [Located e] -&gt; [Located e]
-<span class="lineno">  448 </span><span class="decl"><span class="nottickedoff">orderLocated = sortBy (compare `on` getLoc)</span></span>
+<span class="lineno">  448 </span><span class="decl"><span class="istickedoff">orderLocated = sortBy (compare `on` getLoc)</span></span>
 <span class="lineno">  449 </span>
 <span class="lineno">  450 </span>-- | Transform a list of definitions where the defined names are in scope for subsequent definitions
 <span class="lineno">  451 </span>trfScopedSequence :: HsHasName d =&gt; (d -&gt; Trf e) -&gt; [d] -&gt; Trf [e]
-<span class="lineno">  452 </span><span class="decl"><span class="nottickedoff">trfScopedSequence f (def:rest) = (:) &lt;$&gt; f def &lt;*&gt; addToScope def (trfScopedSequence f rest)</span>
-<span class="lineno">  453 </span><span class="spaces"></span><span class="nottickedoff">trfScopedSequence _ [] = pure []</span></span>
+<span class="lineno">  452 </span><span class="decl"><span class="istickedoff">trfScopedSequence f (def:rest) = (:) &lt;$&gt; f def &lt;*&gt; addToScope def (trfScopedSequence f rest)</span>
+<span class="lineno">  453 </span><span class="spaces"></span><span class="istickedoff">trfScopedSequence _ [] = pure []</span></span>
 <span class="lineno">  454 </span>
 <span class="lineno">  455 </span>-- | Splits a given string at whitespaces while calculating the source location of the fragments
 <span class="lineno">  456 </span>splitLocated :: Located String -&gt; [Located String]
@@ -481,7 +481,7 @@ span.spaces    { background: white }
 <span class="lineno">  462 </span><span class="spaces">  </span><span class="istickedoff">where splitLocated' :: String -&gt; RealSrcLoc -&gt; Maybe (RealSrcLoc, String) -&gt; [Located String]</span>
 <span class="lineno">  463 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc (Just (startLoc, str)) | pred c</span>
 <span class="lineno">  464 </span><span class="spaces">          </span><span class="istickedoff">= L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str) : splitLocated' rest (advanceSrcLoc currLoc c) Nothing</span>
-<span class="lineno">  465 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc Nothing | <span class="tickonlyfalse">pred c</span> = <span class="nottickedoff">splitLocated' rest (advanceSrcLoc currLoc c) Nothing</span></span>
+<span class="lineno">  465 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc Nothing | pred c = splitLocated' rest (advanceSrcLoc currLoc c) Nothing</span>
 <span class="lineno">  466 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc (Just (startLoc, str)) = splitLocated' rest (advanceSrcLoc currLoc c) (Just (startLoc, c:str))</span>
 <span class="lineno">  467 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' (c:rest) currLoc Nothing = splitLocated' rest (advanceSrcLoc currLoc c) (Just (currLoc, [c]))</span>
 <span class="lineno">  468 </span><span class="spaces">        </span><span class="istickedoff">splitLocated' [] currLoc (Just (startLoc, str)) = [L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str)]</span>
@@ -502,8 +502,8 @@ span.spaces    { background: white }
 <span class="lineno">  483 </span><span class="decl"><span class="nottickedoff">unhandledElementNoPpr label e = convertionProblem (&quot;Illegal &quot; ++ label ++ &quot;: (ctor: &quot; ++ show (toConstr e) ++ &quot;)&quot;)</span></span>
 <span class="lineno">  484 </span>
 <span class="lineno">  485 </span>instance Semigroup SrcSpan where
-<span class="lineno">  486 </span>  <span class="decl"><span class="nottickedoff">span1@(RealSrcSpan _) &lt;&gt; _     = span1</span>
-<span class="lineno">  487 </span><span class="spaces">  </span><span class="nottickedoff">_                     &lt;&gt; span2 = span2</span></span>
+<span class="lineno">  486 </span>  <span class="decl"><span class="istickedoff">span1@(RealSrcSpan _) &lt;&gt; _     = span1</span>
+<span class="lineno">  487 </span><span class="spaces">  </span><span class="istickedoff">_                     &lt;&gt; span2 = <span class="nottickedoff">span2</span></span></span>
 <span class="lineno">  488 </span>
 <span class="lineno">  489 </span>instance Monoid SrcSpan where
 <span class="lineno">  490 </span>  <span class="decl"><span class="nottickedoff">mempty = noSrcSpan</span></span>

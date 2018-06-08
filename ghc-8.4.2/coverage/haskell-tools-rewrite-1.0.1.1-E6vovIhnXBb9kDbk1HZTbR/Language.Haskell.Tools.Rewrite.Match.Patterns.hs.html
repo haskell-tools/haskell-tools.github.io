@@ -27,7 +27,7 @@ span.spaces    { background: white }
 <span class="lineno">    8 </span>
 <span class="lineno">    9 </span>-- | Pattern name binding
 <span class="lineno">   10 </span>pattern VarPat :: Name -&gt; Pattern
-<span class="lineno">   11 </span>pattern VarPat var &lt;- <span class="nottickedoff">Ann _ (UVarPat var)</span>
+<span class="lineno">   11 </span>pattern VarPat var &lt;- <span class="istickedoff">Ann _ (UVarPat var)</span>
 <span class="lineno">   12 </span>
 <span class="lineno">   13 </span>-- | Literal pattern
 <span class="lineno">   14 </span>pattern LitPat :: Literal -&gt; Pattern
@@ -35,15 +35,15 @@ span.spaces    { background: white }
 <span class="lineno">   16 </span>
 <span class="lineno">   17 </span>-- | Infix constructor application pattern (@ a :+: b @)
 <span class="lineno">   18 </span>pattern InfixAppPat :: Pattern -&gt; Operator -&gt; Pattern -&gt; Pattern
-<span class="lineno">   19 </span>pattern InfixAppPat lhs op rhs &lt;- <span class="nottickedoff">Ann _ (UInfixAppPat lhs op rhs)</span>
+<span class="lineno">   19 </span>pattern InfixAppPat lhs op rhs &lt;- <span class="istickedoff">Ann _ (UInfixAppPat lhs op rhs)</span>
 <span class="lineno">   20 </span>
 <span class="lineno">   21 </span>-- | Constructor application pattern (@ Point x y @)
 <span class="lineno">   22 </span>pattern AppPat :: Name -&gt; PatternList -&gt; Pattern
-<span class="lineno">   23 </span>pattern AppPat n pat &lt;- <span class="nottickedoff">Ann _ (UAppPat n pat)</span>
+<span class="lineno">   23 </span>pattern AppPat n pat &lt;- <span class="istickedoff">Ann _ (UAppPat n pat)</span>
 <span class="lineno">   24 </span>
 <span class="lineno">   25 </span>-- | Tuple pattern (@ (x,y) @)
 <span class="lineno">   26 </span>pattern TuplePat :: PatternList -&gt; Pattern
-<span class="lineno">   27 </span>pattern TuplePat pats &lt;- <span class="nottickedoff">Ann _ (UTuplePat pats)</span>
+<span class="lineno">   27 </span>pattern TuplePat pats &lt;- <span class="istickedoff">Ann _ (UTuplePat pats)</span>
 <span class="lineno">   28 </span>
 <span class="lineno">   29 </span>-- | Unboxed tuple pattern (@ (\# x, y \#) @)
 <span class="lineno">   30 </span>pattern UnboxTuplePat :: PatternList -&gt; Pattern
@@ -59,7 +59,7 @@ span.spaces    { background: white }
 <span class="lineno">   40 </span>
 <span class="lineno">   41 </span>-- | Parenthesised patterns
 <span class="lineno">   42 </span>pattern ParenPat :: Pattern -&gt; Pattern
-<span class="lineno">   43 </span>pattern ParenPat pat &lt;- <span class="nottickedoff">Ann _ (UParenPat pat)</span>
+<span class="lineno">   43 </span>pattern ParenPat pat &lt;- <span class="istickedoff">Ann _ (UParenPat pat)</span>
 <span class="lineno">   44 </span>
 <span class="lineno">   45 </span>-- | Record pattern (@ Point { x = 3, y } @)
 <span class="lineno">   46 </span>pattern RecPat :: Name -&gt; PatternFieldList -&gt; Pattern
@@ -79,15 +79,15 @@ span.spaces    { background: white }
 <span class="lineno">   60 </span>
 <span class="lineno">   61 </span>-- | Bang pattern (@ !x @)
 <span class="lineno">   62 </span>pattern BangPat :: Pattern -&gt; Pattern
-<span class="lineno">   63 </span>pattern BangPat pat &lt;- <span class="nottickedoff">Ann _ (UBangPat pat)</span>
+<span class="lineno">   63 </span>pattern BangPat pat &lt;- <span class="istickedoff">Ann _ (UBangPat pat)</span>
 <span class="lineno">   64 </span>
 <span class="lineno">   65 </span>-- | Pattern with explicit type signature (@ x :: Int @)
 <span class="lineno">   66 </span>pattern TypeSigPat :: Pattern -&gt; Type -&gt; Pattern
-<span class="lineno">   67 </span>pattern TypeSigPat pat typ &lt;- <span class="nottickedoff">Ann _ (UTypeSigPat pat typ)</span>
+<span class="lineno">   67 </span>pattern TypeSigPat pat typ &lt;- <span class="istickedoff">Ann _ (UTypeSigPat pat typ)</span>
 <span class="lineno">   68 </span>
 <span class="lineno">   69 </span>-- | View pattern (@ f -&gt; Just 1 @)
 <span class="lineno">   70 </span>pattern ViewPat :: Expr -&gt; Pattern -&gt; Pattern
-<span class="lineno">   71 </span>pattern ViewPat name pat &lt;- <span class="nottickedoff">Ann _ (UViewPat name pat)</span>
+<span class="lineno">   71 </span>pattern ViewPat name pat &lt;- <span class="istickedoff">Ann _ (UViewPat name pat)</span>
 <span class="lineno">   72 </span>
 <span class="lineno">   73 </span>-- | Splice patterns: @$(generateX inp)@
 <span class="lineno">   74 </span>pattern SplicePat :: Splice -&gt; Pattern
@@ -110,7 +110,7 @@ span.spaces    { background: white }
 <span class="lineno">   91 </span>
 <span class="lineno">   92 </span>-- | Wildcard field pattern (@ .. @)
 <span class="lineno">   93 </span>pattern FieldWildcardPattern :: FieldWildcard -&gt; PatternField
-<span class="lineno">   94 </span>pattern FieldWildcardPattern wildc &lt;- <span class="nottickedoff">Ann _ (UFieldWildcardPattern wildc)</span>
+<span class="lineno">   94 </span>pattern FieldWildcardPattern wildc &lt;- <span class="istickedoff">Ann _ (UFieldWildcardPattern wildc)</span>
 
 </pre>
 </body>

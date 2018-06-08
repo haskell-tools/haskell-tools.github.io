@@ -55,13 +55,13 @@ span.spaces    { background: white }
 <span class="lineno">   36 </span>
 <span class="lineno">   37 </span>-- | Creates an annotated qualified (non-operator) binding name: @A.B.f@ or @(A.B.+)@
 <span class="lineno">   38 </span>mkQualName' :: [String] -&gt; GHC.Name -&gt; Name
-<span class="lineno">   39 </span><span class="decl"><span class="nottickedoff">mkQualName' quals n | GHC.isSymOcc (GHC.getOccName n) = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) $ UParenName $ mkQualifiedName' quals n</span>
-<span class="lineno">   40 </span><span class="spaces">                    </span><span class="nottickedoff">| otherwise                       = mkAnn child $ UNormalName $ mkQualifiedName' quals n</span></span>
+<span class="lineno">   39 </span><span class="decl"><span class="istickedoff">mkQualName' quals n | <span class="tickonlyfalse">GHC.isSymOcc (GHC.getOccName n)</span> = <span class="nottickedoff">mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) $ UParenName $ mkQualifiedName' quals n</span></span>
+<span class="lineno">   40 </span><span class="spaces">                    </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span>                       = mkAnn child $ UNormalName $ mkQualifiedName' quals n</span></span>
 <span class="lineno">   41 </span>
 <span class="lineno">   42 </span>-- | Creates an annotated unqualified (non-operator) binding name: @f@ or @(+)@
 <span class="lineno">   43 </span>mkUnqualName' :: GHC.Name -&gt; Name
-<span class="lineno">   44 </span><span class="decl"><span class="istickedoff">mkUnqualName' n | <span class="tickonlytrue">GHC.isSymOcc (GHC.getOccName n)</span> = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) $ UParenName $ mkSimpleName' n</span>
-<span class="lineno">   45 </span><span class="spaces">                </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span>                       = <span class="nottickedoff">mkAnn child $ UNormalName $ mkSimpleName' n</span></span></span>
+<span class="lineno">   44 </span><span class="decl"><span class="istickedoff">mkUnqualName' n | GHC.isSymOcc (GHC.getOccName n) = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) $ UParenName $ mkSimpleName' n</span>
+<span class="lineno">   45 </span><span class="spaces">                </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span>                       = mkAnn child $ UNormalName $ mkSimpleName' n</span></span>
 <span class="lineno">   46 </span>
 <span class="lineno">   47 </span>mkNormalName :: QualifiedName -&gt; Name
 <span class="lineno">   48 </span><span class="decl"><span class="istickedoff">mkNormalName = mkAnn child . UNormalName</span></span>

@@ -1,0 +1,152 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts #-}
+<span class="lineno">    2 </span>{-# LANGUAGE LambdaCase #-}
+<span class="lineno">    3 </span>{-# LANGUAGE MonoLocalBinds #-}
+<span class="lineno">    4 </span>{-# LANGUAGE RankNTypes #-}
+<span class="lineno">    5 </span>{-# LANGUAGE TupleSections #-}
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>module Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
+<span class="lineno">    9 </span>  ( module Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
+<span class="lineno">   10 </span>  , module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+<span class="lineno">   11 </span>  ) where
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+<span class="lineno">   14 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
+<span class="lineno">   15 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.SupportedExtensions (isSupported)
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>import Language.Haskell.Tools.Refactor hiding (LambdaCase)
+<span class="lineno">   18 </span>import Language.Haskell.Tools.Refactor.Utils.Extensions
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>import GHC (Ghc(..))
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>import Control.Reference
+<span class="lineno">   23 </span>import Data.Char (isAlphaNum)
+<span class="lineno">   24 </span>import Data.Function (on)
+<span class="lineno">   25 </span>import Data.Maybe (mapMaybe)
+<span class="lineno">   26 </span>import Data.List
+<span class="lineno">   27 </span>import qualified Data.Map.Strict as SMap (empty, toList)
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>-- NOTE: When working on the entire AST, we should build a monad,
+<span class="lineno">   30 </span>--       that will will avoid unnecessary checks.
+<span class="lineno">   31 </span>--       For example if it already found a record wildcard, it won't check again
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>--       Pretty easy now. Chcek wheter it is already in the ExtMap.
+<span class="lineno">   34 </span>
+<span class="lineno">   35 </span>highlightExtensionsQuery :: QueryChoice
+<span class="lineno">   36 </span><span class="decl"><span class="nottickedoff">highlightExtensionsQuery = GlobalQuery &quot;HighlightExtensions&quot; extQuery</span>
+<span class="lineno">   37 </span><span class="spaces">  </span><span class="nottickedoff">where extQuery :: ModuleDom -&gt; [ModuleDom] -&gt; QueryMonad QueryValue</span>
+<span class="lineno">   38 </span><span class="spaces">        </span><span class="nottickedoff">extQuery (_,m) _ = lift . fmap MarkerQuery . extensionMarkers $ m</span></span>
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>organizeExtensionsRefactoring :: RefactoringChoice
+<span class="lineno">   41 </span><span class="decl"><span class="istickedoff">organizeExtensionsRefactoring = ModuleRefactoring &quot;OrganizeExtensions&quot; <span class="nottickedoff">(localRefactoring organizeExtensions)</span></span></span>
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>projectOrganizeExtensionsRefactoring :: RefactoringChoice
+<span class="lineno">   44 </span><span class="decl"><span class="istickedoff">projectOrganizeExtensionsRefactoring = ProjectRefactoring &quot;ProjectOrganizeExtensions&quot; <span class="nottickedoff">projectOrganizeExtensions</span></span></span>
+<span class="lineno">   45 </span>
+<span class="lineno">   46 </span>projectOrganizeExtensions :: ProjectRefactoring
+<span class="lineno">   47 </span><span class="decl"><span class="nottickedoff">projectOrganizeExtensions =</span>
+<span class="lineno">   48 </span><span class="spaces">  </span><span class="nottickedoff">mapM (\(k, m) -&gt; ContentChanged . (k,) &lt;$&gt; localRefactoringRes id m (organizeExtensions m))</span></span>
+<span class="lineno">   49 </span>
+<span class="lineno">   50 </span>tryOut :: String -&gt; String -&gt; IO ()
+<span class="lineno">   51 </span><span class="decl"><span class="nottickedoff">tryOut = tryRefactor (localRefactoring . const organizeExtensions)</span></span>
+<span class="lineno">   52 </span>
+<span class="lineno">   53 </span>organizeExtensions :: LocalRefactoring
+<span class="lineno">   54 </span><span class="decl"><span class="nottickedoff">organizeExtensions moduleAST = do</span>
+<span class="lineno">   55 </span><span class="spaces">  </span><span class="nottickedoff">exts &lt;- liftGhc $ reduceExtensions moduleAST</span>
+<span class="lineno">   56 </span><span class="spaces">  </span><span class="nottickedoff">let langExts = map (mkLanguagePragma . pure . serializeExt . show) exts</span>
+<span class="lineno">   57 </span><span class="spaces">      </span><span class="nottickedoff">ghcOpts  = moduleAST ^? filePragmas &amp; annList &amp; opStr &amp; stringNodeStr</span>
+<span class="lineno">   58 </span><span class="spaces">      </span><span class="nottickedoff">ghcOpts' = map (mkOptionsGHC . unwords . filter (isPrefixOf &quot;-&quot;) . words) ghcOpts</span>
+<span class="lineno">   59 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   60 </span><span class="spaces">      </span><span class="nottickedoff">offExts  = map (mkLanguagePragma . pure)</span>
+<span class="lineno">   61 </span><span class="spaces">               </span><span class="nottickedoff">. sort</span>
+<span class="lineno">   62 </span><span class="spaces">               </span><span class="nottickedoff">. map ((&quot;No&quot; ++) . serializeExt . show)</span>
+<span class="lineno">   63 </span><span class="spaces">               </span><span class="nottickedoff">. collectTurnedOffExtensions</span>
+<span class="lineno">   64 </span><span class="spaces">               </span><span class="nottickedoff">$ moduleAST</span>
+<span class="lineno">   65 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   66 </span><span class="spaces">      </span><span class="nottickedoff">newPragmas = mkFilePragmas $ offExts ++ langExts ++ ghcOpts'</span>
+<span class="lineno">   67 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   68 </span><span class="spaces">  </span><span class="nottickedoff">(filePragmas != newPragmas)</span>
+<span class="lineno">   69 </span><span class="spaces">    </span><span class="nottickedoff">-- remove empty {-# LANGUAGE #-} pragmas</span>
+<span class="lineno">   70 </span><span class="spaces">    </span><span class="nottickedoff">&gt;=&gt; filePragmas !~ filterListSt (\case LanguagePragma (AnnList []) -&gt; False; _ -&gt; True)</span>
+<span class="lineno">   71 </span><span class="spaces">    </span><span class="nottickedoff">$ moduleAST</span></span>
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>-- | Reduces default extension list (keeps unsupported extensions)
+<span class="lineno">   74 </span>reduceExtensions :: UnnamedModule -&gt; Ghc [Extension]
+<span class="lineno">   75 </span><span class="decl"><span class="nottickedoff">reduceExtensions moduleAST = do</span>
+<span class="lineno">   76 </span><span class="spaces">  </span><span class="nottickedoff">let defaults = map replaceDeprecated . collectDefaultExtensions $ moduleAST</span>
+<span class="lineno">   77 </span><span class="spaces">      </span><span class="nottickedoff">expanded = expandExtensions defaults</span>
+<span class="lineno">   78 </span><span class="spaces">      </span><span class="nottickedoff">(xs, ys) = partition isSupported expanded</span>
+<span class="lineno">   79 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   80 </span><span class="spaces">  </span><span class="nottickedoff">xs' &lt;- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST</span>
+<span class="lineno">   81 </span><span class="spaces">  </span><span class="nottickedoff">let filteredExts = nub . mergeImplied $ (determineExtensions xs' ++ ys)</span>
+<span class="lineno">   82 </span><span class="spaces">  </span><span class="nottickedoff">if any (`elem` filteredExts) [Cpp, TemplateHaskell, TemplateHaskellQuotes, QuasiQuotes]</span>
+<span class="lineno">   83 </span><span class="spaces">    </span><span class="nottickedoff">-- We can't say anything about generated code</span>
+<span class="lineno">   84 </span><span class="spaces">    </span><span class="nottickedoff">then return . mergeImplied $ defaults</span>
+<span class="lineno">   85 </span><span class="spaces">    </span><span class="nottickedoff">-- Merging is needed because there might be unsopported extensions</span>
+<span class="lineno">   86 </span><span class="spaces">    </span><span class="nottickedoff">-- that are implied by supported extensions (TypeFamilies -&gt; MonoLocalBinds)</span>
+<span class="lineno">   87 </span><span class="spaces">    </span><span class="nottickedoff">else return . sortBy (compare `on` show) $ filteredExts</span></span>
+<span class="lineno">   88 </span>
+<span class="lineno">   89 </span>-- | Collect the required extensions in a module and returns a markers associated with them
+<span class="lineno">   90 </span>extensionMarkers :: UnnamedModule -&gt; Ghc [Marker]
+<span class="lineno">   91 </span><span class="decl"><span class="nottickedoff">extensionMarkers = fmap (concatMap toMarkers . SMap.toList) . collectExtensions</span>
+<span class="lineno">   92 </span><span class="spaces">  </span><span class="nottickedoff">where toMarkers (rel, occs) = map (toMarker rel) occs</span>
+<span class="lineno">   93 </span><span class="spaces">        </span><span class="nottickedoff">toMarker  rel occ     = Marker (unOcc occ) Info (showWithLevel rel occ)</span>
+<span class="lineno">   94 </span><span class="spaces">        </span><span class="nottickedoff">showWithLevel rel occ = (head . words . show $ occ) ++ &quot;: &quot; ++ prettyPrintFormula rel</span></span>
+<span class="lineno">   95 </span>
+<span class="lineno">   96 </span>-- | Collects extensions induced by the source code (with location info)
+<span class="lineno">   97 </span>collectExtensions :: UnnamedModule -&gt; Ghc ExtMap
+<span class="lineno">   98 </span><span class="decl"><span class="istickedoff">collectExtensions = collectExtensionsWith traverseModule</span></span>
+<span class="lineno">   99 </span>
+<span class="lineno">  100 </span>
+<span class="lineno">  101 </span>-- | Collects the required extensions from a module using the given traversal method
+<span class="lineno">  102 </span>collectExtensionsWith :: CheckNode UnnamedModule -&gt; UnnamedModule -&gt; Ghc ExtMap
+<span class="lineno">  103 </span><span class="decl"><span class="istickedoff">collectExtensionsWith trvModule moduleAST = do</span>
+<span class="lineno">  104 </span><span class="spaces">  </span><span class="istickedoff">let expanded = expandExtensions . collectDefaultExtensions $ moduleAST</span>
+<span class="lineno">  105 </span><span class="spaces">  </span><span class="istickedoff">flip execStateT SMap.empty . flip runReaderT expanded . trvModule $ moduleAST</span></span>
+<span class="lineno">  106 </span>
+<span class="lineno">  107 </span>
+<span class="lineno">  108 </span>-- | Expands every extension in a list, while not producing any duplicates.
+<span class="lineno">  109 </span>expandExtensions :: [Extension] -&gt; [Extension]
+<span class="lineno">  110 </span><span class="decl"><span class="istickedoff">expandExtensions = nub . concatMap expandExtension</span></span>
+<span class="lineno">  111 </span>
+<span class="lineno">  112 </span>-- | Collects extensions enabled by default
+<span class="lineno">  113 </span>collectDefaultExtensions :: UnnamedModule -&gt; [Extension]
+<span class="lineno">  114 </span><span class="decl"><span class="istickedoff">collectDefaultExtensions = mapMaybe toExt . getExtensions</span></span>
+<span class="lineno">  115 </span>
+<span class="lineno">  116 </span>-- | Collects extensions enabled by default
+<span class="lineno">  117 </span>collectTurnedOffExtensions :: UnnamedModule -&gt; [Extension]
+<span class="lineno">  118 </span><span class="decl"><span class="nottickedoff">collectTurnedOffExtensions = mapMaybe (toExt . drop 2)</span>
+<span class="lineno">  119 </span><span class="spaces">                           </span><span class="nottickedoff">. filter (isPrefixOf &quot;No&quot;)</span>
+<span class="lineno">  120 </span><span class="spaces">                           </span><span class="nottickedoff">. getExtensions</span></span>
+<span class="lineno">  121 </span>
+<span class="lineno">  122 </span>-- | Collects the string representation of the extensions in the module
+<span class="lineno">  123 </span>getExtensions :: UnnamedModule -&gt; [String]
+<span class="lineno">  124 </span><span class="decl"><span class="istickedoff">getExtensions = flip (^?) (filePragmas &amp; annList &amp; lpPragmas &amp; annList &amp; langExt)</span></span>
+<span class="lineno">  125 </span>
+<span class="lineno">  126 </span>toExt :: String -&gt; Maybe Extension
+<span class="lineno">  127 </span><span class="decl"><span class="istickedoff">toExt str = case map fst . reads . canonExt . takeWhile isAlphaNum $ str of</span>
+<span class="lineno">  128 </span><span class="spaces">              </span><span class="istickedoff">e:_ -&gt; Just e</span>
+<span class="lineno">  129 </span><span class="spaces">              </span><span class="istickedoff">[]  -&gt; <span class="nottickedoff">fail $ &quot;Extension '&quot; ++ takeWhile isAlphaNum str ++ &quot;' is not known.&quot;</span></span></span>
+
+</pre>
+</body>
+</html>

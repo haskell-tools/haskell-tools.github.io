@@ -38,15 +38,15 @@ span.spaces    { background: white }
 <span class="lineno">   19 </span>
 <span class="lineno">   20 </span>-- | Clause of function binding
 <span class="lineno">   21 </span>data UMatch dom stage
-<span class="lineno">   22 </span>  = UMatch { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_matchLhs</span></span></span> :: Ann UMatchLhs dom stage
+<span class="lineno">   22 </span>  = UMatch { <span class="istickedoff"><span class="decl"><span class="istickedoff">_matchLhs</span></span></span> :: Ann UMatchLhs dom stage
 <span class="lineno">   23 </span>           , <span class="istickedoff"><span class="decl"><span class="istickedoff">_matchRhs</span></span></span> :: Ann URhs dom stage
-<span class="lineno">   24 </span>           , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_matchBinds</span></span></span> :: AnnMaybeG ULocalBinds dom stage
+<span class="lineno">   24 </span>           , <span class="istickedoff"><span class="decl"><span class="istickedoff">_matchBinds</span></span></span> :: AnnMaybeG ULocalBinds dom stage
 <span class="lineno">   25 </span>           }
 <span class="lineno">   26 </span>
 <span class="lineno">   27 </span>-- | Something on the left side of the match
 <span class="lineno">   28 </span>data UMatchLhs dom stage
 <span class="lineno">   29 </span>  = UNormalLhs { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_matchLhsName</span></span></span> :: Ann UName dom stage
-<span class="lineno">   30 </span>               , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_matchLhsArgs</span></span></span> :: AnnListG UPattern dom stage
+<span class="lineno">   30 </span>               , <span class="istickedoff"><span class="nottickedoff"><span class="decl"><span class="istickedoff">_matchLhsArgs</span></span></span></span> :: AnnListG UPattern dom stage
 <span class="lineno">   31 </span>               } -- ^ A match lhs with the function name and parameter names (@ f a b @)
 <span class="lineno">   32 </span>  | UInfixLhs { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_matchLhsLhs</span></span></span> :: Ann UPattern dom stage
 <span class="lineno">   33 </span>              , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_matchLhsOperator</span></span></span> :: Ann UOperator dom stage
@@ -56,7 +56,7 @@ span.spaces    { background: white }
 <span class="lineno">   37 </span>
 <span class="lineno">   38 </span>-- | Local bindings attached to a declaration (@ where x = 42 @)
 <span class="lineno">   39 </span>data ULocalBinds dom stage
-<span class="lineno">   40 </span>  = ULocalBinds { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_localBinds</span></span></span> :: AnnListG ULocalBind dom stage
+<span class="lineno">   40 </span>  = ULocalBinds { <span class="istickedoff"><span class="decl"><span class="istickedoff">_localBinds</span></span></span> :: AnnListG ULocalBind dom stage
 <span class="lineno">   41 </span>                }
 <span class="lineno">   42 </span>
 <span class="lineno">   43 </span>-- | Bindings that are enabled in local blocks (where or let).
@@ -73,8 +73,8 @@ span.spaces    { background: white }
 <span class="lineno">   54 </span>
 <span class="lineno">   55 </span>-- | A type signature (@ f :: Int -&gt; Int @)
 <span class="lineno">   56 </span>data UTypeSignature dom stage
-<span class="lineno">   57 </span>  = UTypeSignature { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_tsName</span></span></span> :: AnnListG UName dom stage
-<span class="lineno">   58 </span>                   , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_tsType</span></span></span> :: Ann UType dom stage
+<span class="lineno">   57 </span>  = UTypeSignature { <span class="istickedoff"><span class="decl"><span class="istickedoff">_tsName</span></span></span> :: AnnListG UName dom stage
+<span class="lineno">   58 </span>                   , <span class="istickedoff"><span class="decl"><span class="istickedoff">_tsType</span></span></span> :: Ann UType dom stage
 <span class="lineno">   59 </span>                   }
 <span class="lineno">   60 </span>
 <span class="lineno">   61 </span>-- * Fixities
@@ -83,7 +83,7 @@ span.spaces    { background: white }
 <span class="lineno">   64 </span>data UFixitySignature dom stage
 <span class="lineno">   65 </span>  = UFixitySignature { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_fixityAssoc</span></span></span> :: Ann Assoc dom stage
 <span class="lineno">   66 </span>                     , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_fixityPrecedence</span></span></span> :: AnnMaybeG Precedence dom stage
-<span class="lineno">   67 </span>                     , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_fixityOperators</span></span></span> :: AnnListG UOperator dom stage
+<span class="lineno">   67 </span>                     , <span class="istickedoff"><span class="decl"><span class="istickedoff">_fixityOperators</span></span></span> :: AnnListG UOperator dom stage
 <span class="lineno">   68 </span>                     }
 <span class="lineno">   69 </span>
 <span class="lineno">   70 </span>-- | Associativity of an operator.
@@ -105,7 +105,7 @@ span.spaces    { background: white }
 <span class="lineno">   86 </span>
 <span class="lineno">   87 </span>-- | A guarded right-hand side of a value binding (@ | x &gt; 3 = 2 @)
 <span class="lineno">   88 </span>data UGuardedRhs dom stage
-<span class="lineno">   89 </span>  = UGuardedRhs { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_guardStmts</span></span></span> :: AnnListG URhsGuard dom stage -- ^ Cannot be empty.
+<span class="lineno">   89 </span>  = UGuardedRhs { <span class="istickedoff"><span class="decl"><span class="istickedoff">_guardStmts</span></span></span> :: AnnListG URhsGuard dom stage -- ^ Cannot be empty.
 <span class="lineno">   90 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_guardExpr</span></span></span> :: Ann UExpr dom stage
 <span class="lineno">   91 </span>                }
 <span class="lineno">   92 </span>

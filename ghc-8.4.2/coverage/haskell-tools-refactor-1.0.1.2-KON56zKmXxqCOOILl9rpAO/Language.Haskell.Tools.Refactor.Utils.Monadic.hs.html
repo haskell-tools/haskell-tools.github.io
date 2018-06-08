@@ -71,69 +71,69 @@ span.spaces    { background: white }
 <span class="lineno">   52 </span><span class="decl"><span class="istickedoff">insertText [] p = p</span>
 <span class="lineno">   53 </span><span class="spaces"></span><span class="istickedoff">insertText inserted p</span>
 <span class="lineno">   54 </span><span class="spaces">  </span><span class="istickedoff">-- this traverses the AST and finds the positions where the removed elements can be added</span>
-<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">evalState (sourceInfoTraverseUp (SourceInfoTrf</span></span>
-<span class="lineno">   56 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">(\stn -&gt; sourceTemplateNodeElems !~ takeWhatPrecedesElem (stn ^. sourceTemplateNodeRange) $ stn)</span></span>
-<span class="lineno">   57 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">(srcTmpSeparators !~ takeWhatPrecedesSep)</span></span>
-<span class="lineno">   58 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">pure) (return ()) (return ()) p) (map Right $ sortOn (^. _1) inserted)</span></span>
+<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">= evalState (sourceInfoTraverseUp (SourceInfoTrf</span>
+<span class="lineno">   56 </span><span class="spaces">                </span><span class="istickedoff">(\stn -&gt; sourceTemplateNodeElems !~ takeWhatPrecedesElem (stn ^. sourceTemplateNodeRange) $ stn)</span>
+<span class="lineno">   57 </span><span class="spaces">                </span><span class="istickedoff">(srcTmpSeparators !~ takeWhatPrecedesSep)</span>
+<span class="lineno">   58 </span><span class="spaces">                </span><span class="istickedoff">pure) (return <span class="nottickedoff">()</span>) (return <span class="nottickedoff">()</span>) p) (map Right $ sortOn (^. _1) inserted)</span>
 <span class="lineno">   59 </span><span class="spaces">  </span><span class="istickedoff">where</span>
 <span class="lineno">   60 </span><span class="spaces">   </span><span class="istickedoff">-- insert fragments into list separators</span>
 <span class="lineno">   61 </span><span class="spaces">   </span><span class="istickedoff">takeWhatPrecedesSep :: [([SourceTemplateTextElem], SrcSpan)] -&gt; State [Either SrcSpan (SrcSpan,String,String)] [([SourceTemplateTextElem], SrcSpan)]</span>
-<span class="lineno">   62 </span><span class="spaces">   </span><span class="istickedoff"><span class="nottickedoff">takeWhatPrecedesSep seps = takeWhatPrecedes Nothing (Just . (^. _2))</span></span>
+<span class="lineno">   62 </span><span class="spaces">   </span><span class="istickedoff">takeWhatPrecedesSep seps = takeWhatPrecedes Nothing (Just . (^. _2))</span>
 <span class="lineno">   63 </span><span class="spaces">                                               </span><span class="istickedoff"><span class="nottickedoff">(\str -&gt; _1 .- (++ [StayingText str &quot;&quot;]))</span></span>
 <span class="lineno">   64 </span><span class="spaces">                                               </span><span class="istickedoff"><span class="nottickedoff">(\str -&gt; _1 .- ([StayingText str &quot;&quot;] ++))</span></span>
-<span class="lineno">   65 </span><span class="spaces">                                               </span><span class="istickedoff"><span class="nottickedoff">seps</span></span>
+<span class="lineno">   65 </span><span class="spaces">                                               </span><span class="istickedoff">seps</span>
 <span class="lineno">   66 </span><span class="spaces"></span><span class="istickedoff"></span>
 <span class="lineno">   67 </span><span class="spaces">   </span><span class="istickedoff">-- insert fragments into AST elements</span>
 <span class="lineno">   68 </span><span class="spaces">   </span><span class="istickedoff">takeWhatPrecedesElem :: SrcSpan -&gt; [SourceTemplateElem] -&gt; State [Either SrcSpan (SrcSpan,String,String)] [SourceTemplateElem]</span>
-<span class="lineno">   69 </span><span class="spaces">   </span><span class="istickedoff"><span class="nottickedoff">takeWhatPrecedesElem rng elems = takeWhatPrecedes (Just rng) (^? sourceTemplateTextRange)</span></span>
-<span class="lineno">   70 </span><span class="spaces">                                                                </span><span class="istickedoff"><span class="nottickedoff">(\s -&gt; sourceTemplateTextElem .- (++ [StayingText s &quot;&quot;]))</span></span>
-<span class="lineno">   71 </span><span class="spaces">                                                                </span><span class="istickedoff"><span class="nottickedoff">(\s -&gt; sourceTemplateTextElem .- ([StayingText s &quot;&quot;] ++))</span></span>
-<span class="lineno">   72 </span><span class="spaces">                                                                </span><span class="istickedoff"><span class="nottickedoff">elems</span></span>
+<span class="lineno">   69 </span><span class="spaces">   </span><span class="istickedoff">takeWhatPrecedesElem rng elems = takeWhatPrecedes (Just rng) (^? sourceTemplateTextRange)</span>
+<span class="lineno">   70 </span><span class="spaces">                                                                </span><span class="istickedoff">(\s -&gt; sourceTemplateTextElem .- (++ [StayingText s <span class="nottickedoff">&quot;&quot;</span>]))</span>
+<span class="lineno">   71 </span><span class="spaces">                                                                </span><span class="istickedoff">(\s -&gt; sourceTemplateTextElem .- ([StayingText s <span class="nottickedoff">&quot;&quot;</span>] ++))</span>
+<span class="lineno">   72 </span><span class="spaces">                                                                </span><span class="istickedoff">elems</span>
 <span class="lineno">   73 </span><span class="spaces"></span><span class="istickedoff"></span>
 <span class="lineno">   74 </span><span class="spaces">   </span><span class="istickedoff">-- finds the position of the fragment where there are elements in the template both before and after the fragment</span>
 <span class="lineno">   75 </span><span class="spaces">   </span><span class="istickedoff">-- puts holes into the list of inserted fragments where child elements are located</span>
 <span class="lineno">   76 </span><span class="spaces">   </span><span class="istickedoff">-- uses these holes to determine where should the fragment be added</span>
 <span class="lineno">   77 </span><span class="spaces">   </span><span class="istickedoff">takeWhatPrecedes :: Maybe SrcSpan -&gt; (a -&gt; Maybe SrcSpan) -&gt; (String -&gt; a -&gt; a) -&gt; (String -&gt; a -&gt; a) -&gt; [a] -&gt; State [Either SrcSpan (SrcSpan,String,String)] [a]</span>
-<span class="lineno">   78 </span><span class="spaces">   </span><span class="istickedoff"><span class="nottickedoff">takeWhatPrecedes rng access append prepend elems</span></span>
-<span class="lineno">   79 </span><span class="spaces">     </span><span class="istickedoff"><span class="nottickedoff">| ranges &lt;- mapMaybe access elems</span></span>
-<span class="lineno">   80 </span><span class="spaces">     </span><span class="istickedoff"><span class="nottickedoff">, not (null ranges)</span></span>
-<span class="lineno">   81 </span><span class="spaces">     </span><span class="istickedoff"><span class="nottickedoff">= do let start = srcSpanStart $ fromMaybe (head ranges) rng</span></span>
-<span class="lineno">   82 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">end = srcSpanEnd $ fromMaybe (last ranges) rng</span></span>
-<span class="lineno">   83 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">toInsert &lt;- get</span></span>
-<span class="lineno">   84 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">let (prefix,rest) = break ((&gt;= start) . srcSpanStart . either id (\(sp,_,_) -&gt; sp)) toInsert</span></span>
-<span class="lineno">   85 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">(middle,suffix) = break ((&gt; end) . srcSpanEnd . either id (\(sp,_,_) -&gt; sp)) rest</span></span>
-<span class="lineno">   86 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">put $ prefix ++ Left (mkSrcSpan start end) : suffix</span></span>
-<span class="lineno">   87 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">return $ mergeInserted access append prepend False middle elems</span></span>
-<span class="lineno">   88 </span><span class="spaces">     </span><span class="istickedoff"><span class="nottickedoff">where mergeInserted :: (a -&gt; Maybe SrcSpan) -&gt; (String -&gt; a -&gt; a) -&gt; (String -&gt; a -&gt; a) -&gt; Bool -&gt; [Either SrcSpan (SrcSpan,String,String)] -&gt; [a] -&gt; [a]</span></span>
-<span class="lineno">   89 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">-- no fragments left</span></span>
-<span class="lineno">   90 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">mergeInserted _ _ _ _ [] elems = elems</span></span>
-<span class="lineno">   91 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">mergeInserted access append prepend prep insert@(Right (insertSpan,insertStr,ln):toInsert) (fstElem:elems)</span></span>
-<span class="lineno">   92 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">-- insert a fragment to the end of the current element if the next elment is after the fragment</span></span>
-<span class="lineno">   93 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">| Just _ &lt;- access fstElem -- TODO: is this needed?</span></span>
-<span class="lineno">   94 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">, not prep &amp;&amp; case mapMaybe access elems of sp:_ -&gt; srcSpanStart sp &gt;= srcSpanEnd insertSpan</span></span>
-<span class="lineno">   95 </span><span class="spaces">                                                          </span><span class="istickedoff"><span class="nottickedoff">_ -&gt; True</span></span>
-<span class="lineno">   96 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">= mergeInserted access append prepend prep toInsert (append (ln ++ insertStr ++ ln) fstElem : elems)</span></span>
-<span class="lineno">   97 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">-- insert the fragment before the current elem if we need an element before (we skipped a child)</span></span>
-<span class="lineno">   98 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">-- and the current element is after the inserted fragment</span></span>
-<span class="lineno">   99 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">| Just fstElemSpace &lt;- access fstElem</span></span>
-<span class="lineno">  100 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">, prep &amp;&amp; srcSpanStart fstElemSpace &gt;= srcSpanEnd insertSpan</span></span>
-<span class="lineno">  101 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">= mergeInserted access append prepend prep toInsert (prepend (ln ++ insertStr ++ ln) fstElem : elems)</span></span>
-<span class="lineno">  102 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">| isJust (access fstElem) &amp;&amp; prep</span></span>
-<span class="lineno">  103 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">= mergeInserted access append prepend False insert (fstElem : elems) -- switch back to append mode</span></span>
-<span class="lineno">  104 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">| otherwise</span></span>
-<span class="lineno">  105 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">= fstElem : mergeInserted access append prepend (if isJust (access fstElem) then False else prep) insert elems -- move on and switch back to append mode</span></span>
-<span class="lineno">  106 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">-- when found a hole</span></span>
-<span class="lineno">  107 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">mergeInserted access append prepend prep insert@(Left sp : toInsert) (fstElem:elems)</span></span>
-<span class="lineno">  108 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">| Just fstElemSpace &lt;- access fstElem</span></span>
-<span class="lineno">  109 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">= if srcSpanStart fstElemSpace &gt; srcSpanEnd sp</span></span>
-<span class="lineno">  110 </span><span class="spaces">                  </span><span class="istickedoff"><span class="nottickedoff">-- switch to prepend mode</span></span>
-<span class="lineno">  111 </span><span class="spaces">                  </span><span class="istickedoff"><span class="nottickedoff">then mergeInserted access append prepend True toInsert (fstElem:elems)</span></span>
-<span class="lineno">  112 </span><span class="spaces">                  </span><span class="istickedoff"><span class="nottickedoff">-- skip elements that are not after the fragment</span></span>
-<span class="lineno">  113 </span><span class="spaces">                  </span><span class="istickedoff"><span class="nottickedoff">else fstElem : mergeInserted access append prepend prep insert elems</span></span>
-<span class="lineno">  114 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">| otherwise</span></span>
-<span class="lineno">  115 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">= fstElem : mergeInserted access append prepend True toInsert elems -- switch to prepend mode and move on</span></span>
-<span class="lineno">  116 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">mergeInserted _ _ _ _ _ [] = [] -- maybe error</span></span>
-<span class="lineno">  117 </span><span class="spaces">   </span><span class="istickedoff"><span class="nottickedoff">takeWhatPrecedes _ _ _ _ elems = return elems</span></span></span>
+<span class="lineno">   78 </span><span class="spaces">   </span><span class="istickedoff">takeWhatPrecedes rng access append prepend elems</span>
+<span class="lineno">   79 </span><span class="spaces">     </span><span class="istickedoff">| ranges &lt;- mapMaybe access elems</span>
+<span class="lineno">   80 </span><span class="spaces">     </span><span class="istickedoff">, not (null ranges)</span>
+<span class="lineno">   81 </span><span class="spaces">     </span><span class="istickedoff">= do let start = srcSpanStart $ fromMaybe (head ranges) rng</span>
+<span class="lineno">   82 </span><span class="spaces">              </span><span class="istickedoff">end = srcSpanEnd $ fromMaybe (last ranges) rng</span>
+<span class="lineno">   83 </span><span class="spaces">          </span><span class="istickedoff">toInsert &lt;- get</span>
+<span class="lineno">   84 </span><span class="spaces">          </span><span class="istickedoff">let (prefix,rest) = break ((&gt;= start) . srcSpanStart . either id (\(sp,_,_) -&gt; sp)) toInsert</span>
+<span class="lineno">   85 </span><span class="spaces">              </span><span class="istickedoff">(middle,suffix) = break ((&gt; end) . srcSpanEnd . either id (\(sp,_,_) -&gt; sp)) rest</span>
+<span class="lineno">   86 </span><span class="spaces">          </span><span class="istickedoff">put $ prefix ++ Left (mkSrcSpan start end) : suffix</span>
+<span class="lineno">   87 </span><span class="spaces">          </span><span class="istickedoff">return $ mergeInserted access append prepend False middle elems</span>
+<span class="lineno">   88 </span><span class="spaces">     </span><span class="istickedoff">where mergeInserted :: (a -&gt; Maybe SrcSpan) -&gt; (String -&gt; a -&gt; a) -&gt; (String -&gt; a -&gt; a) -&gt; Bool -&gt; [Either SrcSpan (SrcSpan,String,String)] -&gt; [a] -&gt; [a]</span>
+<span class="lineno">   89 </span><span class="spaces">           </span><span class="istickedoff">-- no fragments left</span>
+<span class="lineno">   90 </span><span class="spaces">           </span><span class="istickedoff">mergeInserted _ _ _ _ [] elems = elems</span>
+<span class="lineno">   91 </span><span class="spaces">           </span><span class="istickedoff">mergeInserted access append prepend prep insert@(Right (insertSpan,insertStr,ln):toInsert) (fstElem:elems)</span>
+<span class="lineno">   92 </span><span class="spaces">              </span><span class="istickedoff">-- insert a fragment to the end of the current element if the next elment is after the fragment</span>
+<span class="lineno">   93 </span><span class="spaces">              </span><span class="istickedoff">| Just _ &lt;- access fstElem -- TODO: is this needed?</span>
+<span class="lineno">   94 </span><span class="spaces">              </span><span class="istickedoff">, not prep &amp;&amp; case mapMaybe access elems of sp:_ -&gt; srcSpanStart sp &gt;= srcSpanEnd insertSpan</span>
+<span class="lineno">   95 </span><span class="spaces">                                                          </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">True</span></span>
+<span class="lineno">   96 </span><span class="spaces">              </span><span class="istickedoff">= mergeInserted access append prepend prep toInsert (append (ln ++ insertStr ++ ln) fstElem : elems)</span>
+<span class="lineno">   97 </span><span class="spaces">              </span><span class="istickedoff">-- insert the fragment before the current elem if we need an element before (we skipped a child)</span>
+<span class="lineno">   98 </span><span class="spaces">              </span><span class="istickedoff">-- and the current element is after the inserted fragment</span>
+<span class="lineno">   99 </span><span class="spaces">              </span><span class="istickedoff">| Just fstElemSpace &lt;- access fstElem</span>
+<span class="lineno">  100 </span><span class="spaces">              </span><span class="istickedoff">, prep &amp;&amp; srcSpanStart fstElemSpace &gt;= srcSpanEnd insertSpan</span>
+<span class="lineno">  101 </span><span class="spaces">              </span><span class="istickedoff">= mergeInserted access <span class="nottickedoff">append</span> prepend prep toInsert (prepend (ln ++ insertStr ++ ln) fstElem : elems)</span>
+<span class="lineno">  102 </span><span class="spaces">              </span><span class="istickedoff">| <span class="tickonlytrue">isJust (access fstElem) &amp;&amp; prep</span></span>
+<span class="lineno">  103 </span><span class="spaces">              </span><span class="istickedoff">= mergeInserted access append prepend False insert (fstElem : elems) -- switch back to append mode</span>
+<span class="lineno">  104 </span><span class="spaces">              </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span></span>
+<span class="lineno">  105 </span><span class="spaces">              </span><span class="istickedoff">= <span class="nottickedoff">fstElem : mergeInserted access append prepend (if isJust (access fstElem) then False else prep) insert elems</span> -- move on and switch back to append mode</span>
+<span class="lineno">  106 </span><span class="spaces">           </span><span class="istickedoff">-- when found a hole</span>
+<span class="lineno">  107 </span><span class="spaces">           </span><span class="istickedoff">mergeInserted access append prepend prep insert@(Left sp : toInsert) (fstElem:elems)</span>
+<span class="lineno">  108 </span><span class="spaces">              </span><span class="istickedoff">| Just fstElemSpace &lt;- access fstElem</span>
+<span class="lineno">  109 </span><span class="spaces">              </span><span class="istickedoff">= if srcSpanStart fstElemSpace &gt; srcSpanEnd sp</span>
+<span class="lineno">  110 </span><span class="spaces">                  </span><span class="istickedoff">-- switch to prepend mode</span>
+<span class="lineno">  111 </span><span class="spaces">                  </span><span class="istickedoff">then mergeInserted access <span class="nottickedoff">append</span> prepend True toInsert (fstElem:elems)</span>
+<span class="lineno">  112 </span><span class="spaces">                  </span><span class="istickedoff">-- skip elements that are not after the fragment</span>
+<span class="lineno">  113 </span><span class="spaces">                  </span><span class="istickedoff">else fstElem : mergeInserted access append prepend <span class="nottickedoff">prep</span> insert elems</span>
+<span class="lineno">  114 </span><span class="spaces">              </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span></span>
+<span class="lineno">  115 </span><span class="spaces">              </span><span class="istickedoff">= fstElem : mergeInserted access append prepend True toInsert elems -- switch to prepend mode and move on</span>
+<span class="lineno">  116 </span><span class="spaces">           </span><span class="istickedoff">mergeInserted _ _ _ _ _ [] = [] -- maybe error</span>
+<span class="lineno">  117 </span><span class="spaces">   </span><span class="istickedoff">takeWhatPrecedes _ _ _ _ elems = return elems</span></span>
 <span class="lineno">  118 </span>
 <span class="lineno">  119 </span>-- | Adds the imports that bring names into scope that are needed by the refactoring
 <span class="lineno">  120 </span>addGeneratedImports :: [GHC.Name] -&gt; HT.Module -&gt; HT.Module
@@ -160,10 +160,10 @@ span.spaces    { background: white }
 <span class="lineno">  141 </span>qualifiedName :: GHC.Name -&gt; String
 <span class="lineno">  142 </span><span class="decl"><span class="istickedoff">qualifiedName name = case GHC.nameModule_maybe name of</span>
 <span class="lineno">  143 </span><span class="spaces">  </span><span class="istickedoff">Just mod -&gt; GHC.moduleNameString (GHC.moduleName mod) ++ &quot;.&quot; ++ GHC.occNameString (GHC.nameOccName name)</span>
-<span class="lineno">  144 </span><span class="spaces">  </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">GHC.occNameString (GHC.nameOccName name)</span></span></span>
+<span class="lineno">  144 </span><span class="spaces">  </span><span class="istickedoff">Nothing -&gt; GHC.occNameString (GHC.nameOccName name)</span></span>
 <span class="lineno">  145 </span>
 <span class="lineno">  146 </span>referenceName :: GHC.Name -&gt; LocalRefactor (Ann UName IdDom SrcTemplateStage)
-<span class="lineno">  147 </span><span class="decl"><span class="nottickedoff">referenceName = referenceName' mkQualName'</span></span>
+<span class="lineno">  147 </span><span class="decl"><span class="istickedoff">referenceName = referenceName' mkQualName'</span></span>
 <span class="lineno">  148 </span>
 <span class="lineno">  149 </span>referenceOperator :: GHC.Name -&gt; LocalRefactor (Ann UOperator IdDom SrcTemplateStage)
 <span class="lineno">  150 </span><span class="decl"><span class="istickedoff">referenceOperator = referenceName' mkQualOp'</span></span>
@@ -172,34 +172,34 @@ span.spaces    { background: white }
 <span class="lineno">  153 </span>referenceName' :: ([String] -&gt; GHC.Name -&gt; Ann nt IdDom SrcTemplateStage) -&gt; GHC.Name
 <span class="lineno">  154 </span>                    -&gt; LocalRefactor (Ann nt IdDom SrcTemplateStage)
 <span class="lineno">  155 </span><span class="decl"><span class="istickedoff">referenceName' makeName name</span>
-<span class="lineno">  156 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlyfalse">name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude</span></span>
-<span class="lineno">  157 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">return $ makeName [] name</span> -- imported from prelude</span>
+<span class="lineno">  156 </span><span class="spaces">  </span><span class="istickedoff">| name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude</span>
+<span class="lineno">  157 </span><span class="spaces">  </span><span class="istickedoff">= return $ makeName [] name -- imported from prelude</span>
 <span class="lineno">  158 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span></span>
 <span class="lineno">  159 </span><span class="spaces">  </span><span class="istickedoff">= do RefactorCtx {refCtxRoot = mod, refCtxImports = imports, refModuleName = thisModule} &lt;- ask</span>
-<span class="lineno">  160 </span><span class="spaces">       </span><span class="istickedoff">if <span class="tickonlyfalse">maybe <span class="nottickedoff">True</span> (thisModule ==) (GHC.nameModule_maybe name)</span></span>
-<span class="lineno">  161 </span><span class="spaces">         </span><span class="istickedoff">then <span class="nottickedoff">return $ makeName [] name</span> -- in the same module, use simple name</span>
+<span class="lineno">  160 </span><span class="spaces">       </span><span class="istickedoff">if maybe True (thisModule ==) (GHC.nameModule_maybe name)</span>
+<span class="lineno">  161 </span><span class="spaces">         </span><span class="istickedoff">then return $ makeName [] name -- in the same module, use simple name</span>
 <span class="lineno">  162 </span><span class="spaces">         </span><span class="istickedoff">else let possibleImports = filter ((name `elem`) . (\imp -&gt; semanticsImported $ imp ^. semantics)) imports</span>
 <span class="lineno">  163 </span><span class="spaces">                  </span><span class="istickedoff">fromPrelude = name `elem` semanticsImplicitImports (mod ^. semantics)</span>
 <span class="lineno">  164 </span><span class="spaces">               </span><span class="istickedoff">in if | fromPrelude -&gt; return $ makeName [] name</span>
-<span class="lineno">  165 </span><span class="spaces">                     </span><span class="istickedoff">| <span class="tickonlytrue">null possibleImports</span> -&gt; do tell [Left name]</span>
+<span class="lineno">  165 </span><span class="spaces">                     </span><span class="istickedoff">| null possibleImports -&gt; do tell [Left name]</span>
 <span class="lineno">  166 </span><span class="spaces">                                                  </span><span class="istickedoff">return $ makeName (moduleParts name) name</span>
-<span class="lineno">  167 </span><span class="spaces">                     </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> -&gt; <span class="nottickedoff">return $ referenceBy makeName name possibleImports</span></span>
+<span class="lineno">  167 </span><span class="spaces">                     </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> -&gt; return $ referenceBy makeName name possibleImports</span>
 <span class="lineno">  168 </span><span class="spaces">                                     </span><span class="istickedoff">-- use it according to the best available import</span>
 <span class="lineno">  169 </span><span class="spaces">  </span><span class="istickedoff">where moduleParts = maybe <span class="nottickedoff">[]</span> (splitOn &quot;.&quot; . GHC.moduleNameString . GHC.moduleName) . GHC.nameModule_maybe</span></span>
 <span class="lineno">  170 </span>
 <span class="lineno">  171 </span>-- | Reference the name by the shortest suitable import
 <span class="lineno">  172 </span>referenceBy :: ([String] -&gt; GHC.Name -&gt; Ann nt IdDom SrcTemplateStage) -&gt; GHC.Name
 <span class="lineno">  173 </span>                 -&gt; [Ann UImportDecl IdDom SrcTemplateStage] -&gt; Ann nt IdDom SrcTemplateStage
-<span class="lineno">  174 </span><span class="decl"><span class="nottickedoff">referenceBy makeName name imps =</span>
-<span class="lineno">  175 </span><span class="spaces">  </span><span class="nottickedoff">let prefixes = map importQualifier imps</span>
-<span class="lineno">  176 </span><span class="spaces">   </span><span class="nottickedoff">in makeName (minimumBy (compare `on` (length . concat)) prefixes) name</span>
-<span class="lineno">  177 </span><span class="spaces">  </span><span class="nottickedoff">where importQualifier :: Ann UImportDecl IdDom SrcTemplateStage -&gt; [String]</span>
-<span class="lineno">  178 </span><span class="spaces">        </span><span class="nottickedoff">importQualifier imp</span>
-<span class="lineno">  179 </span><span class="spaces">          </span><span class="nottickedoff">= if isJust (imp ^? importQualified&amp;annJust)</span>
-<span class="lineno">  180 </span><span class="spaces">              </span><span class="nottickedoff">then case imp ^? importAs&amp;annJust&amp;importRename of</span>
-<span class="lineno">  181 </span><span class="spaces">                      </span><span class="nottickedoff">Nothing -&gt; splitOn &quot;.&quot; (imp ^. importModule&amp;moduleNameString) -- fully qualified import</span>
-<span class="lineno">  182 </span><span class="spaces">                      </span><span class="nottickedoff">Just asName -&gt; splitOn &quot;.&quot; (asName ^. moduleNameString) -- the name given by as clause</span>
-<span class="lineno">  183 </span><span class="spaces">              </span><span class="nottickedoff">else []</span></span> -- unqualified import
+<span class="lineno">  174 </span><span class="decl"><span class="istickedoff">referenceBy makeName name imps =</span>
+<span class="lineno">  175 </span><span class="spaces">  </span><span class="istickedoff">let prefixes = map importQualifier imps</span>
+<span class="lineno">  176 </span><span class="spaces">   </span><span class="istickedoff">in makeName (minimumBy <span class="nottickedoff">(compare `on` (length . concat))</span> prefixes) name</span>
+<span class="lineno">  177 </span><span class="spaces">  </span><span class="istickedoff">where importQualifier :: Ann UImportDecl IdDom SrcTemplateStage -&gt; [String]</span>
+<span class="lineno">  178 </span><span class="spaces">        </span><span class="istickedoff">importQualifier imp</span>
+<span class="lineno">  179 </span><span class="spaces">          </span><span class="istickedoff">= if <span class="tickonlytrue">isJust (imp ^? importQualified&amp;annJust)</span></span>
+<span class="lineno">  180 </span><span class="spaces">              </span><span class="istickedoff">then case imp ^? importAs&amp;annJust&amp;importRename of</span>
+<span class="lineno">  181 </span><span class="spaces">                      </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">splitOn &quot;.&quot; (imp ^. importModule&amp;moduleNameString)</span> -- fully qualified import</span>
+<span class="lineno">  182 </span><span class="spaces">                      </span><span class="istickedoff">Just asName -&gt; splitOn &quot;.&quot; (asName ^. moduleNameString) -- the name given by as clause</span>
+<span class="lineno">  183 </span><span class="spaces">              </span><span class="istickedoff">else <span class="nottickedoff">[]</span></span></span> -- unqualified import
 
 </pre>
 </body>

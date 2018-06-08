@@ -42,11 +42,11 @@ span.spaces    { background: white }
 <span class="lineno">   23 </span><span class="decl"><span class="istickedoff">getKeywordInside keyw sr srcmap = getSourceElementInside True sr =&lt;&lt; Map.lookup keyw (fst srcmap)</span></span>
 <span class="lineno">   24 </span>
 <span class="lineno">   25 </span>getKeywordsInside :: AnnKeywordId -&gt; SrcSpan -&gt; SourceMap -&gt; [SrcSpan]
-<span class="lineno">   26 </span><span class="decl"><span class="nottickedoff">getKeywordsInside keyw sr srcmap</span>
-<span class="lineno">   27 </span><span class="spaces">  </span><span class="nottickedoff">= let tokensOfType = Map.lookup keyw (fst srcmap)</span>
-<span class="lineno">   28 </span><span class="spaces">        </span><span class="nottickedoff">(_, startsAtBegin, startAfterBegin) = Map.splitLookup (srcSpanStart sr) $ fromMaybe empty tokensOfType</span>
-<span class="lineno">   29 </span><span class="spaces">        </span><span class="nottickedoff">(startsBeforeEnd, _) = Map.split (srcSpanEnd sr) $ maybe id (Map.insert (srcSpanStart sr)) startsAtBegin startAfterBegin -- tokens are minimum 1 char long</span>
-<span class="lineno">   30 </span><span class="spaces">     </span><span class="nottickedoff">in List.map (uncurry mkSrcSpan) $ List.filter (\(_, end) -&gt; end &lt;= srcSpanEnd sr) $ assocs startsBeforeEnd</span></span>
+<span class="lineno">   26 </span><span class="decl"><span class="istickedoff">getKeywordsInside keyw sr srcmap</span>
+<span class="lineno">   27 </span><span class="spaces">  </span><span class="istickedoff">= let tokensOfType = Map.lookup keyw (fst srcmap)</span>
+<span class="lineno">   28 </span><span class="spaces">        </span><span class="istickedoff">(_, startsAtBegin, startAfterBegin) = Map.splitLookup (srcSpanStart sr) $ fromMaybe empty tokensOfType</span>
+<span class="lineno">   29 </span><span class="spaces">        </span><span class="istickedoff">(startsBeforeEnd, _) = Map.split (srcSpanEnd sr) $ maybe id (Map.insert (srcSpanStart sr)) startsAtBegin startAfterBegin -- tokens are minimum 1 char long</span>
+<span class="lineno">   30 </span><span class="spaces">     </span><span class="istickedoff">in List.map (uncurry mkSrcSpan) $ List.filter (\(_, end) -&gt; end &lt;= srcSpanEnd sr) $ assocs startsBeforeEnd</span></span>
 <span class="lineno">   31 </span>
 <span class="lineno">   32 </span>getKeywordInsideBack :: AnnKeywordId -&gt; SrcSpan -&gt; SourceMap -&gt; Maybe SrcSpan
 <span class="lineno">   33 </span><span class="decl"><span class="istickedoff">getKeywordInsideBack keyw sr srcmap = getSourceElementInside False sr =&lt;&lt; Map.lookup keyw (fst srcmap)</span></span>
@@ -63,18 +63,18 @@ span.spaces    { background: white }
 <span class="lineno">   44 </span>
 <span class="lineno">   45 </span>-- | Returns all subsequent tokens (including the token that starts on the given location)
 <span class="lineno">   46 </span>getTokensAfter :: SrcLoc -&gt; SourceMap -&gt; [(SrcSpan, AnnKeywordId)]
-<span class="lineno">   47 </span><span class="decl"><span class="nottickedoff">getTokensAfter loc srcmap = case Map.splitLookup loc $ snd srcmap of</span>
-<span class="lineno">   48 </span><span class="spaces">    </span><span class="nottickedoff">(_, Just elem, after) -&gt; elem : elems after</span>
-<span class="lineno">   49 </span><span class="spaces">    </span><span class="nottickedoff">(_, Nothing, after) -&gt; elems after</span></span>
+<span class="lineno">   47 </span><span class="decl"><span class="istickedoff">getTokensAfter loc srcmap = case Map.splitLookup loc $ snd srcmap of</span>
+<span class="lineno">   48 </span><span class="spaces">    </span><span class="istickedoff">(_, Just elem, after) -&gt; <span class="nottickedoff">elem : elems after</span></span>
+<span class="lineno">   49 </span><span class="spaces">    </span><span class="istickedoff">(_, Nothing, after) -&gt; elems after</span></span>
 <span class="lineno">   50 </span>
 <span class="lineno">   51 </span>-- | Converts GHC Annotations into a convenient format for looking up tokens
 <span class="lineno">   52 </span>annotationsToSrcMap :: Map ApiAnnKey [SrcSpan] -&gt; SourceMap
-<span class="lineno">   53 </span><span class="decl"><span class="istickedoff">annotationsToSrcMap anns = (Map.map (List.foldr addToSrcRanges Map.empty) $ mapKeysWith (++) snd anns, <span class="nottickedoff">tokenMap</span>)</span>
+<span class="lineno">   53 </span><span class="decl"><span class="istickedoff">annotationsToSrcMap anns = (Map.map (List.foldr addToSrcRanges Map.empty) $ mapKeysWith (++) snd anns, tokenMap)</span>
 <span class="lineno">   54 </span><span class="spaces">  </span><span class="istickedoff">where</span>
 <span class="lineno">   55 </span><span class="spaces">    </span><span class="istickedoff">addToSrcRanges :: SrcSpan -&gt; Map SrcLoc SrcLoc -&gt; Map SrcLoc SrcLoc</span>
 <span class="lineno">   56 </span><span class="spaces">    </span><span class="istickedoff">addToSrcRanges span srcmap = Map.insert (srcSpanStart span) (srcSpanEnd span) srcmap</span>
 <span class="lineno">   57 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">   58 </span><span class="spaces">    </span><span class="istickedoff"><span class="nottickedoff">tokenMap = Map.fromList $ List.map (\(k,v) -&gt; (srcSpanStart k, (k, v))) $ concatMap (\(key,vals) -&gt; List.map ((, snd key)) vals) $ Map.assocs anns</span></span></span>
+<span class="lineno">   58 </span><span class="spaces">    </span><span class="istickedoff">tokenMap = Map.fromList $ List.map (\(k,v) -&gt; (srcSpanStart k, (k, v))) $ concatMap (\(key,vals) -&gt; List.map ((, snd key)) vals) $ Map.assocs anns</span></span>
 
 </pre>
 </body>

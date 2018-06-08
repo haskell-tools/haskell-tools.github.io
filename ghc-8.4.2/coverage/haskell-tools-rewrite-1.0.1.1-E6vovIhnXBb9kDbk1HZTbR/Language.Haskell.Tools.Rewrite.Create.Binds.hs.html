@@ -65,8 +65,8 @@ span.spaces    { background: white }
 <span class="lineno">   46 </span>
 <span class="lineno">   47 </span>-- | Local bindings attached to a declaration (@ where x = 42 @)
 <span class="lineno">   48 </span>mkLocalBinds :: [LocalBind] -&gt; MaybeLocalBinds
-<span class="lineno">   49 </span><span class="decl"><span class="nottickedoff">mkLocalBinds = mkAnnMaybe (relativeIndented 2 $ after &quot;\nwhere &quot; opt)</span>
-<span class="lineno">   50 </span><span class="spaces">                     </span><span class="nottickedoff">. Just . mkAnn child . ULocalBinds . mkAnnList (indented list)</span></span>
+<span class="lineno">   49 </span><span class="decl"><span class="istickedoff">mkLocalBinds = mkAnnMaybe (relativeIndented 2 $ after &quot;\nwhere &quot; opt)</span>
+<span class="lineno">   50 </span><span class="spaces">                     </span><span class="istickedoff">. Just . mkAnn child . ULocalBinds . mkAnnList (indented list)</span></span>
 <span class="lineno">   51 </span>
 <span class="lineno">   52 </span>mkLocalBinds' :: [LocalBind] -&gt; LocalBinds
 <span class="lineno">   53 </span><span class="decl"><span class="istickedoff">mkLocalBinds' = mkAnn (&quot; where &quot; &lt;&gt; child) . ULocalBinds . mkAnnList (indented list)</span></span>
@@ -77,7 +77,7 @@ span.spaces    { background: white }
 <span class="lineno">   58 </span>
 <span class="lineno">   59 </span>-- | Creates a local type signature
 <span class="lineno">   60 </span>mkLocalTypeSig :: TypeSignature -&gt; LocalBind
-<span class="lineno">   61 </span><span class="decl"><span class="nottickedoff">mkLocalTypeSig = mkAnn child . ULocalSignature</span></span>
+<span class="lineno">   61 </span><span class="decl"><span class="istickedoff">mkLocalTypeSig = mkAnn child . ULocalSignature</span></span>
 <span class="lineno">   62 </span>
 <span class="lineno">   63 </span>-- | Creates a local fixity declaration
 <span class="lineno">   64 </span>mkLocalFixity :: FixitySignature -&gt; LocalBind

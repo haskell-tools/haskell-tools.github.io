@@ -54,29 +54,29 @@ span.spaces    { background: white }
 <span class="lineno">   35 </span>
 <span class="lineno">   36 </span>trfOperator' :: forall n r . TransformName n r =&gt; IdP n -&gt; Trf (AST.UOperator (Dom r) RangeStage)
 <span class="lineno">   37 </span><span class="decl"><span class="istickedoff">trfOperator' n</span>
-<span class="lineno">   38 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">isSymOcc (occName @n n)</span> = AST.UNormalOp &lt;$&gt; (trfQualifiedNameFocus @n) True n</span>
-<span class="lineno">   39 </span><span class="spaces">  </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">AST.UBacktickOp &lt;$&gt; (trfQualifiedNameFocus @n) True n</span></span></span>
+<span class="lineno">   38 </span><span class="spaces">  </span><span class="istickedoff">| isSymOcc (occName @n n) = AST.UNormalOp &lt;$&gt; (trfQualifiedNameFocus @n) True n</span>
+<span class="lineno">   39 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = AST.UBacktickOp &lt;$&gt; (trfQualifiedNameFocus @n) True n</span></span>
 <span class="lineno">   40 </span>
 <span class="lineno">   41 </span>trfName :: forall n r . TransformName n r =&gt; Located (IdP n) -&gt; Trf (Ann AST.UName (Dom r) RangeStage)
 <span class="lineno">   42 </span><span class="decl"><span class="istickedoff">trfName = trfLocNoSema (trfName' @n)</span></span>
 <span class="lineno">   43 </span>
 <span class="lineno">   44 </span>trfName' :: forall n r . TransformName n r =&gt; IdP n -&gt; Trf (AST.UName (Dom r) RangeStage)
 <span class="lineno">   45 </span><span class="decl"><span class="istickedoff">trfName' n</span>
-<span class="lineno">   46 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlyfalse">isSymOcc (occName @n n)</span> = <span class="nottickedoff">(if isSpecKind then AST.UNormalName else AST.UParenName) &lt;$&gt; (trfQualifiedNameFocus @n) isSpecKind n</span></span>
+<span class="lineno">   46 </span><span class="spaces">  </span><span class="istickedoff">| isSymOcc (occName @n n) = (if isSpecKind then AST.UNormalName else AST.UParenName) &lt;$&gt; (trfQualifiedNameFocus @n) isSpecKind n</span>
 <span class="lineno">   47 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = AST.UNormalName &lt;$&gt; (trfQualifiedNameFocus @n) False n</span>
 <span class="lineno">   48 </span><span class="spaces">  </span><span class="istickedoff">where -- special names that are operators, but appear in name context</span>
-<span class="lineno">   49 </span><span class="spaces">    </span><span class="istickedoff"><span class="nottickedoff">isSpecKind = occNameString (occName @n n) `elem` [&quot;*&quot;, &quot;#&quot;, &quot;?&quot;, &quot;??&quot;]</span></span></span>
+<span class="lineno">   49 </span><span class="spaces">    </span><span class="istickedoff">isSpecKind = occNameString (occName @n n) `elem` [&quot;*&quot;, &quot;#&quot;, &quot;?&quot;, &quot;??&quot;]</span></span>
 <span class="lineno">   50 </span>
 <span class="lineno">   51 </span>trfAmbiguousFieldName :: TransformName n r =&gt; Located (AmbiguousFieldOcc n) -&gt; Trf (Ann AST.UName (Dom r) RangeStage)
-<span class="lineno">   52 </span><span class="decl"><span class="nottickedoff">trfAmbiguousFieldName (L l af) = trfAmbiguousFieldName' l af</span></span>
+<span class="lineno">   52 </span><span class="decl"><span class="istickedoff">trfAmbiguousFieldName (L l af) = trfAmbiguousFieldName' l af</span></span>
 <span class="lineno">   53 </span>
 <span class="lineno">   54 </span>trfAmbiguousFieldName' :: forall n r . TransformName n r =&gt; SrcSpan -&gt; AmbiguousFieldOcc n -&gt; Trf (Ann AST.UName (Dom r) RangeStage)
-<span class="lineno">   55 </span><span class="decl"><span class="nottickedoff">trfAmbiguousFieldName' l (Unambiguous (L _ rdr) pr) = annLocNoSema (pure l) $ trfName' @n (unpackPostRn @n rdr pr)</span>
-<span class="lineno">   56 </span><span class="spaces"></span><span class="nottickedoff">-- no Id transformation is done, so we can basically ignore the postTC value</span>
-<span class="lineno">   57 </span><span class="spaces"></span><span class="nottickedoff">trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _)</span>
-<span class="lineno">   58 </span><span class="spaces">  </span><span class="nottickedoff">= annLocNoSema (pure l)</span>
-<span class="lineno">   59 </span><span class="spaces">      </span><span class="nottickedoff">$ (if (isSymOcc (occName @GhcPs rdr)) then AST.UParenName else AST.UNormalName)</span>
-<span class="lineno">   60 </span><span class="spaces">          </span><span class="nottickedoff">&lt;$&gt; (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList &lt;$&gt; trfNameStr (isSymOcc (occName @GhcPs rdr)) (rdrNameStr rdr))</span></span>
+<span class="lineno">   55 </span><span class="decl"><span class="istickedoff">trfAmbiguousFieldName' l (Unambiguous (L _ rdr) pr) = annLocNoSema (pure l) $ trfName' @n (unpackPostRn @n rdr pr)</span>
+<span class="lineno">   56 </span><span class="spaces"></span><span class="istickedoff">-- no Id transformation is done, so we can basically ignore the postTC value</span>
+<span class="lineno">   57 </span><span class="spaces"></span><span class="istickedoff">trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _)</span>
+<span class="lineno">   58 </span><span class="spaces">  </span><span class="istickedoff">= annLocNoSema (pure l)</span>
+<span class="lineno">   59 </span><span class="spaces">      </span><span class="istickedoff">$ (if <span class="tickonlyfalse">(isSymOcc (occName @GhcPs rdr))</span> then <span class="nottickedoff">AST.UParenName</span> else AST.UNormalName)</span>
+<span class="lineno">   60 </span><span class="spaces">          </span><span class="istickedoff">&lt;$&gt; (annLoc (createAmbigousNameInfo <span class="nottickedoff">rdr</span> l) (pure l) $ AST.nameFromList &lt;$&gt; trfNameStr (isSymOcc (occName @GhcPs rdr)) (rdrNameStr rdr))</span></span>
 <span class="lineno">   61 </span>
 <span class="lineno">   62 </span>trfAmbiguousOperator' :: forall n r . TransformName n r =&gt; SrcSpan -&gt; AmbiguousFieldOcc n -&gt; Trf (Ann AST.UOperator (Dom r) RangeStage)
 <span class="lineno">   63 </span><span class="decl"><span class="nottickedoff">trfAmbiguousOperator' l (Unambiguous (L _ rdr) pr) = annLocNoSema (pure l) $ trfOperator' @n (unpackPostRn @n rdr pr)</span>
@@ -92,12 +92,12 @@ span.spaces    { background: white }
 <span class="lineno">   73 </span>  transformSplice :: HsSplice GhcPs -&gt; Trf (HsSplice n)
 <span class="lineno">   74 </span>
 <span class="lineno">   75 </span>instance TransformableName GhcPs where
-<span class="lineno">   76 </span>  <span class="decl"><span class="istickedoff">correctNameString = pure . <span class="nottickedoff">rdrNameStr</span></span></span>
+<span class="lineno">   76 </span>  <span class="decl"><span class="istickedoff">correctNameString = pure . rdrNameStr</span></span>
 <span class="lineno">   77 </span>  <span class="decl"><span class="nottickedoff">transformSplice = pure</span></span>
 <span class="lineno">   78 </span>
 <span class="lineno">   79 </span>instance TransformableName GhcRn where
-<span class="lineno">   80 </span>  <span class="decl"><span class="istickedoff">correctNameString n = getOriginalName <span class="nottickedoff">(rdrName @GhcRn n)</span></span></span>
-<span class="lineno">   81 </span>  <span class="decl"><span class="nottickedoff">transformSplice = rdrSplice</span></span>
+<span class="lineno">   80 </span>  <span class="decl"><span class="istickedoff">correctNameString n = getOriginalName (rdrName @GhcRn n)</span></span>
+<span class="lineno">   81 </span>  <span class="decl"><span class="istickedoff">transformSplice = rdrSplice</span></span>
 <span class="lineno">   82 </span>
 <span class="lineno">   83 </span>-- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 <span class="lineno">   84 </span>-- GHC UName annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
@@ -127,22 +127,22 @@ span.spaces    { background: white }
 <span class="lineno">  108 </span><span class="decl"><span class="nottickedoff">isOperatorStr = any (not . isAlphaNum)</span></span>
 <span class="lineno">  109 </span>
 <span class="lineno">  110 </span>trfQualifiedName :: forall n r . TransformName n r =&gt; Bool -&gt; Located (IdP n) -&gt; Trf (Ann AST.UQualifiedName (Dom r) RangeStage)
-<span class="lineno">  111 </span><span class="decl"><span class="nottickedoff">trfQualifiedName isOperator (L l n) = focusOn l $ (trfQualifiedNameFocus @n) isOperator n</span></span>
+<span class="lineno">  111 </span><span class="decl"><span class="istickedoff">trfQualifiedName isOperator (L l n) = focusOn l $ (trfQualifiedNameFocus @n) isOperator n</span></span>
 <span class="lineno">  112 </span>
 <span class="lineno">  113 </span>trfQualifiedNameFocus :: forall n r . TransformName n r =&gt; Bool -&gt; IdP n -&gt; Trf (Ann AST.UQualifiedName (Dom r) RangeStage)
 <span class="lineno">  114 </span><span class="decl"><span class="istickedoff">trfQualifiedNameFocus isOperator n</span>
 <span class="lineno">  115 </span><span class="spaces">  </span><span class="istickedoff">= do rng &lt;- asks contRange</span>
-<span class="lineno">  116 </span><span class="spaces">       </span><span class="istickedoff">let rng' = if <span class="tickonlytrue">isOperator == isSymOcc (occName @n n)</span> then rng</span>
-<span class="lineno">  117 </span><span class="spaces">                    </span><span class="istickedoff">else <span class="nottickedoff">mkSrcSpan (updateCol (+1) (srcSpanStart rng)) (updateCol (subtract 1) (srcSpanEnd rng))</span></span>
+<span class="lineno">  116 </span><span class="spaces">       </span><span class="istickedoff">let rng' = if isOperator == isSymOcc (occName @n n) then rng</span>
+<span class="lineno">  117 </span><span class="spaces">                    </span><span class="istickedoff">else mkSrcSpan (updateCol (+1) (srcSpanStart rng)) (updateCol (subtract 1) (srcSpanEnd rng))</span>
 <span class="lineno">  118 </span><span class="spaces">       </span><span class="istickedoff">annLoc (createNameInfo (transformName @n @r n)) (pure rng') (trfQualifiedName' @n n)</span></span>
 <span class="lineno">  119 </span>
 <span class="lineno">  120 </span>trfQualifiedName' :: forall n r . TransformName n r =&gt; IdP n -&gt; Trf (AST.UQualifiedName (Dom r) RangeStage)
-<span class="lineno">  121 </span><span class="decl"><span class="istickedoff">trfQualifiedName' n = AST.nameFromList &lt;$&gt; ((if isSymOcc (occName @n n) then trfOperatorStr else trfNameStr) False =&lt;&lt; (correctNameString @n) <span class="nottickedoff">n</span>)</span></span>
+<span class="lineno">  121 </span><span class="decl"><span class="istickedoff">trfQualifiedName' n = AST.nameFromList &lt;$&gt; ((if isSymOcc (occName @n n) then trfOperatorStr else trfNameStr) False =&lt;&lt; (correctNameString @n) n)</span></span>
 <span class="lineno">  122 </span>
 <span class="lineno">  123 </span>trfOperatorStr :: Bool -&gt; String -&gt; Trf (AnnListG AST.UNamePart (Dom r) RangeStage)
 <span class="lineno">  124 </span><span class="decl"><span class="istickedoff">trfOperatorStr isInParen str = do rng &lt;- correctSpan &lt;$&gt; asks contRange</span>
 <span class="lineno">  125 </span><span class="spaces">                                  </span><span class="istickedoff">makeList <span class="nottickedoff">&quot;.&quot;</span> (pure $ srcSpanStart rng)</span>
-<span class="lineno">  126 </span><span class="spaces">                                               </span><span class="istickedoff">(pure [Ann (noSemaInfo $ AST.NodeSpan rng) (AST.UNamePart <span class="nottickedoff">str</span>)])</span>
+<span class="lineno">  126 </span><span class="spaces">                                               </span><span class="istickedoff">(pure [Ann (noSemaInfo $ AST.NodeSpan rng) (AST.UNamePart str)])</span>
 <span class="lineno">  127 </span><span class="spaces">  </span><span class="istickedoff">where correctSpan sp = if <span class="tickonlyfalse">isInParen</span> then <span class="nottickedoff">mkSrcSpan (updateCol (+1) (srcSpanStart sp))</span></span>
 <span class="lineno">  128 </span><span class="spaces">                                                     </span><span class="istickedoff"><span class="nottickedoff">(updateCol (subtract 1) (srcSpanEnd sp))</span></span>
 <span class="lineno">  129 </span><span class="spaces">                                      </span><span class="istickedoff">else sp</span></span>
@@ -155,7 +155,7 @@ span.spaces    { background: white }
 <span class="lineno">  136 </span>trfNameStr' :: String -&gt; SrcLoc -&gt; [Ann AST.UNamePart (Dom r) RangeStage]
 <span class="lineno">  137 </span><span class="decl"><span class="istickedoff">trfNameStr' str startLoc = fst $</span>
 <span class="lineno">  138 </span><span class="spaces">  </span><span class="istickedoff">foldl (\(r,loc) np -&gt; let nextLoc = advanceAllSrcLoc loc np</span>
-<span class="lineno">  139 </span><span class="spaces">                         </span><span class="istickedoff">in ( r ++ [Ann (noSemaInfo $ AST.NodeSpan (mkSrcSpan loc nextLoc)) (AST.UNamePart <span class="nottickedoff">np</span>)], <span class="nottickedoff">advanceAllSrcLoc nextLoc &quot;.&quot;</span> ) )</span>
+<span class="lineno">  139 </span><span class="spaces">                         </span><span class="istickedoff">in ( r ++ [Ann (noSemaInfo $ AST.NodeSpan (mkSrcSpan loc nextLoc)) (AST.UNamePart np)], advanceAllSrcLoc nextLoc &quot;.&quot; ) )</span>
 <span class="lineno">  140 </span><span class="spaces">  </span><span class="istickedoff">([], startLoc) (splitOn &quot;.&quot; str)</span>
 <span class="lineno">  141 </span><span class="spaces">  </span><span class="istickedoff">where -- | Move the source location according to a string</span>
 <span class="lineno">  142 </span><span class="spaces">        </span><span class="istickedoff">advanceAllSrcLoc :: SrcLoc -&gt; String -&gt; SrcLoc</span>

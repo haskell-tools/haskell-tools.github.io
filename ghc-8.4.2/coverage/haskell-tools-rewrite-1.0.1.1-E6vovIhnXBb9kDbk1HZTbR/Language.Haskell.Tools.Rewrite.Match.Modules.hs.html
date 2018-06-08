@@ -1,0 +1,105 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | UPattern matching on UModule-level AST fragments for refactorings.
+<span class="lineno">    2 </span>{-# LANGUAGE PatternSynonyms #-}
+<span class="lineno">    3 </span>
+<span class="lineno">    4 </span>module Language.Haskell.Tools.Rewrite.Match.Modules where
+<span class="lineno">    5 </span>
+<span class="lineno">    6 </span>import Language.Haskell.Tools.AST
+<span class="lineno">    7 </span>import Language.Haskell.Tools.Rewrite.ElementTypes
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>-- | The representation of a haskell module, that is a separate compilation unit.
+<span class="lineno">   10 </span>-- It may or may not have a header.
+<span class="lineno">   11 </span>pattern Module :: FilePragmaList -&gt; MaybeModuleHead
+<span class="lineno">   12 </span>              -&gt; ImportDeclList -&gt; DeclList -&gt; Module
+<span class="lineno">   13 </span>pattern Module filePrags head imps decls  &lt;- <span class="nottickedoff">Ann _ (UModule filePrags head imps decls )</span>
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>-- | Module declaration with name and (optional) exports
+<span class="lineno">   16 </span>pattern ModuleHead :: ModuleName -&gt; MaybeModulePragma -&gt; MaybeExportSpecs -&gt; ModuleHead
+<span class="lineno">   17 </span>pattern ModuleHead n pr es &lt;- <span class="nottickedoff">Ann _ (UModuleHead n pr es)</span>
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>-- | A list of export specifications surrounded by parentheses
+<span class="lineno">   20 </span>pattern ExportSpecs :: ExportSpecList -&gt; ExportSpecs
+<span class="lineno">   21 </span>pattern ExportSpecs specs &lt;- <span class="nottickedoff">Ann _ (UExportSpecs specs)</span>
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>-- | Export a name and related names
+<span class="lineno">   24 </span>pattern ExportSpec :: IESpec -&gt; ExportSpec
+<span class="lineno">   25 </span>pattern ExportSpec ieSpec &lt;- <span class="nottickedoff">Ann _ (UDeclExport ieSpec)</span>
+<span class="lineno">   26 </span>
+<span class="lineno">   27 </span>-- | The export of an imported module (@ module A @)
+<span class="lineno">   28 </span>pattern ModuleExport :: ModuleName -&gt; ExportSpec
+<span class="lineno">   29 </span>pattern ModuleExport name &lt;- <span class="nottickedoff">Ann _ (UModuleExport name)</span>
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span>-- | Marks a name to be imported or exported with related names (subspecifier)
+<span class="lineno">   32 </span>pattern IESpec :: MaybeImportModifier -&gt; Name -&gt; MaybeSubSpec -&gt; IESpec
+<span class="lineno">   33 </span>pattern IESpec modifier name ss &lt;- <span class="istickedoff">Ann _ (UIESpec modifier name ss)</span>
+<span class="lineno">   34 </span>
+<span class="lineno">   35 </span>-- | @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
+<span class="lineno">   36 </span>pattern SubAll :: SubSpec
+<span class="lineno">   37 </span>pattern SubAll &lt;- <span class="istickedoff">Ann _ USubSpecAll</span>
+<span class="lineno">   38 </span>
+<span class="lineno">   39 </span>-- | @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
+<span class="lineno">   40 </span>pattern SubList :: NameList -&gt; SubSpec
+<span class="lineno">   41 </span>pattern SubList names &lt;- <span class="nottickedoff">Ann _ (USubSpecList names)</span>
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>
+<span class="lineno">   44 </span>pattern ImportDecl :: MaybeImportSource -&gt; MaybeImportQualified
+<span class="lineno">   45 </span>                        -&gt; MaybeImportSafe -&gt; MaybeStringNode
+<span class="lineno">   46 </span>                        -&gt; ModuleName -&gt; MaybeImportRenaming
+<span class="lineno">   47 </span>                        -&gt; MaybeImportSpec -&gt; ImportDecl
+<span class="lineno">   48 </span>pattern ImportDecl source qualified safe pkg name rename spec &lt;- <span class="nottickedoff">Ann _ (UImportDecl source qualified safe pkg name rename spec)</span>
+<span class="lineno">   49 </span>
+<span class="lineno">   50 </span>pattern ImportRenaming :: ModuleName -&gt; ImportRenaming
+<span class="lineno">   51 </span>pattern ImportRenaming name &lt;- <span class="nottickedoff">Ann _ (UImportRenaming name)</span>
+<span class="lineno">   52 </span>
+<span class="lineno">   53 </span>pattern ImportSpecList :: IESpecList -&gt; ImportSpec
+<span class="lineno">   54 </span>pattern ImportSpecList ieSpecs &lt;- <span class="nottickedoff">Ann _ (UImportSpecList ieSpecs)</span>
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>pattern ImportHidingList :: IESpecList -&gt; ImportSpec
+<span class="lineno">   57 </span>pattern ImportHidingList hidings &lt;- <span class="nottickedoff">Ann _ (UImportSpecHiding hidings)</span>
+<span class="lineno">   58 </span>
+<span class="lineno">   59 </span>pattern ModuleName :: String -&gt; ModuleName
+<span class="lineno">   60 </span>pattern ModuleName s &lt;- <span class="nottickedoff">Ann _ (UModuleName s)</span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>-- * Pragmas
+<span class="lineno">   63 </span>
+<span class="lineno">   64 </span>-- | @LANGUAGE@ pragma, listing the enabled language extensions in that file
+<span class="lineno">   65 </span>pattern LanguagePragma :: LanguageExtensionList -&gt; FilePragma
+<span class="lineno">   66 </span>pattern LanguagePragma exts &lt;- <span class="nottickedoff">Ann _ (ULanguagePragma exts)</span>
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>-- | @OPTIONS@ pragma, possibly qualified with a tool, e.g. OPTIONS_GHC
+<span class="lineno">   69 </span>pattern OptionsPragma :: String -&gt; FilePragma
+<span class="lineno">   70 </span>pattern OptionsPragma opt &lt;- <span class="nottickedoff">Ann _ (UOptionsPragma (Ann _ (UStringNode opt)))</span>
+<span class="lineno">   71 </span>
+<span class="lineno">   72 </span>-- | The name of the enabled language extension, for example (@ LambdaCase @)
+<span class="lineno">   73 </span>pattern LanguageExtension :: String -&gt; LanguageExtension
+<span class="lineno">   74 </span>pattern LanguageExtension ext &lt;- <span class="nottickedoff">Ann _ (ULanguageExtension ext)</span>
+<span class="lineno">   75 </span>
+<span class="lineno">   76 </span>-- | A warning pragma attached to the module
+<span class="lineno">   77 </span>pattern ModuleWarningPragma :: StringNodeList -&gt; ModulePragma
+<span class="lineno">   78 </span>pattern ModuleWarningPragma msgs &lt;- <span class="nottickedoff">Ann _ (UModuleWarningPragma msgs)</span>
+<span class="lineno">   79 </span>
+<span class="lineno">   80 </span>-- | A deprecated pragma attached to the module
+<span class="lineno">   81 </span>pattern ModuleDeprecatedPragma :: StringNodeList -&gt; ModulePragma
+<span class="lineno">   82 </span>pattern ModuleDeprecatedPragma msgs &lt;- <span class="nottickedoff">Ann _ (UModuleDeprecatedPragma msgs)</span>
+
+</pre>
+</body>
+</html>

@@ -82,46 +82,46 @@ span.spaces    { background: white }
 <span class="lineno">   63 </span><span class="spaces">     </span><span class="istickedoff">(\(RangeTemplateList rng bef aft sep indented seps)</span>
 <span class="lineno">   64 </span><span class="spaces">         </span><span class="istickedoff">-&gt; do (own, rest) &lt;- List.splitAt (length seps) &lt;$&gt; get</span>
 <span class="lineno">   65 </span><span class="spaces">               </span><span class="istickedoff">put rest</span>
-<span class="lineno">   66 </span><span class="spaces">               </span><span class="istickedoff">return (SourceTemplateList (RealSrcSpan rng) bef aft sep indented (Prelude.zip (Prelude.map ((:[]) . NormalText) own) (Prelude.map <span class="nottickedoff">RealSrcSpan</span> seps)) 0 Nothing))</span>
+<span class="lineno">   66 </span><span class="spaces">               </span><span class="istickedoff">return (SourceTemplateList (RealSrcSpan rng) bef aft sep indented (Prelude.zip (Prelude.map ((:[]) . NormalText) own) (Prelude.map RealSrcSpan seps)) 0 Nothing))</span>
 <span class="lineno">   67 </span><span class="spaces">     </span><span class="istickedoff">(\(RangeTemplateOpt rng bef aft) -&gt; return (SourceTemplateOpt (RealSrcSpan rng) bef aft <span class="nottickedoff">0</span> <span class="nottickedoff">Nothing</span>)))</span>
 <span class="lineno">   68 </span><span class="spaces">     </span><span class="istickedoff">(return <span class="nottickedoff">()</span>) (return <span class="nottickedoff">()</span>)</span>
 <span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">where getTextFor RangeChildElem = return [ChildElem]</span>
 <span class="lineno">   70 </span><span class="spaces">        </span><span class="istickedoff">getTextFor (RangeElem rng) = do (src:rest) &lt;- get</span>
 <span class="lineno">   71 </span><span class="spaces">                                        </span><span class="istickedoff">put rest</span>
-<span class="lineno">   72 </span><span class="spaces">                                        </span><span class="istickedoff">return [TextElem [NormalText src] <span class="nottickedoff">(RealSrcSpan rng)</span>]</span></span>
+<span class="lineno">   72 </span><span class="spaces">                                        </span><span class="istickedoff">return [TextElem [NormalText src] (RealSrcSpan rng)]</span></span>
 <span class="lineno">   73 </span>
 <span class="lineno">   74 </span>-- | Marks template elements in the AST that should always be present in the source code, regardless of their
 <span class="lineno">   75 </span>-- containing elements being deleted.
 <span class="lineno">   76 </span>-- Currently it recognizes CPP pragmas (lines starting with #)
 <span class="lineno">   77 </span>-- This function should only be applied to an AST if CPP is enabled.
 <span class="lineno">   78 </span>extractStayingElems :: SourceInfoTraversal node =&gt; Ann node dom SrcTemplateStage -&gt; Ann node dom SrcTemplateStage
-<span class="lineno">   79 </span><span class="decl"><span class="nottickedoff">extractStayingElems = runIdentity . sourceInfoTraverse (SourceInfoTrf</span>
-<span class="lineno">   80 </span><span class="spaces">    </span><span class="nottickedoff">(sourceTemplateNodeElems &amp; traversal &amp; sourceTemplateTextElem !- breakStaying)</span>
-<span class="lineno">   81 </span><span class="spaces">    </span><span class="nottickedoff">(srcTmpSeparators &amp; traversal &amp; _1 !- breakStaying)</span>
-<span class="lineno">   82 </span><span class="spaces">    </span><span class="nottickedoff">pure)</span>
-<span class="lineno">   83 </span><span class="spaces"></span><span class="nottickedoff"></span>
-<span class="lineno">   84 </span><span class="spaces">    </span><span class="nottickedoff">where -- splits the elements into separate lines and then recombines them</span>
-<span class="lineno">   85 </span><span class="spaces">          </span><span class="nottickedoff">breakStaying :: [SourceTemplateTextElem] -&gt; [SourceTemplateTextElem]</span>
-<span class="lineno">   86 </span><span class="spaces">          </span><span class="nottickedoff">breakStaying = concat . Prelude.map (\(NormalText s) -&gt; toTxtElems s)</span>
-<span class="lineno">   87 </span><span class="spaces"></span><span class="nottickedoff"></span>
-<span class="lineno">   88 </span><span class="spaces">          </span><span class="nottickedoff">toTxtElems :: String -&gt; [SourceTemplateTextElem]</span>
-<span class="lineno">   89 </span><span class="spaces">          </span><span class="nottickedoff">toTxtElems str = extractStaying $ splitOn &quot;\n&quot; $ str</span>
-<span class="lineno">   90 </span><span class="spaces">            </span><span class="nottickedoff">where</span>
-<span class="lineno">   91 </span><span class="spaces">              </span><span class="nottickedoff">extractStaying lines | not (any (&quot;#&quot; `isPrefixOf`) lines) = [NormalText str]</span>
-<span class="lineno">   92 </span><span class="spaces">              </span><span class="nottickedoff">extractStaying lines = Prelude.foldr appendTxt []</span>
-<span class="lineno">   93 </span><span class="spaces">                                       </span><span class="nottickedoff">$ Prelude.map (\ln -&gt; if &quot;#&quot; `isPrefixOf` ln then StayingText ln &quot;\n&quot; else NormalText ln) lines</span>
-<span class="lineno">   94 </span><span class="spaces">          </span><span class="nottickedoff">-- recombines the lines if they are both normal text</span>
-<span class="lineno">   95 </span><span class="spaces">          </span><span class="nottickedoff">-- otherwise it moves the windows '\r' characters to the correct position</span>
-<span class="lineno">   96 </span><span class="spaces">          </span><span class="nottickedoff">appendTxt (NormalText n1) (NormalText n2 : rest) = NormalText (n1 ++ '\n':n2) : rest</span>
-<span class="lineno">   97 </span><span class="spaces">          </span><span class="nottickedoff">appendTxt e (next@NormalText{} : ls) = case reverse (e ^. sourceTemplateText) of</span>
-<span class="lineno">   98 </span><span class="spaces">                                              </span><span class="nottickedoff">-- fix '\r' characters that are separated from '\n'</span>
-<span class="lineno">   99 </span><span class="spaces">                                    </span><span class="nottickedoff">'\r':_ -&gt; ((sourceTemplateText .- init) . (lineEndings .= &quot;\r\n&quot;) $ e) : (sourceTemplateText .- (&quot;\r\n&quot; ++) $ next) : ls</span>
-<span class="lineno">  100 </span><span class="spaces">                                    </span><span class="nottickedoff">_      -&gt; e : (sourceTemplateText .- ('\n':) $ next) : ls</span>
-<span class="lineno">  101 </span><span class="spaces">          </span><span class="nottickedoff">appendTxt e (next : ls) = case reverse (e ^. sourceTemplateText) of</span>
-<span class="lineno">  102 </span><span class="spaces">                                              </span><span class="nottickedoff">-- fix '\r' characters that are separated from '\n'</span>
-<span class="lineno">  103 </span><span class="spaces">                                    </span><span class="nottickedoff">'\r':_ -&gt; ((sourceTemplateText .- init) . (lineEndings .= &quot;\r\n&quot;) $ e) : NormalText &quot;\r\n&quot; : next : ls</span>
-<span class="lineno">  104 </span><span class="spaces">                                    </span><span class="nottickedoff">_      -&gt; e : NormalText &quot;\n&quot; : next : ls</span>
-<span class="lineno">  105 </span><span class="spaces">          </span><span class="nottickedoff">appendTxt e [] = [e]</span></span>
+<span class="lineno">   79 </span><span class="decl"><span class="istickedoff">extractStayingElems = runIdentity . sourceInfoTraverse (SourceInfoTrf</span>
+<span class="lineno">   80 </span><span class="spaces">    </span><span class="istickedoff">(sourceTemplateNodeElems &amp; traversal &amp; sourceTemplateTextElem !- breakStaying)</span>
+<span class="lineno">   81 </span><span class="spaces">    </span><span class="istickedoff">(srcTmpSeparators &amp; traversal &amp; _1 !- breakStaying)</span>
+<span class="lineno">   82 </span><span class="spaces">    </span><span class="istickedoff">pure)</span>
+<span class="lineno">   83 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   84 </span><span class="spaces">    </span><span class="istickedoff">where -- splits the elements into separate lines and then recombines them</span>
+<span class="lineno">   85 </span><span class="spaces">          </span><span class="istickedoff">breakStaying :: [SourceTemplateTextElem] -&gt; [SourceTemplateTextElem]</span>
+<span class="lineno">   86 </span><span class="spaces">          </span><span class="istickedoff">breakStaying = concat . Prelude.map (\(NormalText s) -&gt; toTxtElems s)</span>
+<span class="lineno">   87 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   88 </span><span class="spaces">          </span><span class="istickedoff">toTxtElems :: String -&gt; [SourceTemplateTextElem]</span>
+<span class="lineno">   89 </span><span class="spaces">          </span><span class="istickedoff">toTxtElems str = extractStaying $ splitOn &quot;\n&quot; $ str</span>
+<span class="lineno">   90 </span><span class="spaces">            </span><span class="istickedoff">where</span>
+<span class="lineno">   91 </span><span class="spaces">              </span><span class="istickedoff">extractStaying lines | not (any (&quot;#&quot; `isPrefixOf`) lines) = [NormalText str]</span>
+<span class="lineno">   92 </span><span class="spaces">              </span><span class="istickedoff">extractStaying lines = Prelude.foldr appendTxt []</span>
+<span class="lineno">   93 </span><span class="spaces">                                       </span><span class="istickedoff">$ Prelude.map (\ln -&gt; if &quot;#&quot; `isPrefixOf` ln then StayingText ln &quot;\n&quot; else NormalText ln) lines</span>
+<span class="lineno">   94 </span><span class="spaces">          </span><span class="istickedoff">-- recombines the lines if they are both normal text</span>
+<span class="lineno">   95 </span><span class="spaces">          </span><span class="istickedoff">-- otherwise it moves the windows '\r' characters to the correct position</span>
+<span class="lineno">   96 </span><span class="spaces">          </span><span class="istickedoff">appendTxt (NormalText n1) (NormalText n2 : rest) = NormalText (n1 ++ '\n':n2) : rest</span>
+<span class="lineno">   97 </span><span class="spaces">          </span><span class="istickedoff">appendTxt e (next@NormalText{} : ls) = case reverse (e ^. sourceTemplateText) of</span>
+<span class="lineno">   98 </span><span class="spaces">                                              </span><span class="istickedoff">-- fix '\r' characters that are separated from '\n'</span>
+<span class="lineno">   99 </span><span class="spaces">                                    </span><span class="istickedoff">'\r':_ -&gt; <span class="nottickedoff">((sourceTemplateText .- init) . (lineEndings .= &quot;\r\n&quot;) $ e) : (sourceTemplateText .- (&quot;\r\n&quot; ++) $ next) : ls</span></span>
+<span class="lineno">  100 </span><span class="spaces">                                    </span><span class="istickedoff">_      -&gt; e : (sourceTemplateText .- ('\n':) $ next) : ls</span>
+<span class="lineno">  101 </span><span class="spaces">          </span><span class="istickedoff">appendTxt e (next : ls) = case reverse (e ^. sourceTemplateText) of</span>
+<span class="lineno">  102 </span><span class="spaces">                                              </span><span class="istickedoff">-- fix '\r' characters that are separated from '\n'</span>
+<span class="lineno">  103 </span><span class="spaces">                                    </span><span class="istickedoff">'\r':_ -&gt; <span class="nottickedoff">((sourceTemplateText .- init) . (lineEndings .= &quot;\r\n&quot;) $ e) : NormalText &quot;\r\n&quot; : next : ls</span></span>
+<span class="lineno">  104 </span><span class="spaces">                                    </span><span class="istickedoff">_      -&gt; e : NormalText &quot;\n&quot; : next : ls</span>
+<span class="lineno">  105 </span><span class="spaces">          </span><span class="istickedoff">appendTxt e [] = [e]</span></span>
 
 </pre>
 </body>

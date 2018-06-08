@@ -131,8 +131,8 @@ span.spaces    { background: white }
 <span class="lineno">  112 </span><span class="spaces">                      </span><span class="istickedoff">let res = f below ni</span>
 <span class="lineno">  113 </span><span class="spaces">                          </span><span class="istickedoff">resRange = getRange res</span>
 <span class="lineno">  114 </span><span class="spaces">                          </span><span class="istickedoff">endOfSiblings = srcSpanEnd (collectSpanRanges (srcSpanStart resRange) top)</span>
-<span class="lineno">  115 </span><span class="spaces">                          </span><span class="istickedoff">correctedRange = if <span class="tickonlyfalse">endOfSiblings &gt; srcSpanStart resRange</span></span>
-<span class="lineno">  116 </span><span class="spaces">                                             </span><span class="istickedoff">then <span class="nottickedoff">mkSrcSpan endOfSiblings (max endOfSiblings (srcSpanEnd resRange))</span></span>
+<span class="lineno">  115 </span><span class="spaces">                          </span><span class="istickedoff">correctedRange = if endOfSiblings &gt; srcSpanStart resRange</span>
+<span class="lineno">  116 </span><span class="spaces">                                             </span><span class="istickedoff">then mkSrcSpan endOfSiblings (max endOfSiblings (srcSpanEnd resRange))</span>
 <span class="lineno">  117 </span><span class="spaces">                                             </span><span class="istickedoff">else resRange</span>
 <span class="lineno">  118 </span><span class="spaces">                      </span><span class="istickedoff">put ([] : (top ++ [ correctedRange ]) : xs)</span>
 <span class="lineno">  119 </span><span class="spaces">                      </span><span class="istickedoff">return $ setRange correctedRange res</span></span>

@@ -48,34 +48,34 @@ span.spaces    { background: white }
 <span class="lineno">   29 </span>
 <span class="lineno">   30 </span>-- | Does the import declaration import only the explicitly listed elements?
 <span class="lineno">   31 </span>importIsExact :: Ann UImportDecl dom stage -&gt; Bool
-<span class="lineno">   32 </span><span class="decl"><span class="nottickedoff">importIsExact = isJust . (^? importSpec&amp;annJust&amp;importSpecList)</span></span>
+<span class="lineno">   32 </span><span class="decl"><span class="istickedoff">importIsExact = isJust . (^? importSpec&amp;annJust&amp;importSpecList)</span></span>
 <span class="lineno">   33 </span>
 <span class="lineno">   34 </span>-- | Does the import declaration import all elements that are not excluded explicitly?
 <span class="lineno">   35 </span>importIsHiding :: Ann UImportDecl dom stage -&gt; Bool
-<span class="lineno">   36 </span><span class="decl"><span class="nottickedoff">importIsHiding = isJust . (^? importSpec&amp;annJust&amp;importSpecHiding)</span></span>
+<span class="lineno">   36 </span><span class="decl"><span class="istickedoff">importIsHiding = isJust . (^? importSpec&amp;annJust&amp;importSpecHiding)</span></span>
 <span class="lineno">   37 </span>
 <span class="lineno">   38 </span>-- | Accesses the name of a function or value binding
 <span class="lineno">   39 </span>bindingName :: Simple Traversal (Ann UValueBind dom stage) (Ann UQualifiedName dom stage)
-<span class="lineno">   40 </span><span class="decl"><span class="nottickedoff">bindingName = (valBindPat&amp;patternName&amp;simpleName</span>
-<span class="lineno">   41 </span><span class="spaces">                        </span><span class="nottickedoff">&amp;+&amp; funBindMatches&amp;annList&amp;matchLhs</span>
-<span class="lineno">   42 </span><span class="spaces">                              </span><span class="nottickedoff">&amp;(matchLhsName&amp;simpleName &amp;+&amp; matchLhsOperator&amp;operatorName))</span></span>
+<span class="lineno">   40 </span><span class="decl"><span class="istickedoff">bindingName = (valBindPat&amp;patternName&amp;simpleName</span>
+<span class="lineno">   41 </span><span class="spaces">                        </span><span class="istickedoff">&amp;+&amp; funBindMatches&amp;annList&amp;matchLhs</span>
+<span class="lineno">   42 </span><span class="spaces">                              </span><span class="istickedoff">&amp;(matchLhsName&amp;simpleName &amp;+&amp; matchLhsOperator&amp;operatorName))</span></span>
 <span class="lineno">   43 </span>
 <span class="lineno">   44 </span>-- | Accesses that name of a declaration through the declaration head.
 <span class="lineno">   45 </span>declHeadNames :: Simple Traversal (Ann UDeclHead dom stage) (Ann UQualifiedName dom stage)
-<span class="lineno">   46 </span><span class="decl"><span class="nottickedoff">declHeadNames = (dhName&amp;simpleName &amp;+&amp; dhBody&amp;declHeadNames &amp;+&amp; dhAppFun&amp;declHeadNames &amp;+&amp; dhOperator&amp;operatorName)</span></span>
+<span class="lineno">   46 </span><span class="decl"><span class="istickedoff">declHeadNames = (dhName&amp;simpleName &amp;+&amp; dhBody&amp;<span class="nottickedoff">declHeadNames</span> &amp;+&amp; dhAppFun&amp;declHeadNames &amp;+&amp; dhOperator&amp;operatorName)</span></span>
 <span class="lineno">   47 </span>
 <span class="lineno">   48 </span>-- | A reference to access type arguments to a type constructor call that may be universally qualified
 <span class="lineno">   49 </span>-- or parenthesized.
 <span class="lineno">   50 </span>typeParams :: Simple Traversal (Ann UType dom stage) (Ann UType dom stage)
-<span class="lineno">   51 </span><span class="decl"><span class="nottickedoff">typeParams = fromTraversal typeParamsTrav</span>
-<span class="lineno">   52 </span><span class="spaces">  </span><span class="nottickedoff">where typeParamsTrav f (Ann a (UTyFun p r)) = Ann a &lt;$&gt; (UTyFun &lt;$&gt; f p &lt;*&gt; typeParamsTrav f r)</span>
-<span class="lineno">   53 </span><span class="spaces">        </span><span class="nottickedoff">typeParamsTrav f (Ann a (UTyForall vs t)) = Ann a &lt;$&gt; (UTyForall vs &lt;$&gt; typeParamsTrav f t)</span>
-<span class="lineno">   54 </span><span class="spaces">        </span><span class="nottickedoff">typeParamsTrav f (Ann a (UTyCtx ctx t)) = Ann a &lt;$&gt; (UTyCtx ctx &lt;$&gt; typeParamsTrav f t)</span>
-<span class="lineno">   55 </span><span class="spaces">        </span><span class="nottickedoff">typeParamsTrav f (Ann a (UTyParen t)) = Ann a &lt;$&gt; (UTyParen &lt;$&gt; typeParamsTrav f t)</span>
-<span class="lineno">   56 </span><span class="spaces">        </span><span class="nottickedoff">typeParamsTrav f t = f t</span></span>
+<span class="lineno">   51 </span><span class="decl"><span class="istickedoff">typeParams = fromTraversal typeParamsTrav</span>
+<span class="lineno">   52 </span><span class="spaces">  </span><span class="istickedoff">where typeParamsTrav f (Ann a (UTyFun p r)) = Ann a &lt;$&gt; (UTyFun &lt;$&gt; f p &lt;*&gt; typeParamsTrav f r)</span>
+<span class="lineno">   53 </span><span class="spaces">        </span><span class="istickedoff">typeParamsTrav f (Ann a (UTyForall vs t)) = Ann a &lt;$&gt; (UTyForall vs &lt;$&gt; typeParamsTrav f t)</span>
+<span class="lineno">   54 </span><span class="spaces">        </span><span class="istickedoff">typeParamsTrav f (Ann a (UTyCtx ctx t)) = Ann a &lt;$&gt; (UTyCtx ctx &lt;$&gt; typeParamsTrav f t)</span>
+<span class="lineno">   55 </span><span class="spaces">        </span><span class="istickedoff">typeParamsTrav f (Ann a (UTyParen t)) = <span class="nottickedoff">Ann a &lt;$&gt; (UTyParen &lt;$&gt; typeParamsTrav f t)</span></span>
+<span class="lineno">   56 </span><span class="spaces">        </span><span class="istickedoff">typeParamsTrav f t = f t</span></span>
 <span class="lineno">   57 </span>
 <span class="lineno">   58 </span>valBindPats :: Simple Traversal (Ann UValueBind dom stage) (Ann UPattern dom stage)
-<span class="lineno">   59 </span><span class="decl"><span class="nottickedoff">valBindPats = valBindPat &amp;+&amp; funBindMatches &amp; annList &amp; matchLhs &amp; (matchLhsArgs &amp; annList &amp;+&amp; matchLhsLhs &amp;+&amp; matchLhsRhs)</span></span>
+<span class="lineno">   59 </span><span class="decl"><span class="istickedoff">valBindPats = valBindPat &amp;+&amp; funBindMatches &amp; annList &amp; matchLhs &amp; (matchLhsArgs &amp; annList &amp;+&amp; <span class="nottickedoff">matchLhsLhs</span> &amp;+&amp; <span class="nottickedoff">matchLhsRhs</span>)</span></span>
 <span class="lineno">   60 </span>
 <span class="lineno">   61 </span>-- | Access the semantic information of an AST node.
 <span class="lineno">   62 </span>semantics :: Simple Lens (Ann elem dom stage) (SemanticInfo dom elem)
@@ -89,7 +89,7 @@ span.spaces    { background: white }
 <span class="lineno">   70 </span>-- | Return true if the node contains a given range
 <span class="lineno">   71 </span>isInside :: HasRange (inner dom stage) =&gt; RealSrcSpan -&gt; inner dom stage -&gt; Bool
 <span class="lineno">   72 </span><span class="decl"><span class="istickedoff">isInside rng nd = case getRange nd of RealSrcSpan sp -&gt; sp `containsSpan` rng</span>
-<span class="lineno">   73 </span><span class="spaces">                                      </span><span class="istickedoff">_              -&gt; <span class="nottickedoff">False</span></span></span>
+<span class="lineno">   73 </span><span class="spaces">                                      </span><span class="istickedoff">_              -&gt; False</span></span>
 <span class="lineno">   74 </span>
 <span class="lineno">   75 </span>-- | Get all nodes that are contained in a given source range
 <span class="lineno">   76 </span>nodesContained :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage))
@@ -113,9 +113,9 @@ span.spaces    { background: white }
 <span class="lineno">   94 </span>-- | Get the shortest source range that contains the given
 <span class="lineno">   95 </span>getNodeContaining :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage, HasRange (Ann inner dom stage))
 <span class="lineno">   96 </span>                  =&gt; RealSrcSpan -&gt; Ann node dom stage -&gt; Maybe (Ann inner dom stage)
-<span class="lineno">   97 </span><span class="decl"><span class="nottickedoff">getNodeContaining sp node = case node ^? nodesContaining sp of</span>
-<span class="lineno">   98 </span><span class="spaces">  </span><span class="nottickedoff">[] -&gt; Nothing</span>
-<span class="lineno">   99 </span><span class="spaces">  </span><span class="nottickedoff">results -&gt; Just $ minimumBy (compareRangeLength `on` getRange) results</span></span>
+<span class="lineno">   97 </span><span class="decl"><span class="istickedoff">getNodeContaining sp node = case node ^? nodesContaining sp of</span>
+<span class="lineno">   98 </span><span class="spaces">  </span><span class="istickedoff">[] -&gt; Nothing</span>
+<span class="lineno">   99 </span><span class="spaces">  </span><span class="istickedoff">results -&gt; Just $ minimumBy <span class="nottickedoff">(compareRangeLength `on` getRange)</span> results</span></span>
 <span class="lineno">  100 </span>
 <span class="lineno">  101 </span>-- | Compares two source spans based on their lengths. Can only used for NESTED spans.
 <span class="lineno">  102 </span>compareRangeLength :: SrcSpan -&gt; SrcSpan -&gt; Ordering
@@ -130,20 +130,20 @@ span.spaces    { background: white }
 <span class="lineno">  111 </span>  elementName :: Simple Traversal (Ann elem dom st) (Ann UQualifiedName dom st)
 <span class="lineno">  112 </span>
 <span class="lineno">  113 </span>instance NamedElement UDecl where
-<span class="lineno">  114 </span>  <span class="decl"><span class="nottickedoff">elementName = (declHead &amp; declHeadNames)</span>
-<span class="lineno">  115 </span><span class="spaces">                  </span><span class="nottickedoff">&amp;+&amp; (declTypeFamily &amp; tfHead &amp; declHeadNames)</span>
-<span class="lineno">  116 </span><span class="spaces">                  </span><span class="nottickedoff">&amp;+&amp; (declValBind &amp; bindingName)</span>
-<span class="lineno">  117 </span><span class="spaces">                  </span><span class="nottickedoff">&amp;+&amp; (declName &amp; simpleName)</span>
-<span class="lineno">  118 </span><span class="spaces">                  </span><span class="nottickedoff">&amp;+&amp; (declTypeSig &amp; tsName &amp; annList &amp; simpleName)</span>
-<span class="lineno">  119 </span><span class="spaces">                  </span><span class="nottickedoff">&amp;+&amp; (declPatSyn &amp; patLhs &amp; (patName &amp; simpleName &amp;+&amp; patSynOp &amp; operatorName))</span></span>
+<span class="lineno">  114 </span>  <span class="decl"><span class="istickedoff">elementName = (declHead &amp; declHeadNames)</span>
+<span class="lineno">  115 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; (declTypeFamily &amp; tfHead &amp; declHeadNames)</span>
+<span class="lineno">  116 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; (declValBind &amp; bindingName)</span>
+<span class="lineno">  117 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; (declName &amp; simpleName)</span>
+<span class="lineno">  118 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; (declTypeSig &amp; tsName &amp; annList &amp; simpleName)</span>
+<span class="lineno">  119 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; (declPatSyn &amp; <span class="nottickedoff">patLhs</span> &amp; <span class="nottickedoff">(patName &amp; simpleName &amp;+&amp; patSynOp &amp; operatorName)</span>)</span></span>
 <span class="lineno">  120 </span>
 <span class="lineno">  121 </span>instance NamedElement ULocalBind where
-<span class="lineno">  122 </span>  <span class="decl"><span class="nottickedoff">elementName = localVal&amp;bindingName</span>
-<span class="lineno">  123 </span><span class="spaces">                  </span><span class="nottickedoff">&amp;+&amp; localSig&amp;tsName&amp;annList&amp;simpleName</span>
-<span class="lineno">  124 </span><span class="spaces">                  </span><span class="nottickedoff">&amp;+&amp; localFixity&amp;fixityOperators&amp;annList&amp;operatorName</span></span>
+<span class="lineno">  122 </span>  <span class="decl"><span class="istickedoff">elementName = localVal&amp;bindingName</span>
+<span class="lineno">  123 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; localSig&amp;tsName&amp;annList&amp;simpleName</span>
+<span class="lineno">  124 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; localFixity&amp;fixityOperators&amp;annList&amp;operatorName</span></span>
 <span class="lineno">  125 </span>
 <span class="lineno">  126 </span>inScope :: GHC.Name -&gt; Scope -&gt; Bool
-<span class="lineno">  127 </span><span class="decl"><span class="nottickedoff">inScope n sc = any ((n `elem`) . map (^. _1)) sc</span></span>
+<span class="lineno">  127 </span><span class="decl"><span class="istickedoff">inScope n sc = any ((n `elem`) . map (^. _1)) sc</span></span>
 <span class="lineno">  128 </span>
 <span class="lineno">  129 </span>-- * Pattern synonyms for annotated lists and maybes
 <span class="lineno">  130 </span>
@@ -154,7 +154,7 @@ span.spaces    { background: white }
 <span class="lineno">  135 </span>pattern AnnNothing &lt;- <span class="nottickedoff">AnnMaybeG _ Nothing</span>
 <span class="lineno">  136 </span>
 <span class="lineno">  137 </span>pattern AnnJust :: Ann elem dom stage -&gt; AnnMaybeG elem dom stage
-<span class="lineno">  138 </span>pattern AnnJust elem &lt;- <span class="nottickedoff">AnnMaybeG _ (Just elem)</span>
+<span class="lineno">  138 </span>pattern AnnJust elem &lt;- <span class="istickedoff">AnnMaybeG _ (Just elem)</span>
 
 </pre>
 </body>

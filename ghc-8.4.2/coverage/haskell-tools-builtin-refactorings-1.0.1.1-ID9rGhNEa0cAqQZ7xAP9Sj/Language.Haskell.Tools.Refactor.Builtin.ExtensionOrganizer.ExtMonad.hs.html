@@ -1,0 +1,172 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts #-}
+<span class="lineno">    2 </span>{-# LANGUAGE MonoLocalBinds #-}
+<span class="lineno">    3 </span>{-# LANGUAGE RankNTypes #-}
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>
+<span class="lineno">    6 </span>module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+<span class="lineno">    7 </span>  ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+<span class="lineno">    8 </span>  , module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
+<span class="lineno">    9 </span>  , module Language.Haskell.Tools.Refactor.Utils.Maybe
+<span class="lineno">   10 </span>  , module Language.Haskell.TH.LanguageExtensions
+<span class="lineno">   11 </span>  , module Control.Monad.State
+<span class="lineno">   12 </span>  , module Control.Monad.Reader
+<span class="lineno">   13 </span>  ) where
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>import Language.Haskell.Tools.Refactor
+<span class="lineno">   16 </span>import Language.Haskell.Tools.Refactor.Utils.Maybe
+<span class="lineno">   17 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>import GHC (SrcSpan(..), Ghc(..), runGhc)
+<span class="lineno">   20 </span>import GHC.Paths ( libdir )
+<span class="lineno">   21 </span>import Language.Haskell.TH.LanguageExtensions
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>import Control.Monad.Reader
+<span class="lineno">   24 </span>import Control.Monad.State
+<span class="lineno">   25 </span>import qualified Data.Map.Strict as SMap (Map(..), empty, insertWith)
+<span class="lineno">   26 </span>
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>{-# ANN module &quot;HLint: ignore Use mappend&quot; #-}
+<span class="lineno">   29 </span>{-# ANN module &quot;HLint: ignore Use import/export shortcut&quot; #-}
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>type ExtMonad = ReaderT [Extension] (StateT ExtMap Ghc)
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>type CheckNode  elem  = elem -&gt; ExtMonad elem
+<span class="lineno">   35 </span>type CheckUNode uelem = Ann uelem IdDom SrcTemplateStage -&gt; ExtMonad (Ann uelem IdDom SrcTemplateStage)
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>class Checkable node where
+<span class="lineno">   38 </span>  check :: CheckNode node
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>addHint' :: (Ord k, HasRange a) =&gt;
+<span class="lineno">   41 </span>                 k -&gt; a -&gt; SMap.Map k [Occurence SrcSpan] -&gt; SMap.Map k [Occurence SrcSpan]
+<span class="lineno">   42 </span><span class="decl"><span class="istickedoff">addHint' key node = SMap.insertWith (++) key [Hint (getRange node)]</span></span>
+<span class="lineno">   43 </span>
+<span class="lineno">   44 </span>addHint_ :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   45 </span>             Extension -&gt; node -&gt; m ()
+<span class="lineno">   46 </span><span class="decl"><span class="istickedoff">addHint_ extension element = modify $ addHint' (lVar extension) element</span></span>
+<span class="lineno">   47 </span>
+<span class="lineno">   48 </span>addHint :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   49 </span>            Extension -&gt; node -&gt; m node
+<span class="lineno">   50 </span><span class="decl"><span class="istickedoff">addHint ext node = addHint_ ext node &gt;&gt; return <span class="nottickedoff">node</span></span></span>
+<span class="lineno">   51 </span>
+<span class="lineno">   52 </span>addRelationHint_ :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   53 </span>                     LogicalRelation Extension -&gt; node -&gt; m ()
+<span class="lineno">   54 </span><span class="decl"><span class="istickedoff">addRelationHint_ rel element = modify $ addHint' rel element</span></span>
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>addRelationHint :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   57 </span>                    LogicalRelation Extension -&gt; node -&gt; m node
+<span class="lineno">   58 </span><span class="decl"><span class="istickedoff">addRelationHint rel node = addRelationHint_ rel node &gt;&gt; return <span class="nottickedoff">node</span></span></span>
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>
+<span class="lineno">   61 </span>addMI' :: (Ord k, HasRange a) =&gt;
+<span class="lineno">   62 </span>                 k -&gt; a -&gt; SMap.Map k [Occurence SrcSpan] -&gt; SMap.Map k [Occurence SrcSpan]
+<span class="lineno">   63 </span><span class="decl"><span class="nottickedoff">addMI' key node = SMap.insertWith (++) key [MissingInformation (getRange node)]</span></span>
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>addMI_ :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   66 </span>             Extension -&gt; node -&gt; m ()
+<span class="lineno">   67 </span><span class="decl"><span class="nottickedoff">addMI_ extension element = modify $ addMI' (lVar extension) element</span></span>
+<span class="lineno">   68 </span>
+<span class="lineno">   69 </span>addMI :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   70 </span>            Extension -&gt; node -&gt; m node
+<span class="lineno">   71 </span><span class="decl"><span class="nottickedoff">addMI ext node = addMI_ ext node &gt;&gt; return node</span></span>
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>addRelationMI_ :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   74 </span>                     LogicalRelation Extension -&gt; node -&gt; m ()
+<span class="lineno">   75 </span><span class="decl"><span class="nottickedoff">addRelationMI_ rel element = modify $ addMI' rel element</span></span>
+<span class="lineno">   76 </span>
+<span class="lineno">   77 </span>addRelationMI :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   78 </span>                    LogicalRelation Extension -&gt; node -&gt; m node
+<span class="lineno">   79 </span><span class="decl"><span class="nottickedoff">addRelationMI rel node = addRelationMI_ rel node &gt;&gt; return node</span></span>
+<span class="lineno">   80 </span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>addEvidence' :: (Ord k, HasRange a) =&gt;
+<span class="lineno">   83 </span>                 k -&gt; a -&gt; SMap.Map k [Occurence SrcSpan] -&gt; SMap.Map k [Occurence SrcSpan]
+<span class="lineno">   84 </span><span class="decl"><span class="istickedoff">addEvidence' key node = SMap.insertWith (++) key [Evidence (getRange node)]</span></span>
+<span class="lineno">   85 </span>
+<span class="lineno">   86 </span>addEvidence_ :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   87 </span>                 Extension -&gt; node -&gt; m ()
+<span class="lineno">   88 </span><span class="decl"><span class="istickedoff">addEvidence_ extension element = modify $ addEvidence' (lVar extension) element</span></span>
+<span class="lineno">   89 </span>
+<span class="lineno">   90 </span>addEvidence :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   91 </span>                Extension -&gt; node -&gt; m node
+<span class="lineno">   92 </span><span class="decl"><span class="istickedoff">addEvidence ext node = addEvidence_ ext node &gt;&gt; return node</span></span>
+<span class="lineno">   93 </span>
+<span class="lineno">   94 </span>addRelation_ :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   95 </span>                 LogicalRelation Extension -&gt; node -&gt; m ()
+<span class="lineno">   96 </span><span class="decl"><span class="istickedoff">addRelation_ rel element = modify $ addEvidence' rel element</span></span>
+<span class="lineno">   97 </span>
+<span class="lineno">   98 </span>addRelation :: (MonadState ExtMap m, HasRange node) =&gt;
+<span class="lineno">   99 </span>                LogicalRelation Extension -&gt; node -&gt; m node
+<span class="lineno">  100 </span><span class="decl"><span class="istickedoff">addRelation rel node = addRelation_ rel node &gt;&gt; return node</span></span>
+<span class="lineno">  101 </span>
+<span class="lineno">  102 </span>
+<span class="lineno">  103 </span>addEvidenceLoc' :: Ord k =&gt; k -&gt; SrcSpan -&gt; SMap.Map k [Occurence SrcSpan] -&gt; SMap.Map k [Occurence SrcSpan]
+<span class="lineno">  104 </span><span class="decl"><span class="istickedoff">addEvidenceLoc' k loc = SMap.insertWith (++) k [Evidence loc]</span></span>
+<span class="lineno">  105 </span>
+<span class="lineno">  106 </span>addEvidenceLoc :: MonadState ExtMap m =&gt; Extension -&gt; SrcSpan -&gt; m ()
+<span class="lineno">  107 </span><span class="decl"><span class="istickedoff">addEvidenceLoc ext loc = modify $ addEvidenceLoc' (lVar ext) loc</span></span>
+<span class="lineno">  108 </span>
+<span class="lineno">  109 </span>addRelationLoc :: MonadState ExtMap m =&gt; LogicalRelation Extension -&gt; SrcSpan -&gt; m ()
+<span class="lineno">  110 </span><span class="decl"><span class="nottickedoff">addRelationLoc rel loc = modify $ addEvidenceLoc' rel loc</span></span>
+<span class="lineno">  111 </span>
+<span class="lineno">  112 </span>isTurnedOn :: Extension -&gt; ExtMonad Bool
+<span class="lineno">  113 </span><span class="decl"><span class="istickedoff">isTurnedOn ext = do</span>
+<span class="lineno">  114 </span><span class="spaces">  </span><span class="istickedoff">defaults &lt;- ask</span>
+<span class="lineno">  115 </span><span class="spaces">  </span><span class="istickedoff">return $! ext `elem` defaults</span></span>
+<span class="lineno">  116 </span>
+<span class="lineno">  117 </span>isTurnedOff :: Extension -&gt; ExtMonad Bool
+<span class="lineno">  118 </span><span class="decl"><span class="nottickedoff">isTurnedOff ext = not &lt;$&gt; isTurnedOn ext</span></span>
+<span class="lineno">  119 </span>
+<span class="lineno">  120 </span>conditional :: (node -&gt; ExtMonad node) -&gt;
+<span class="lineno">  121 </span>               Extension -&gt;
+<span class="lineno">  122 </span>               node -&gt;
+<span class="lineno">  123 </span>               ExtMonad node
+<span class="lineno">  124 </span><span class="decl"><span class="istickedoff">conditional checker ext = conditionalAny checker [ext]</span></span>
+<span class="lineno">  125 </span>
+<span class="lineno">  126 </span>conditionalNot :: (node -&gt; ExtMonad node) -&gt;
+<span class="lineno">  127 </span>                  Extension -&gt;
+<span class="lineno">  128 </span>                  node -&gt;
+<span class="lineno">  129 </span>                  ExtMonad node
+<span class="lineno">  130 </span><span class="decl"><span class="nottickedoff">conditionalNot checker ext node = do</span>
+<span class="lineno">  131 </span><span class="spaces">  </span><span class="nottickedoff">b &lt;-isTurnedOn ext</span>
+<span class="lineno">  132 </span><span class="spaces">  </span><span class="nottickedoff">if b then return node else checker node</span></span>
+<span class="lineno">  133 </span>
+<span class="lineno">  134 </span>conditionalAny :: (node -&gt; ExtMonad node) -&gt;
+<span class="lineno">  135 </span>                   [Extension] -&gt;
+<span class="lineno">  136 </span>                   node -&gt;
+<span class="lineno">  137 </span>                   ExtMonad node
+<span class="lineno">  138 </span><span class="decl"><span class="istickedoff">conditionalAny checker exts node = do</span>
+<span class="lineno">  139 </span><span class="spaces">  </span><span class="istickedoff">bs &lt;- mapM isTurnedOn exts</span>
+<span class="lineno">  140 </span><span class="spaces">  </span><span class="istickedoff">if or bs then checker node else return node</span></span>
+<span class="lineno">  141 </span>
+<span class="lineno">  142 </span>conditionalAdd :: HasRange node =&gt; Extension -&gt; node -&gt; ExtMonad node
+<span class="lineno">  143 </span><span class="decl"><span class="nottickedoff">conditionalAdd ext = conditional (addEvidence ext) ext</span></span>
+<span class="lineno">  144 </span>
+<span class="lineno">  145 </span>runExtMonadIO :: ExtMonad a -&gt; IO a
+<span class="lineno">  146 </span><span class="decl"><span class="nottickedoff">runExtMonadIO = runGhc (Just libdir) . runExtMonadGHC</span></span>
+<span class="lineno">  147 </span>
+<span class="lineno">  148 </span>runExtMonadGHC :: ExtMonad a -&gt; Ghc a
+<span class="lineno">  149 </span><span class="decl"><span class="nottickedoff">runExtMonadGHC = liftM fst . flip runStateT SMap.empty . flip runReaderT []</span></span>
+
+</pre>
+</body>
+</html>

@@ -43,10 +43,10 @@ span.spaces    { background: white }
 <span class="lineno">   24 </span>type ModuleDom = (SourceFileKey, UnnamedModule)
 <span class="lineno">   25 </span>
 <span class="lineno">   26 </span>-- | Module name and marker to separate .hs-boot module definitions. Specifies a source file in a working directory.
-<span class="lineno">   27 </span>data SourceFileKey = SourceFileKey { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_sfkFileName</span></span></span> :: FilePath
-<span class="lineno">   28 </span>                                   , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_sfkModuleName</span></span></span> :: String
+<span class="lineno">   27 </span>data SourceFileKey = SourceFileKey { <span class="istickedoff"><span class="decl"><span class="istickedoff">_sfkFileName</span></span></span> :: FilePath
+<span class="lineno">   28 </span>                                   , <span class="istickedoff"><span class="decl"><span class="istickedoff">_sfkModuleName</span></span></span> :: String
 <span class="lineno">   29 </span>                                   }
-<span class="lineno">   30 </span>  deriving (<span class="decl"><span class="nottickedoff">Eq</span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Ord</span></span></span></span></span></span></span></span></span></span>, <span class="decl"><span class="nottickedoff">Show</span></span>)
+<span class="lineno">   30 </span>  deriving (<span class="decl"><span class="istickedoff">Eq</span></span>, <span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff">Ord</span></span></span></span></span></span></span></span></span></span>, <span class="decl"><span class="nottickedoff">Show</span></span>)
 <span class="lineno">   31 </span>
 <span class="lineno">   32 </span>-- | Change in the project, modification or removal of a module.
 <span class="lineno">   33 </span>data RefactorChange = ContentChanged { <span class="istickedoff"><span class="nottickedoff"><span class="decl"><span class="istickedoff">fromContentChanged</span></span></span></span> :: ModuleDom }
@@ -78,13 +78,13 @@ span.spaces    { background: white }
 <span class="lineno">   59 </span>
 <span class="lineno">   60 </span>-- | Transforms module name to a .hs file name relative to the source root directory.
 <span class="lineno">   61 </span>moduleSourceFile :: String -&gt; FilePath
-<span class="lineno">   62 </span><span class="decl"><span class="nottickedoff">moduleSourceFile m = (foldl1 (&lt;/&gt;) (splitOn &quot;.&quot; m)) &lt;.&gt; &quot;hs&quot;</span></span>
+<span class="lineno">   62 </span><span class="decl"><span class="istickedoff">moduleSourceFile m = (foldl1 <span class="nottickedoff">(&lt;/&gt;)</span> (splitOn &quot;.&quot; m)) &lt;.&gt; &quot;hs&quot;</span></span>
 <span class="lineno">   63 </span>
 <span class="lineno">   64 </span>-- | Transforms a source root relative file name into module name.
 <span class="lineno">   65 </span>sourceFileModule :: FilePath -&gt; String
 <span class="lineno">   66 </span><span class="decl"><span class="nottickedoff">sourceFileModule fp = intercalate &quot;.&quot; $ splitDirectories $ dropExtension fp</span></span>
 <span class="lineno">   67 </span>
-<span class="lineno">   68 </span><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">makeReferences ''SourceFileKey</span></span></span></span></span>
+<span class="lineno">   68 </span><span class="istickedoff"><span class="nottickedoff"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff">makeReferences ''SourceFileKey</span></span></span></span></span></span></span>
 
 </pre>
 </body>

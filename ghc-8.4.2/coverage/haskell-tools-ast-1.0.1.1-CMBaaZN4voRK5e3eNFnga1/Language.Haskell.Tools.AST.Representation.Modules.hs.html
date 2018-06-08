@@ -27,22 +27,22 @@ span.spaces    { background: white }
 <span class="lineno">    8 </span>-- | The representation of a haskell module, that is a separate compilation unit.
 <span class="lineno">    9 </span>-- It may or may not have a header.
 <span class="lineno">   10 </span>data UModule dom stage
-<span class="lineno">   11 </span>  = UModule { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_filePragmas</span></span></span> :: AnnListG UFilePragma dom stage
-<span class="lineno">   12 </span>            , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_modHead</span></span></span> :: AnnMaybeG UModuleHead dom stage
+<span class="lineno">   11 </span>  = UModule { <span class="istickedoff"><span class="decl"><span class="istickedoff">_filePragmas</span></span></span> :: AnnListG UFilePragma dom stage
+<span class="lineno">   12 </span>            , <span class="istickedoff"><span class="decl"><span class="istickedoff">_modHead</span></span></span> :: AnnMaybeG UModuleHead dom stage
 <span class="lineno">   13 </span>            , <span class="istickedoff"><span class="decl"><span class="istickedoff">_modImports</span></span></span> :: AnnListG UImportDecl dom stage
 <span class="lineno">   14 </span>            , <span class="istickedoff"><span class="decl"><span class="istickedoff">_modDecl</span></span></span> :: AnnListG UDecl dom stage
 <span class="lineno">   15 </span>            }
 <span class="lineno">   16 </span>
 <span class="lineno">   17 </span>-- | Module declaration with name and (optional) exports
 <span class="lineno">   18 </span>data UModuleHead dom stage
-<span class="lineno">   19 </span>  = UModuleHead { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_mhName</span></span></span> :: Ann UModuleName dom stage
+<span class="lineno">   19 </span>  = UModuleHead { <span class="istickedoff"><span class="decl"><span class="istickedoff">_mhName</span></span></span> :: Ann UModuleName dom stage
 <span class="lineno">   20 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_mhPragma</span></span></span> :: AnnMaybeG UModulePragma dom stage
-<span class="lineno">   21 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_mhExports</span></span></span> :: AnnMaybeG UExportSpecs dom stage
+<span class="lineno">   21 </span>                , <span class="istickedoff"><span class="decl"><span class="istickedoff">_mhExports</span></span></span> :: AnnMaybeG UExportSpecs dom stage
 <span class="lineno">   22 </span>                }
 <span class="lineno">   23 </span>
 <span class="lineno">   24 </span>-- | A list of export specifications surrounded by parentheses
 <span class="lineno">   25 </span>data UExportSpecs dom stage
-<span class="lineno">   26 </span>  = UExportSpecs { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_espExports</span></span></span> :: AnnListG UExportSpec dom stage }
+<span class="lineno">   26 </span>  = UExportSpecs { <span class="istickedoff"><span class="decl"><span class="istickedoff">_espExports</span></span></span> :: AnnListG UExportSpec dom stage }
 <span class="lineno">   27 </span>
 <span class="lineno">   28 </span>-- | Export specifier
 <span class="lineno">   29 </span>data UExportSpec dom stage
@@ -54,8 +54,8 @@ span.spaces    { background: white }
 <span class="lineno">   35 </span>-- | Marks a name to be imported or exported with related names (subspecifier)
 <span class="lineno">   36 </span>data UIESpec dom stage
 <span class="lineno">   37 </span>  = UIESpec { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_ieModifier</span></span></span> :: AnnMaybeG UImportModifier dom stage
-<span class="lineno">   38 </span>            , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_ieName</span></span></span> :: Ann UName dom stage
-<span class="lineno">   39 </span>            , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_ieSubspec</span></span></span> :: AnnMaybeG USubSpec dom stage
+<span class="lineno">   38 </span>            , <span class="istickedoff"><span class="decl"><span class="istickedoff">_ieName</span></span></span> :: Ann UName dom stage
+<span class="lineno">   39 </span>            , <span class="istickedoff"><span class="decl"><span class="istickedoff">_ieSubspec</span></span></span> :: AnnMaybeG USubSpec dom stage
 <span class="lineno">   40 </span>            }
 <span class="lineno">   41 </span>
 <span class="lineno">   42 </span>-- | Specifies the imported element
@@ -84,17 +84,17 @@ span.spaces    { background: white }
 <span class="lineno">   65 </span>                            } -- ^ A deprecated pragma attached to the module
 <span class="lineno">   66 </span>
 <span class="lineno">   67 </span>-- | The name of the enabled language extension, for example (@ LambdaCase @)
-<span class="lineno">   68 </span>data ULanguageExtension dom stage = ULanguageExtension { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_langExt</span></span></span> :: String }
+<span class="lineno">   68 </span>data ULanguageExtension dom stage = ULanguageExtension { <span class="istickedoff"><span class="decl"><span class="istickedoff">_langExt</span></span></span> :: String }
 <span class="lineno">   69 </span>
 <span class="lineno">   70 </span>-- | An import declaration: @import Module.Name@
 <span class="lineno">   71 </span>data UImportDecl dom stage
 <span class="lineno">   72 </span>  = UImportDecl { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_importSource</span></span></span> :: AnnMaybeG UImportSource dom stage
-<span class="lineno">   73 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_importQualified</span></span></span> :: AnnMaybeG UImportQualified dom stage
+<span class="lineno">   73 </span>                , <span class="istickedoff"><span class="decl"><span class="istickedoff">_importQualified</span></span></span> :: AnnMaybeG UImportQualified dom stage
 <span class="lineno">   74 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_importSafe</span></span></span> :: AnnMaybeG UImportSafe dom stage
 <span class="lineno">   75 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_importPkg</span></span></span> :: AnnMaybeG UStringNode dom stage
-<span class="lineno">   76 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_importModule</span></span></span> :: Ann UModuleName dom stage
-<span class="lineno">   77 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_importAs</span></span></span> :: AnnMaybeG UImportRenaming dom stage
-<span class="lineno">   78 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_importSpec</span></span></span> :: AnnMaybeG UImportSpec dom stage
+<span class="lineno">   76 </span>                , <span class="istickedoff"><span class="decl"><span class="istickedoff">_importModule</span></span></span> :: Ann UModuleName dom stage
+<span class="lineno">   77 </span>                , <span class="istickedoff"><span class="decl"><span class="istickedoff">_importAs</span></span></span> :: AnnMaybeG UImportRenaming dom stage
+<span class="lineno">   78 </span>                , <span class="istickedoff"><span class="decl"><span class="istickedoff">_importSpec</span></span></span> :: AnnMaybeG UImportSpec dom stage
 <span class="lineno">   79 </span>                }
 <span class="lineno">   80 </span>
 <span class="lineno">   81 </span>-- | Restriction on the imported names
@@ -117,10 +117,10 @@ span.spaces    { background: white }
 <span class="lineno">   98 </span>data UTypeNamespace dom stage = UTypeNamespace
 <span class="lineno">   99 </span>
 <span class="lineno">  100 </span>-- | Renaming imports (@ as A @)
-<span class="lineno">  101 </span>data UImportRenaming dom stage = UImportRenaming { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_importRename</span></span></span> :: Ann UModuleName dom stage }
+<span class="lineno">  101 </span>data UImportRenaming dom stage = UImportRenaming { <span class="istickedoff"><span class="decl"><span class="istickedoff">_importRename</span></span></span> :: Ann UModuleName dom stage }
 <span class="lineno">  102 </span>
 <span class="lineno">  103 </span>-- | The name of a module
-<span class="lineno">  104 </span>data UModuleName dom stage = UModuleName { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_moduleNameString</span></span></span> :: String }
+<span class="lineno">  104 </span>data UModuleName dom stage = UModuleName { <span class="istickedoff"><span class="decl"><span class="istickedoff">_moduleNameString</span></span></span> :: String }
 <span class="lineno">  105 </span>
 <span class="lineno">  106 </span>-- | The @type@ keyword used to qualify that the type and not the constructor of the same name is referred
 <span class="lineno">  107 </span>data TypeKeyword dom stage = TypeKeyword

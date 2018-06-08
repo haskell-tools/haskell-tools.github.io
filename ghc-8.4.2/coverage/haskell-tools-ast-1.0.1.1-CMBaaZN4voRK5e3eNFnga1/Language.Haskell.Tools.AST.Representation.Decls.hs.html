@@ -130,7 +130,7 @@ span.spaces    { background: white }
 <span class="lineno">  111 </span>
 <span class="lineno">  112 </span>-- | The list of declarations that can appear in a typeclass
 <span class="lineno">  113 </span>data UClassBody dom stage
-<span class="lineno">  114 </span>  = UClassBody { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_cbElements</span></span></span> :: AnnListG UClassElement dom stage
+<span class="lineno">  114 </span>  = UClassBody { <span class="istickedoff"><span class="decl"><span class="istickedoff">_cbElements</span></span></span> :: AnnListG UClassElement dom stage
 <span class="lineno">  115 </span>               }
 <span class="lineno">  116 </span>
 <span class="lineno">  117 </span>-- | Members of a class declaration
@@ -163,7 +163,7 @@ span.spaces    { background: white }
 <span class="lineno">  144 </span>data UInstanceRule dom stage
 <span class="lineno">  145 </span>  = UInstanceRule  { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_irVars</span></span></span> :: AnnMaybeG (AnnListG UTyVar) dom stage
 <span class="lineno">  146 </span>                   , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_irCtx</span></span></span> :: AnnMaybeG UContext dom stage
-<span class="lineno">  147 </span>                   , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_irHead</span></span></span> :: Ann UInstanceHead dom stage
+<span class="lineno">  147 </span>                   , <span class="istickedoff"><span class="decl"><span class="istickedoff">_irHead</span></span></span> :: Ann UInstanceHead dom stage
 <span class="lineno">  148 </span>                   } -- ^ Instance head as an instance rule (@ X a =&gt; Y a @)
 <span class="lineno">  149 </span>
 <span class="lineno">  150 </span>-- | The specification of the class instance declaration
@@ -226,7 +226,7 @@ span.spaces    { background: white }
 <span class="lineno">  207 </span>
 <span class="lineno">  208 </span>-- | Open type and data families
 <span class="lineno">  209 </span>data UTypeFamily dom stage
-<span class="lineno">  210 </span>  = UTypeFamily { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_tfHead</span></span></span> :: Ann UDeclHead dom stage
+<span class="lineno">  210 </span>  = UTypeFamily { <span class="istickedoff"><span class="decl"><span class="istickedoff">_tfHead</span></span></span> :: Ann UDeclHead dom stage
 <span class="lineno">  211 </span>                , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_tfSpec</span></span></span> :: AnnMaybeG UTypeFamilySpec dom stage
 <span class="lineno">  212 </span>                } -- ^ Type family declaration (@ type family A a :: * -&gt; * @)
 <span class="lineno">  213 </span>  | UDataFamily { _tfHead :: Ann UDeclHead dom stage
@@ -258,10 +258,10 @@ span.spaces    { background: white }
 <span class="lineno">  239 </span>
 <span class="lineno">  240 </span>-- | GADT constructor declaration (@ D1 :: { val :: Int } -&gt; T String @)
 <span class="lineno">  241 </span>data UGadtConDecl dom stage
-<span class="lineno">  242 </span>  = UGadtConDecl { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_gadtConNames</span></span></span> :: AnnListG UName dom stage
-<span class="lineno">  243 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_gadtConTypeArgs</span></span></span> :: AnnListG UTyVar dom stage
+<span class="lineno">  242 </span>  = UGadtConDecl { <span class="istickedoff"><span class="decl"><span class="istickedoff">_gadtConNames</span></span></span> :: AnnListG UName dom stage
+<span class="lineno">  243 </span>                 , <span class="istickedoff"><span class="decl"><span class="istickedoff">_gadtConTypeArgs</span></span></span> :: AnnListG UTyVar dom stage
 <span class="lineno">  244 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_gadtConTypeCtx</span></span></span> :: AnnMaybeG UContext dom stage
-<span class="lineno">  245 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_gadtConType</span></span></span> :: Ann UGadtConType dom stage
+<span class="lineno">  245 </span>                 , <span class="istickedoff"><span class="decl"><span class="istickedoff">_gadtConType</span></span></span> :: Ann UGadtConType dom stage
 <span class="lineno">  246 </span>                 }
 <span class="lineno">  247 </span>
 <span class="lineno">  248 </span>-- | The @data@ or the @newtype@ keyword to define ADTs.
@@ -290,7 +290,7 @@ span.spaces    { background: white }
 <span class="lineno">  271 </span>
 <span class="lineno">  272 </span>-- | A constructor declaration for a datatype
 <span class="lineno">  273 </span>data UConDecl dom stage
-<span class="lineno">  274 </span>  = UConDecl      { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_conTypeArgs</span></span></span> :: AnnListG UTyVar dom stage
+<span class="lineno">  274 </span>  = UConDecl      { <span class="istickedoff"><span class="nottickedoff"><span class="decl"><span class="istickedoff">_conTypeArgs</span></span></span></span> :: AnnListG UTyVar dom stage
 <span class="lineno">  275 </span>                  , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_conTypeCtx</span></span></span> :: AnnMaybeG UContext dom stage
 <span class="lineno">  276 </span>                  , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_conDeclName</span></span></span> :: Ann UName dom stage
 <span class="lineno">  277 </span>                  , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_conDeclArgs</span></span></span> :: AnnListG UType dom stage
@@ -315,7 +315,7 @@ span.spaces    { background: white }
 <span class="lineno">  296 </span>
 <span class="lineno">  297 </span>-- | A deriving clause following a data type declaration. (@ deriving Show @ or @ deriving (Show, Eq) @)
 <span class="lineno">  298 </span>data UDeriving dom stage
-<span class="lineno">  299 </span>  = UDerivingOne { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_deriveStrategy</span></span></span> :: AnnMaybeG UDeriveStrategy dom stage
+<span class="lineno">  299 </span>  = UDerivingOne { <span class="istickedoff"><span class="decl"><span class="istickedoff">_deriveStrategy</span></span></span> :: AnnMaybeG UDeriveStrategy dom stage
 <span class="lineno">  300 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_oneDerived</span></span></span> :: Ann UInstanceHead dom stage
 <span class="lineno">  301 </span>                 }
 <span class="lineno">  302 </span>  | UDerivings { _deriveStrategy :: AnnMaybeG UDeriveStrategy dom stage

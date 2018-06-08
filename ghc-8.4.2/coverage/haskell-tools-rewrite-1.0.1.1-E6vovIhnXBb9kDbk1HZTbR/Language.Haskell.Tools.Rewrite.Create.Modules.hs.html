@@ -86,7 +86,7 @@ span.spaces    { background: white }
 <span class="lineno">   67 </span>
 <span class="lineno">   68 </span>-- | Restrict the import definition to ONLY import the listed names
 <span class="lineno">   69 </span>mkImportSpecList :: [IESpec] -&gt; ImportSpec
-<span class="lineno">   70 </span><span class="decl"><span class="istickedoff">mkImportSpecList = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) . UImportSpecList . mkAnnList (separatedBy <span class="nottickedoff">&quot;, &quot;</span> list)</span></span>
+<span class="lineno">   70 </span><span class="decl"><span class="istickedoff">mkImportSpecList = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) . UImportSpecList . mkAnnList (separatedBy &quot;, &quot; list)</span></span>
 <span class="lineno">   71 </span>
 <span class="lineno">   72 </span>-- | Restrict the import definition to DONT import the listed names
 <span class="lineno">   73 </span>mkImportHidingList :: [IESpec] -&gt; ImportSpec

@@ -54,7 +54,7 @@ span.spaces    { background: white }
 <span class="lineno">   35 </span>
 <span class="lineno">   36 </span>-- | Create a lambda expression (@ \\a b -&gt; a + b @)
 <span class="lineno">   37 </span>mkLambda :: [Pattern] -&gt; Expr -&gt; Expr
-<span class="lineno">   38 </span><span class="decl"><span class="nottickedoff">mkLambda pats rhs = mkAnn (&quot;\\&quot; &lt;&gt; child &lt;&gt; &quot; -&gt; &quot; &lt;&gt; child) $ ULambda (mkAnnList (separatedBy &quot; &quot; list) pats) rhs</span></span>
+<span class="lineno">   38 </span><span class="decl"><span class="istickedoff">mkLambda pats rhs = mkAnn (&quot;\\&quot; &lt;&gt; child &lt;&gt; &quot; -&gt; &quot; &lt;&gt; child) $ ULambda (mkAnnList (separatedBy &quot; &quot; list) pats) rhs</span></span>
 <span class="lineno">   39 </span>
 <span class="lineno">   40 </span>-- | Create a local binding (@ let x = 2; y = 3 in e x y @)
 <span class="lineno">   41 </span>mkLet :: [LocalBind] -&gt; Expr -&gt; Expr
@@ -119,7 +119,7 @@ span.spaces    { background: white }
 <span class="lineno">  100 </span>
 <span class="lineno">  101 </span>-- | Create a right operator section: @(+1)@
 <span class="lineno">  102 </span>mkRightSection :: Operator -&gt; Expr -&gt; Expr
-<span class="lineno">  103 </span><span class="decl"><span class="nottickedoff">mkRightSection op rhs = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot; &quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) $ URightSection op rhs</span></span>
+<span class="lineno">  103 </span><span class="decl"><span class="istickedoff">mkRightSection op rhs = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot; &quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) $ URightSection op rhs</span></span>
 <span class="lineno">  104 </span>
 <span class="lineno">  105 </span>-- | Create a record value construction: @Point { x = 3, y = -2 }@
 <span class="lineno">  106 </span>mkRecCon :: Name -&gt; [FieldUpdate] -&gt; Expr
@@ -228,7 +228,7 @@ span.spaces    { background: white }
 <span class="lineno">  209 </span>
 <span class="lineno">  210 </span>-- | Create a guarded right-hand sides of a pattern match (@ | x == 1 -&gt; 3; | otherwise -&gt; 4 @)
 <span class="lineno">  211 </span>mkGuardedCaseRhss :: [GuardedCaseRhs] -&gt; CaseRhs
-<span class="lineno">  212 </span><span class="decl"><span class="nottickedoff">mkGuardedCaseRhss = mkAnn child . UGuardedCaseRhss . mkAnnList (indented list)</span></span>
+<span class="lineno">  212 </span><span class="decl"><span class="istickedoff">mkGuardedCaseRhss = mkAnn child . UGuardedCaseRhss . mkAnnList (indented list)</span></span>
 <span class="lineno">  213 </span>
 <span class="lineno">  214 </span>-- | Creates a guarded right-hand side of pattern matches binding (@ | x &gt; 3 -&gt; 2 @)
 <span class="lineno">  215 </span>mkGuardedCaseRhs :: [RhsGuard] -&gt; Expr -&gt; GuardedCaseRhs

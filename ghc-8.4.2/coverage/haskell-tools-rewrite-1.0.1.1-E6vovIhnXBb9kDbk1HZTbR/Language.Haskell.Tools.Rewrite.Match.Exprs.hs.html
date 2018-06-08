@@ -30,11 +30,11 @@ span.spaces    { background: white }
 <span class="lineno">   11 </span>
 <span class="lineno">   12 </span>-- | An expression for a variable or a data constructor (@ a @)
 <span class="lineno">   13 </span>pattern Var :: Name -&gt; Expr
-<span class="lineno">   14 </span>pattern Var name &lt;- <span class="nottickedoff">Ann _ (UVar name)</span>
+<span class="lineno">   14 </span>pattern Var name &lt;- <span class="istickedoff">Ann _ (UVar name)</span>
 <span class="lineno">   15 </span>
 <span class="lineno">   16 </span>-- | A literal expression (@ 42 @)
 <span class="lineno">   17 </span>pattern Lit :: Literal -&gt; Expr
-<span class="lineno">   18 </span>pattern Lit lit &lt;- <span class="nottickedoff">Ann _ (ULit lit)</span>
+<span class="lineno">   18 </span>pattern Lit lit &lt;- <span class="istickedoff">Ann _ (ULit lit)</span>
 <span class="lineno">   19 </span>
 <span class="lineno">   20 </span>-- | An infix operator application (@ a + b @)
 <span class="lineno">   21 </span>pattern InfixApp :: Expr -&gt; Operator -&gt; Expr -&gt; Expr
@@ -42,7 +42,7 @@ span.spaces    { background: white }
 <span class="lineno">   23 </span>
 <span class="lineno">   24 </span>-- | Prefix operator application (@ -x @)
 <span class="lineno">   25 </span>pattern PrefixApp :: Operator -&gt; Expr -&gt; Expr
-<span class="lineno">   26 </span>pattern PrefixApp op rhs &lt;- <span class="nottickedoff">Ann _ (UPrefixApp op rhs)</span>
+<span class="lineno">   26 </span>pattern PrefixApp op rhs &lt;- <span class="istickedoff">Ann _ (UPrefixApp op rhs)</span>
 <span class="lineno">   27 </span>
 <span class="lineno">   28 </span>-- | Function application (@ f 4 @)
 <span class="lineno">   29 </span>pattern App :: Expr -&gt; Expr -&gt; Expr
@@ -50,11 +50,11 @@ span.spaces    { background: white }
 <span class="lineno">   31 </span>
 <span class="lineno">   32 </span>-- | Lambda expression (@ \\a b -&gt; a + b @)
 <span class="lineno">   33 </span>pattern Lambda :: PatternList -&gt; Expr -&gt; Expr
-<span class="lineno">   34 </span>pattern Lambda pats rhs &lt;- <span class="nottickedoff">Ann _ (ULambda pats rhs)</span>
+<span class="lineno">   34 </span>pattern Lambda pats rhs &lt;- <span class="istickedoff">Ann _ (ULambda pats rhs)</span>
 <span class="lineno">   35 </span>
 <span class="lineno">   36 </span>-- | Local binding (@ let x = 2; y = 3 in e x y @)
 <span class="lineno">   37 </span>pattern Let :: LocalBindList -&gt; Expr -&gt; Expr
-<span class="lineno">   38 </span>pattern Let pats expr &lt;- <span class="nottickedoff">Ann _ (ULet pats expr)</span>
+<span class="lineno">   38 </span>pattern Let pats expr &lt;- <span class="istickedoff">Ann _ (ULet pats expr)</span>
 <span class="lineno">   39 </span>
 <span class="lineno">   40 </span>-- | If expression (@ if a then b else c @)
 <span class="lineno">   41 </span>pattern If :: Expr -&gt; Expr -&gt; Expr -&gt; Expr
@@ -62,46 +62,46 @@ span.spaces    { background: white }
 <span class="lineno">   43 </span>
 <span class="lineno">   44 </span>-- | Multi way if expressions with @MultiWayIf@ extension (@ if | guard1 -&gt; expr1; guard2 -&gt; expr2 @)
 <span class="lineno">   45 </span>pattern MultiIf :: GuardedCaseRhsList -&gt; Expr
-<span class="lineno">   46 </span>pattern MultiIf cases &lt;- <span class="nottickedoff">Ann _ (UMultiIf cases)</span>
+<span class="lineno">   46 </span>pattern MultiIf cases &lt;- <span class="istickedoff">Ann _ (UMultiIf cases)</span>
 <span class="lineno">   47 </span>
 <span class="lineno">   48 </span>-- | Pattern matching expression (@ case expr of pat1 -&gt; expr1; pat2 -&gt; expr2 @)
 <span class="lineno">   49 </span>pattern Case :: Expr -&gt; AltList -&gt; Expr
-<span class="lineno">   50 </span>pattern Case expr cases &lt;- <span class="nottickedoff">Ann _ (UCase expr cases)</span>
+<span class="lineno">   50 </span>pattern Case expr cases &lt;- <span class="istickedoff">Ann _ (UCase expr cases)</span>
 <span class="lineno">   51 </span>
 <span class="lineno">   52 </span>-- | Do-notation expressions (@ do x &lt;- act1; act2 @)
 <span class="lineno">   53 </span>pattern Do :: StmtList -&gt; Expr
-<span class="lineno">   54 </span>pattern Do stmts &lt;- <span class="nottickedoff">Ann _ (UDo DoKeyword stmts)</span>
+<span class="lineno">   54 </span>pattern Do stmts &lt;- <span class="istickedoff">Ann _ (UDo DoKeyword stmts)</span>
 <span class="lineno">   55 </span>
 <span class="lineno">   56 </span>-- | MDo-notation expressions (@ mdo x &lt;- act1; act2 @)
 <span class="lineno">   57 </span>pattern MDo :: StmtList -&gt; Expr
-<span class="lineno">   58 </span>pattern MDo stmts &lt;- <span class="nottickedoff">Ann _ (UDo MDoKeyword stmts)</span>
+<span class="lineno">   58 </span>pattern MDo stmts &lt;- <span class="istickedoff">Ann _ (UDo MDoKeyword stmts)</span>
 <span class="lineno">   59 </span>
 <span class="lineno">   60 </span>pattern ParArrayComp :: Expr -&gt; ListCompBodyList -&gt; Expr
-<span class="lineno">   61 </span>pattern ParArrayComp expr stmts &lt;- <span class="nottickedoff">Ann _ (UParArrayComp expr stmts)</span>
+<span class="lineno">   61 </span>pattern ParArrayComp expr stmts &lt;- <span class="istickedoff">Ann _ (UParArrayComp expr stmts)</span>
 <span class="lineno">   62 </span>
 <span class="lineno">   63 </span>-- | Tuple expression (@ (e1, e2, e3) @)
 <span class="lineno">   64 </span>pattern Tuple :: ExprList -&gt; Expr
-<span class="lineno">   65 </span>pattern Tuple exprs &lt;- <span class="nottickedoff">Ann _ (UTuple exprs)</span>
+<span class="lineno">   65 </span>pattern Tuple exprs &lt;- <span class="istickedoff">Ann _ (UTuple exprs)</span>
 <span class="lineno">   66 </span>
 <span class="lineno">   67 </span>-- | Unboxed tuple expression (@ (\# e1, e2, e3 \#) @)
 <span class="lineno">   68 </span>pattern UnboxedTuple :: ExprList -&gt; Expr
-<span class="lineno">   69 </span>pattern UnboxedTuple exprs &lt;- <span class="nottickedoff">Ann _ (UUnboxedTuple exprs)</span>
+<span class="lineno">   69 </span>pattern UnboxedTuple exprs &lt;- <span class="istickedoff">Ann _ (UUnboxedTuple exprs)</span>
 <span class="lineno">   70 </span>
 <span class="lineno">   71 </span>-- | Tuple section, enabled with @TupleSections@ (@ (a,,b) @). One of the elements must be missing.
 <span class="lineno">   72 </span>pattern TupleSection :: TupSecElemList -&gt; Expr
-<span class="lineno">   73 </span>pattern TupleSection elems &lt;- <span class="nottickedoff">Ann _ (UTupleSection elems)</span>
+<span class="lineno">   73 </span>pattern TupleSection elems &lt;- <span class="istickedoff">Ann _ (UTupleSection elems)</span>
 <span class="lineno">   74 </span>
 <span class="lineno">   75 </span>-- | Unboxed tuple section enabled with @TupleSections@ (@ (# a,,b #) @). One of the elements must be missing.
 <span class="lineno">   76 </span>pattern UnboxedTupleSection :: TupSecElemList -&gt; Expr
-<span class="lineno">   77 </span>pattern UnboxedTupleSection elems &lt;- <span class="nottickedoff">Ann _ (UUnboxedTupSec elems)</span>
+<span class="lineno">   77 </span>pattern UnboxedTupleSection elems &lt;- <span class="istickedoff">Ann _ (UUnboxedTupSec elems)</span>
 <span class="lineno">   78 </span>
 <span class="lineno">   79 </span>-- | List expression: @[1,2,3]@
 <span class="lineno">   80 </span>pattern List :: ExprList -&gt; Expr
-<span class="lineno">   81 </span>pattern List exprs &lt;- <span class="nottickedoff">Ann _ (UList exprs)</span>
+<span class="lineno">   81 </span>pattern List exprs &lt;- <span class="istickedoff">Ann _ (UList exprs)</span>
 <span class="lineno">   82 </span>
 <span class="lineno">   83 </span>-- | Parallel array expression: @[: 1,2,3 :]@
 <span class="lineno">   84 </span>pattern ParArray :: ExprList -&gt; Expr
-<span class="lineno">   85 </span>pattern ParArray exprs &lt;- <span class="nottickedoff">Ann _ (UParArray exprs)</span>
+<span class="lineno">   85 </span>pattern ParArray exprs &lt;- <span class="istickedoff">Ann _ (UParArray exprs)</span>
 <span class="lineno">   86 </span>
 <span class="lineno">   87 </span>-- | Parenthesized expression: @( a + b )@
 <span class="lineno">   88 </span>pattern Paren :: Expr -&gt; Expr
@@ -109,31 +109,31 @@ span.spaces    { background: white }
 <span class="lineno">   90 </span>
 <span class="lineno">   91 </span>-- | Left operator section: @(1+)@
 <span class="lineno">   92 </span>pattern LeftSection :: Expr -&gt; Operator -&gt; Expr
-<span class="lineno">   93 </span>pattern LeftSection lhs op &lt;- <span class="nottickedoff">Ann _ (ULeftSection lhs op)</span>
+<span class="lineno">   93 </span>pattern LeftSection lhs op &lt;- <span class="istickedoff">Ann _ (ULeftSection lhs op)</span>
 <span class="lineno">   94 </span>
 <span class="lineno">   95 </span>-- | Right operator section: @(+1)@
 <span class="lineno">   96 </span>pattern RightSection :: Operator -&gt; Expr -&gt; Expr
-<span class="lineno">   97 </span>pattern RightSection op lhs &lt;- <span class="nottickedoff">Ann _ (URightSection op lhs)</span>
+<span class="lineno">   97 </span>pattern RightSection op lhs &lt;- <span class="istickedoff">Ann _ (URightSection op lhs)</span>
 <span class="lineno">   98 </span>
 <span class="lineno">   99 </span>-- | Record value construction: @Point { x = 3, y = -2 }@
 <span class="lineno">  100 </span>pattern RecCon :: Name -&gt; FieldUpdateList -&gt; Expr
-<span class="lineno">  101 </span>pattern RecCon name flds &lt;- <span class="nottickedoff">Ann _ (URecCon name flds)</span>
+<span class="lineno">  101 </span>pattern RecCon name flds &lt;- <span class="istickedoff">Ann _ (URecCon name flds)</span>
 <span class="lineno">  102 </span>
 <span class="lineno">  103 </span>-- | Record value update: @p1 { x = 3, y = -2 }@
 <span class="lineno">  104 </span>pattern RecUpdate :: Expr -&gt; FieldUpdateList -&gt; Expr
-<span class="lineno">  105 </span>pattern RecUpdate expr flds &lt;- <span class="nottickedoff">Ann _ (URecUpdate expr flds)</span>
+<span class="lineno">  105 </span>pattern RecUpdate expr flds &lt;- <span class="istickedoff">Ann _ (URecUpdate expr flds)</span>
 <span class="lineno">  106 </span>
 <span class="lineno">  107 </span>-- | Enumeration expression (@ [1,3..10] @)
 <span class="lineno">  108 </span>pattern Enum :: Expr -&gt; MaybeExpr -&gt; MaybeExpr -&gt; Expr
-<span class="lineno">  109 </span>pattern Enum from step to &lt;- <span class="nottickedoff">Ann _ (UEnum from step to)</span>
+<span class="lineno">  109 </span>pattern Enum from step to &lt;- <span class="istickedoff">Ann _ (UEnum from step to)</span>
 <span class="lineno">  110 </span>
 <span class="lineno">  111 </span>-- | Parallel array enumeration (@ [: 1,3 .. 10 :] @)
 <span class="lineno">  112 </span>pattern ParArrayEnum :: Expr -&gt; MaybeExpr -&gt; Expr -&gt; Expr
-<span class="lineno">  113 </span>pattern ParArrayEnum from step to &lt;- <span class="nottickedoff">Ann _ (UParArrayEnum from step to)</span>
+<span class="lineno">  113 </span>pattern ParArrayEnum from step to &lt;- <span class="istickedoff">Ann _ (UParArrayEnum from step to)</span>
 <span class="lineno">  114 </span>
 <span class="lineno">  115 </span>-- | List comprehension (@ [ (x, y) | x &lt;- xs | y &lt;- ys ] @)
 <span class="lineno">  116 </span>pattern ListComp :: Expr -&gt; ListCompBodyList -&gt; Expr
-<span class="lineno">  117 </span>pattern ListComp expr bodies &lt;- <span class="nottickedoff">Ann _ (UListComp expr bodies)</span>
+<span class="lineno">  117 </span>pattern ListComp expr bodies &lt;- <span class="istickedoff">Ann _ (UListComp expr bodies)</span>
 <span class="lineno">  118 </span>
 <span class="lineno">  119 </span>-- | Parallel array comprehensions @ [: (x, y) | x &lt;- xs , y &lt;- ys :] @ enabled by @ParallelArrays@
 <span class="lineno">  120 </span>pattern ParArrayListComp :: Expr -&gt; ListCompBodyList -&gt; Expr
@@ -157,15 +157,15 @@ span.spaces    { background: white }
 <span class="lineno">  138 </span>
 <span class="lineno">  139 </span>-- | Template haskell bracket expression
 <span class="lineno">  140 </span>pattern BracketExpr :: Bracket -&gt; Expr
-<span class="lineno">  141 </span>pattern BracketExpr brack &lt;- <span class="nottickedoff">Ann _ (UBracketExpr brack)</span>
+<span class="lineno">  141 </span>pattern BracketExpr brack &lt;- <span class="istickedoff">Ann _ (UBracketExpr brack)</span>
 <span class="lineno">  142 </span>
 <span class="lineno">  143 </span>-- | Template haskell splice expression, for example: @$(gen a)@ or @$x@
 <span class="lineno">  144 </span>pattern SpliceExpr :: Splice -&gt; Expr
-<span class="lineno">  145 </span>pattern SpliceExpr splice &lt;- <span class="nottickedoff">Ann _ (USplice splice)</span>
+<span class="lineno">  145 </span>pattern SpliceExpr splice &lt;- <span class="istickedoff">Ann _ (USplice splice)</span>
 <span class="lineno">  146 </span>
 <span class="lineno">  147 </span>-- | Template haskell quasi-quotation: @[$quoter|str]@
 <span class="lineno">  148 </span>pattern QuasiQuoteExpr :: QuasiQuote -&gt; Expr
-<span class="lineno">  149 </span>pattern QuasiQuoteExpr qq &lt;- <span class="nottickedoff">Ann _ (UQuasiQuoteExpr qq)</span>
+<span class="lineno">  149 </span>pattern QuasiQuoteExpr qq &lt;- <span class="istickedoff">Ann _ (UQuasiQuoteExpr qq)</span>
 <span class="lineno">  150 </span>
 <span class="lineno">  151 </span>-- | Template haskell quasi-quotation: @[$quoter|str]@
 <span class="lineno">  152 </span>pattern ExprPragma :: ExprPragma -&gt; Expr -&gt; Expr
@@ -177,11 +177,11 @@ span.spaces    { background: white }
 <span class="lineno">  158 </span>
 <span class="lineno">  159 </span>-- | Arrow definition: @proc a -&gt; f -&lt; a+1@
 <span class="lineno">  160 </span>pattern ArrowApp :: Expr -&gt; ArrowApp -&gt; Expr -&gt; Expr
-<span class="lineno">  161 </span>pattern ArrowApp lhs arrow rhs &lt;- <span class="nottickedoff">Ann _ (UArrowApp lhs arrow rhs)</span>
+<span class="lineno">  161 </span>pattern ArrowApp lhs arrow rhs &lt;- <span class="istickedoff">Ann _ (UArrowApp lhs arrow rhs)</span>
 <span class="lineno">  162 </span>
 <span class="lineno">  163 </span>-- | Lambda case ( @\case 0 -&gt; 1; 1 -&gt; 2@ )
 <span class="lineno">  164 </span>pattern LambdaCase :: AltList -&gt; Expr
-<span class="lineno">  165 </span>pattern LambdaCase alts &lt;- <span class="nottickedoff">Ann _ (ULamCase alts)</span>
+<span class="lineno">  165 </span>pattern LambdaCase alts &lt;- <span class="istickedoff">Ann _ (ULamCase alts)</span>
 <span class="lineno">  166 </span>
 <span class="lineno">  167 </span>-- | Static pointer expression (@ static e @). The inner expression must be closed (cannot have variables bound outside)
 <span class="lineno">  168 </span>pattern StaticPointer :: Expr -&gt; Expr
@@ -200,7 +200,7 @@ span.spaces    { background: white }
 <span class="lineno">  181 </span>
 <span class="lineno">  182 </span>-- | Update the fields of the bounded names to their values (@ .. @). Must be the last initializer. Cannot be used in a record update expression.
 <span class="lineno">  183 </span>pattern FieldWildcard :: FieldWildcard -&gt; FieldUpdate
-<span class="lineno">  184 </span>pattern FieldWildcard wc &lt;- <span class="nottickedoff">Ann _ (UFieldWildcard wc)</span>
+<span class="lineno">  184 </span>pattern FieldWildcard wc &lt;- <span class="istickedoff">Ann _ (UFieldWildcard wc)</span>
 <span class="lineno">  185 </span>
 <span class="lineno">  186 </span>-- * Tuple sections
 <span class="lineno">  187 </span>
@@ -315,7 +315,7 @@ span.spaces    { background: white }
 <span class="lineno">  296 </span>
 <span class="lineno">  297 </span>-- | A hole expression @_@
 <span class="lineno">  298 </span>pattern Hole :: Expr
-<span class="lineno">  299 </span>pattern Hole &lt;- <span class="nottickedoff">Ann _ UHole</span>
+<span class="lineno">  299 </span>pattern Hole &lt;- <span class="istickedoff">Ann _ UHole</span>
 
 </pre>
 </body>
