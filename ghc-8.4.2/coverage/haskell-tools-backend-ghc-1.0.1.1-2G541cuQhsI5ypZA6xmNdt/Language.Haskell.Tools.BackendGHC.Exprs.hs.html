@@ -17,278 +17,282 @@ span.spaces    { background: white }
 <span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
 </pre>
 <pre>
-<span class="lineno">    1 </span>{-# LANGUAGE AllowAmbiguousTypes, LambdaCase, ScopedTypeVariables, TypeApplications, ViewPatterns #-}
-<span class="lineno">    2 </span>
-<span class="lineno">    3 </span>-- | Functions that convert the expression-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
-<span class="lineno">    4 </span>module Language.Haskell.Tools.BackendGHC.Exprs where
-<span class="lineno">    5 </span>
-<span class="lineno">    6 </span>import Control.Monad.Reader
-<span class="lineno">    7 </span>import Data.Function (on)
-<span class="lineno">    8 </span>import Data.List
-<span class="lineno">    9 </span>import Data.Maybe (Maybe(..), isJust, fromMaybe, catMaybes)
-<span class="lineno">   10 </span>
-<span class="lineno">   11 </span>import BasicTypes as GHC (Boxity(..), StringLiteral(..))
-<span class="lineno">   12 </span>import FastString (unpackFS)
-<span class="lineno">   13 </span>import GHC
-<span class="lineno">   14 </span>import OccName as GHC (occNameString)
-<span class="lineno">   15 </span>import PrelNames as GHC (negateName)
-<span class="lineno">   16 </span>import SrcLoc as GHC
-<span class="lineno">   17 </span>
-<span class="lineno">   18 </span>import Language.Haskell.Tools.AST.SemaInfoTypes
-<span class="lineno">   19 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.Binds (trfRhsGuard', trfWhereLocalBinds, trfLocalBinds)
-<span class="lineno">   20 </span>import Language.Haskell.Tools.BackendGHC.GHCUtils (GHCName(..), getFieldOccName)
-<span class="lineno">   21 </span>import Language.Haskell.Tools.BackendGHC.Literals
-<span class="lineno">   22 </span>import Language.Haskell.Tools.BackendGHC.Monad
-<span class="lineno">   23 </span>import Language.Haskell.Tools.BackendGHC.Names
-<span class="lineno">   24 </span>import Language.Haskell.Tools.BackendGHC.Patterns (trfPattern)
-<span class="lineno">   25 </span>import Language.Haskell.Tools.BackendGHC.Stmts
-<span class="lineno">   26 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.TH (trfBracket', trfSplice, trfQuasiQuotation')
-<span class="lineno">   27 </span>import Language.Haskell.Tools.BackendGHC.Types (trfType)
-<span class="lineno">   28 </span>import Language.Haskell.Tools.BackendGHC.Utils
-<span class="lineno">   29 </span>
-<span class="lineno">   30 </span>import Language.Haskell.Tools.AST (Ann, AnnListG, Dom, RangeStage)
-<span class="lineno">   31 </span>import qualified Language.Haskell.Tools.AST as AST
-<span class="lineno">   32 </span>
-<span class="lineno">   33 </span>trfExpr :: forall n r . TransformName n r =&gt; Located (HsExpr n) -&gt; Trf (Ann AST.UExpr (Dom r) RangeStage)
-<span class="lineno">   34 </span>-- correction for empty cases
-<span class="lineno">   35 </span><span class="decl"><span class="istickedoff">trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -&gt; [])))</span>
-<span class="lineno">   36 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do let realSpan = combineSrcSpans l (getLoc expr)</span></span>
-<span class="lineno">   37 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">tokensAfter &lt;- allTokensAfter (srcSpanEnd realSpan)</span></span>
-<span class="lineno">   38 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">let actualSpan = case take 3 tokensAfter of</span></span>
-<span class="lineno">   39 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">[(_, AnnOf), (_, AnnOpenC), (endSpan, AnnCloseC)] -&gt; realSpan `combineSrcSpans` endSpan</span></span>
-<span class="lineno">   40 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">((endSpan, AnnOf) : _) -&gt; realSpan `combineSrcSpans` endSpan</span></span>
-<span class="lineno">   41 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">_ -&gt; convProblem &quot;trfExpr: case without 'of' '{' or '}' token&quot;</span></span>
-<span class="lineno">   42 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">annLoc createScopeInfo (pure actualSpan) (trfExpr' cs)</span></span>
-<span class="lineno">   43 </span><span class="spaces"></span><span class="istickedoff">trfExpr e | RealSrcSpan loce &lt;- getLoc e</span>
-<span class="lineno">   44 </span><span class="spaces">  </span><span class="istickedoff">= do exprSpls &lt;- asks exprSplices</span>
-<span class="lineno">   45 </span><span class="spaces">       </span><span class="istickedoff">let contSplice = filter <span class="nottickedoff">(\sp -&gt; case getLoc sp of (RealSrcSpan spLoc) -&gt; spLoc `containsSpan` loce; _ -&gt; False)</span> exprSpls</span>
-<span class="lineno">   46 </span><span class="spaces">       </span><span class="istickedoff">case contSplice of</span>
-<span class="lineno">   47 </span><span class="spaces">         </span><span class="istickedoff">[] -&gt; trfLoc trfExpr' createScopeInfo e</span>
-<span class="lineno">   48 </span><span class="spaces">         </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">let lsp@(L l sp) = minimumBy (compareSpans `on` getLoc) contSplice</span></span>
-<span class="lineno">   49 </span><span class="spaces">               </span><span class="istickedoff"><span class="nottickedoff">in case sp of</span></span>
-<span class="lineno">   50 </span><span class="spaces">                    </span><span class="istickedoff"><span class="nottickedoff">(HsQuasiQuote {}) -&gt; do</span></span>
-<span class="lineno">   51 </span><span class="spaces">                      </span><span class="istickedoff"><span class="nottickedoff">sp' &lt;- rdrSplice sp</span></span>
-<span class="lineno">   52 </span><span class="spaces">                      </span><span class="istickedoff"><span class="nottickedoff">exprSpliceInserted lsp (annLoc createScopeInfo (pure l) (AST.UQuasiQuoteExpr &lt;$&gt; annLocNoSema (pure l) (trfQuasiQuotation' sp')))</span></span>
-<span class="lineno">   53 </span><span class="spaces">                    </span><span class="istickedoff"><span class="nottickedoff">_ -&gt; do sp' &lt;- rdrSplice sp</span></span>
-<span class="lineno">   54 </span><span class="spaces">                            </span><span class="istickedoff"><span class="nottickedoff">exprSpliceInserted lsp (annLoc createScopeInfo (pure l) (AST.USplice &lt;$&gt; trfSplice sp'))</span></span>
-<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">trfLoc trfExpr' createScopeInfo e</span></span></span>
-<span class="lineno">   56 </span>
-<span class="lineno">   57 </span>createScopeInfo :: Trf ScopeInfo
-<span class="lineno">   58 </span><span class="decl"><span class="istickedoff">createScopeInfo = do scope &lt;- asks <span class="nottickedoff">localsInScope</span></span>
-<span class="lineno">   59 </span><span class="spaces">                     </span><span class="istickedoff">return <span class="nottickedoff">(mkScopeInfo scope)</span></span></span>
+<span class="lineno">    1 </span>{-# LANGUAGE AllowAmbiguousTypes #-}
+<span class="lineno">    2 </span>{-# LANGUAGE LambdaCase #-}
+<span class="lineno">    3 </span>{-# LANGUAGE ScopedTypeVariables #-}
+<span class="lineno">    4 </span>{-# LANGUAGE TypeApplications #-}
+<span class="lineno">    5 </span>{-# LANGUAGE ViewPatterns #-}
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>-- | Functions that convert the expression-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
+<span class="lineno">    8 </span>module Language.Haskell.Tools.BackendGHC.Exprs where
+<span class="lineno">    9 </span>
+<span class="lineno">   10 </span>import Control.Monad.Reader
+<span class="lineno">   11 </span>import Data.Function (on)
+<span class="lineno">   12 </span>import Data.List
+<span class="lineno">   13 </span>import Data.Maybe (Maybe(..), isJust, fromMaybe, catMaybes)
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>import BasicTypes as GHC (Boxity(..), StringLiteral(..))
+<span class="lineno">   16 </span>import FastString (unpackFS)
+<span class="lineno">   17 </span>import GHC
+<span class="lineno">   18 </span>import OccName as GHC (occNameString)
+<span class="lineno">   19 </span>import PrelNames as GHC (negateName)
+<span class="lineno">   20 </span>import SrcLoc as GHC
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>import Language.Haskell.Tools.AST.SemaInfoTypes
+<span class="lineno">   23 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.Binds (trfRhsGuard', trfWhereLocalBinds, trfLocalBinds)
+<span class="lineno">   24 </span>import Language.Haskell.Tools.BackendGHC.GHCUtils (GHCName(..), getFieldOccName)
+<span class="lineno">   25 </span>import Language.Haskell.Tools.BackendGHC.Literals
+<span class="lineno">   26 </span>import Language.Haskell.Tools.BackendGHC.Monad
+<span class="lineno">   27 </span>import Language.Haskell.Tools.BackendGHC.Names
+<span class="lineno">   28 </span>import Language.Haskell.Tools.BackendGHC.Patterns (trfPattern)
+<span class="lineno">   29 </span>import Language.Haskell.Tools.BackendGHC.Stmts
+<span class="lineno">   30 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.TH (trfBracket', trfSplice, trfQuasiQuotation')
+<span class="lineno">   31 </span>import Language.Haskell.Tools.BackendGHC.Types (trfType)
+<span class="lineno">   32 </span>import Language.Haskell.Tools.BackendGHC.Utils
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>import Language.Haskell.Tools.AST (Ann, AnnListG, Dom, RangeStage)
+<span class="lineno">   35 </span>import qualified Language.Haskell.Tools.AST as AST
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>trfExpr :: forall n r . TransformName n r =&gt; Located (HsExpr n) -&gt; Trf (Ann AST.UExpr (Dom r) RangeStage)
+<span class="lineno">   38 </span>-- correction for empty cases
+<span class="lineno">   39 </span><span class="decl"><span class="istickedoff">trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -&gt; [])))</span>
+<span class="lineno">   40 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do let realSpan = combineSrcSpans l (getLoc expr)</span></span>
+<span class="lineno">   41 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">tokensAfter &lt;- allTokensAfter (srcSpanEnd realSpan)</span></span>
+<span class="lineno">   42 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">let actualSpan = case take 3 tokensAfter of</span></span>
+<span class="lineno">   43 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">[(_, AnnOf), (_, AnnOpenC), (endSpan, AnnCloseC)] -&gt; realSpan `combineSrcSpans` endSpan</span></span>
+<span class="lineno">   44 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">((endSpan, AnnOf) : _) -&gt; realSpan `combineSrcSpans` endSpan</span></span>
+<span class="lineno">   45 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">_ -&gt; convProblem &quot;trfExpr: case without 'of' '{' or '}' token&quot;</span></span>
+<span class="lineno">   46 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">annLoc createScopeInfo (pure actualSpan) (trfExpr' cs)</span></span>
+<span class="lineno">   47 </span><span class="spaces"></span><span class="istickedoff">trfExpr e | RealSrcSpan loce &lt;- getLoc e</span>
+<span class="lineno">   48 </span><span class="spaces">  </span><span class="istickedoff">= do exprSpls &lt;- asks exprSplices</span>
+<span class="lineno">   49 </span><span class="spaces">       </span><span class="istickedoff">let contSplice = filter <span class="nottickedoff">(\sp -&gt; case getLoc sp of (RealSrcSpan spLoc) -&gt; spLoc `containsSpan` loce; _ -&gt; False)</span> exprSpls</span>
+<span class="lineno">   50 </span><span class="spaces">       </span><span class="istickedoff">case contSplice of</span>
+<span class="lineno">   51 </span><span class="spaces">         </span><span class="istickedoff">[] -&gt; trfLoc trfExpr' createScopeInfo e</span>
+<span class="lineno">   52 </span><span class="spaces">         </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">let lsp@(L l sp) = minimumBy (compareSpans `on` getLoc) contSplice</span></span>
+<span class="lineno">   53 </span><span class="spaces">               </span><span class="istickedoff"><span class="nottickedoff">in case sp of</span></span>
+<span class="lineno">   54 </span><span class="spaces">                    </span><span class="istickedoff"><span class="nottickedoff">(HsQuasiQuote {}) -&gt; do</span></span>
+<span class="lineno">   55 </span><span class="spaces">                      </span><span class="istickedoff"><span class="nottickedoff">sp' &lt;- rdrSplice sp</span></span>
+<span class="lineno">   56 </span><span class="spaces">                      </span><span class="istickedoff"><span class="nottickedoff">exprSpliceInserted lsp (annLoc createScopeInfo (pure l) (AST.UQuasiQuoteExpr &lt;$&gt; annLocNoSema (pure l) (trfQuasiQuotation' sp')))</span></span>
+<span class="lineno">   57 </span><span class="spaces">                    </span><span class="istickedoff"><span class="nottickedoff">_ -&gt; do sp' &lt;- rdrSplice sp</span></span>
+<span class="lineno">   58 </span><span class="spaces">                            </span><span class="istickedoff"><span class="nottickedoff">exprSpliceInserted lsp (annLoc createScopeInfo (pure l) (AST.USplice &lt;$&gt; trfSplice sp'))</span></span>
+<span class="lineno">   59 </span><span class="spaces">  </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">trfLoc trfExpr' createScopeInfo e</span></span></span>
 <span class="lineno">   60 </span>
-<span class="lineno">   61 </span>trfExpr' :: forall n r . TransformName n r =&gt; HsExpr n -&gt; Trf (AST.UExpr (Dom r) RangeStage)
-<span class="lineno">   62 </span><span class="decl"><span class="istickedoff">trfExpr' (HsVar name) = AST.UVar &lt;$&gt; trfName @n name</span>
-<span class="lineno">   63 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsUnboundVar name) = <span class="nottickedoff">AST.UVar &lt;$&gt; trfNameText (occNameString $ unboundVarOcc name)</span></span>
-<span class="lineno">   64 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsRecFld fld) = <span class="nottickedoff">AST.UVar &lt;$&gt; (asks contRange &gt;&gt;= \l -&gt; trfAmbiguousFieldName' l fld)</span></span>
-<span class="lineno">   65 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsIPVar ip) = <span class="nottickedoff">AST.UVar &lt;$&gt; trfImplicitName ip</span></span>
-<span class="lineno">   66 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsOverLit (ol_val -&gt; val)) = AST.ULit &lt;$&gt; annCont (asks <span class="nottickedoff">contRange</span> &gt;&gt;= pure . PreLiteralInfo) (trfOverloadedLit val)</span>
-<span class="lineno">   67 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsLit val) = <span class="nottickedoff">AST.ULit &lt;$&gt; annCont (pure $ RealLiteralInfo (monoLiteralType val)) (trfLiteral' val)</span></span>
-<span class="lineno">   68 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsLam (unLoc . mg_alts -&gt; [unLoc -&gt; Match _ pats (GRHSs [unLoc -&gt; GRHS [] expr] (unLoc -&gt; EmptyLocalBinds))]))</span>
-<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.ULambda &lt;$&gt; (makeNonemptyList &quot; &quot; $ mapM trfPattern pats) &lt;*&gt; addToScope pats (trfExpr expr)</span></span>
-<span class="lineno">   70 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsLamCase (unLoc . mg_alts -&gt; matches)) = <span class="nottickedoff">AST.ULamCase &lt;$&gt; addToScope matches (trfAnnList &quot; &quot; trfAlt' matches)</span></span>
-<span class="lineno">   71 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsApp e1 e2) = AST.UApp &lt;$&gt; trfExpr e1 &lt;*&gt; trfExpr e2</span>
-<span class="lineno">   72 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (OpApp e1 (unLoc -&gt; HsVar op) _ e2)</span>
-<span class="lineno">   73 </span><span class="spaces">  </span><span class="istickedoff">= AST.UInfixApp &lt;$&gt; trfExpr e1 &lt;*&gt; trfOperator @n op &lt;*&gt; trfExpr e2</span>
-<span class="lineno">   74 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (OpApp e1 (L nameLoc (HsRecFld fld)) _ e2)</span>
-<span class="lineno">   75 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UInfixApp &lt;$&gt; trfExpr e1 &lt;*&gt; trfAmbiguousOperator' nameLoc fld &lt;*&gt; trfExpr e2</span></span>
-<span class="lineno">   76 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (OpApp _ (L _ op) _ _) = <span class="nottickedoff">unhandledElement &quot;OpApp expression&quot; op</span></span>
-<span class="lineno">   77 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (NegApp e _) = <span class="nottickedoff">AST.UPrefixApp &lt;$&gt; annLocNoSema loc (AST.UNormalOp &lt;$&gt; annLoc info loc (AST.nameFromList &lt;$&gt; trfOperatorStr False &quot;-&quot;))</span></span>
-<span class="lineno">   78 </span><span class="spaces">                                       </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfExpr e</span></span>
-<span class="lineno">   79 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">loc = mkSrcSpan &lt;$&gt; atTheStart &lt;*&gt; (pure $ srcSpanStart (getLoc e))</span></span>
-<span class="lineno">   80 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">info = createNameInfo =&lt;&lt; (fromMaybe (convProblem &quot;minus operation is not found&quot;) &lt;$&gt; liftGhc negateOpName)</span></span>
-<span class="lineno">   81 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">negateOpName = getFromNameUsing @r (\n -&gt; (\case Just (AnId id) -&gt; Just id; _ -&gt; Nothing) &lt;$&gt; lookupName n) negateName</span></span>
-<span class="lineno">   82 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsPar (unLoc -&gt; SectionL expr (unLoc -&gt; HsVar op))) = <span class="nottickedoff">AST.ULeftSection &lt;$&gt; trfExpr expr &lt;*&gt; trfOperator @n op</span></span>
-<span class="lineno">   83 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsPar (unLoc -&gt; SectionL expr (L nameLoc (HsRecFld op))))</span>
-<span class="lineno">   84 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.ULeftSection &lt;$&gt; trfExpr expr &lt;*&gt; trfAmbiguousOperator' nameLoc op</span></span>
-<span class="lineno">   85 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsPar (unLoc -&gt; SectionR (unLoc -&gt; HsVar op) expr)) = <span class="nottickedoff">AST.URightSection &lt;$&gt; trfOperator @n op &lt;*&gt; trfExpr expr</span></span>
-<span class="lineno">   86 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsPar (unLoc -&gt; SectionR (L nameLoc (HsRecFld op)) expr))</span>
-<span class="lineno">   87 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.URightSection &lt;$&gt; trfAmbiguousOperator' nameLoc op &lt;*&gt; trfExpr expr</span></span>
-<span class="lineno">   88 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsPar expr) = AST.UParen &lt;$&gt; trfExpr expr</span>
-<span class="lineno">   89 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExplicitTuple tupArgs box) | <span class="nottickedoff">all tupArgPresent tupArgs</span></span>
-<span class="lineno">   90 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">wrap &lt;$&gt; between (if box == Boxed then AnnOpenP else AnnOpen) (if box == Boxed then AnnCloseP else AnnClose)</span></span>
-<span class="lineno">   91 </span><span class="spaces">               </span><span class="istickedoff"><span class="nottickedoff">(trfAnnList' &quot;, &quot; (trfExpr . (\(Present e) -&gt; e) . unLoc) tupArgs)</span></span>
-<span class="lineno">   92 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">wrap = if box == Boxed then AST.UTuple else AST.UUnboxedTuple</span></span>
-<span class="lineno">   93 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExplicitTuple tupArgs box)</span>
+<span class="lineno">   61 </span>createScopeInfo :: Trf ScopeInfo
+<span class="lineno">   62 </span><span class="decl"><span class="istickedoff">createScopeInfo = do scope &lt;- asks <span class="nottickedoff">localsInScope</span></span>
+<span class="lineno">   63 </span><span class="spaces">                     </span><span class="istickedoff">return <span class="nottickedoff">(mkScopeInfo scope)</span></span></span>
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>trfExpr' :: forall n r . TransformName n r =&gt; HsExpr n -&gt; Trf (AST.UExpr (Dom r) RangeStage)
+<span class="lineno">   66 </span><span class="decl"><span class="istickedoff">trfExpr' (HsVar name) = AST.UVar &lt;$&gt; trfName @n name</span>
+<span class="lineno">   67 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsUnboundVar name) = <span class="nottickedoff">AST.UVar &lt;$&gt; trfNameText (occNameString $ unboundVarOcc name)</span></span>
+<span class="lineno">   68 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsRecFld fld) = <span class="nottickedoff">AST.UVar &lt;$&gt; (asks contRange &gt;&gt;= \l -&gt; trfAmbiguousFieldName' l fld)</span></span>
+<span class="lineno">   69 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsIPVar ip) = <span class="nottickedoff">AST.UVar &lt;$&gt; trfImplicitName ip</span></span>
+<span class="lineno">   70 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsOverLit (ol_val -&gt; val)) = AST.ULit &lt;$&gt; annCont (asks <span class="nottickedoff">contRange</span> &gt;&gt;= pure . PreLiteralInfo) (trfOverloadedLit val)</span>
+<span class="lineno">   71 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsLit val) = <span class="nottickedoff">AST.ULit &lt;$&gt; annCont (pure $ RealLiteralInfo (monoLiteralType val)) (trfLiteral' val)</span></span>
+<span class="lineno">   72 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsLam (unLoc . mg_alts -&gt; [unLoc -&gt; Match _ pats (GRHSs [unLoc -&gt; GRHS [] expr] (unLoc -&gt; EmptyLocalBinds))]))</span>
+<span class="lineno">   73 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.ULambda &lt;$&gt; (makeNonemptyList &quot; &quot; $ mapM trfPattern pats) &lt;*&gt; addToScope pats (trfExpr expr)</span></span>
+<span class="lineno">   74 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsLamCase (unLoc . mg_alts -&gt; matches)) = <span class="nottickedoff">AST.ULamCase &lt;$&gt; addToScope matches (trfAnnList &quot; &quot; trfAlt' matches)</span></span>
+<span class="lineno">   75 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsApp e1 e2) = AST.UApp &lt;$&gt; trfExpr e1 &lt;*&gt; trfExpr e2</span>
+<span class="lineno">   76 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (OpApp e1 (unLoc -&gt; HsVar op) _ e2)</span>
+<span class="lineno">   77 </span><span class="spaces">  </span><span class="istickedoff">= AST.UInfixApp &lt;$&gt; trfExpr e1 &lt;*&gt; trfOperator @n op &lt;*&gt; trfExpr e2</span>
+<span class="lineno">   78 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (OpApp e1 (L nameLoc (HsRecFld fld)) _ e2)</span>
+<span class="lineno">   79 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UInfixApp &lt;$&gt; trfExpr e1 &lt;*&gt; trfAmbiguousOperator' nameLoc fld &lt;*&gt; trfExpr e2</span></span>
+<span class="lineno">   80 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (OpApp _ (L _ op) _ _) = <span class="nottickedoff">unhandledElement &quot;OpApp expression&quot; op</span></span>
+<span class="lineno">   81 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (NegApp e _) = <span class="nottickedoff">AST.UPrefixApp &lt;$&gt; annLocNoSema loc (AST.UNormalOp &lt;$&gt; annLoc info loc (AST.nameFromList &lt;$&gt; trfOperatorStr False &quot;-&quot;))</span></span>
+<span class="lineno">   82 </span><span class="spaces">                                       </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfExpr e</span></span>
+<span class="lineno">   83 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">loc = mkSrcSpan &lt;$&gt; atTheStart &lt;*&gt; (pure $ srcSpanStart (getLoc e))</span></span>
+<span class="lineno">   84 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">info = createNameInfo =&lt;&lt; (fromMaybe (convProblem &quot;minus operation is not found&quot;) &lt;$&gt; liftGhc negateOpName)</span></span>
+<span class="lineno">   85 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">negateOpName = getFromNameUsing @r (\n -&gt; (\case Just (AnId id) -&gt; Just id; _ -&gt; Nothing) &lt;$&gt; lookupName n) negateName</span></span>
+<span class="lineno">   86 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsPar (unLoc -&gt; SectionL expr (unLoc -&gt; HsVar op))) = <span class="nottickedoff">AST.ULeftSection &lt;$&gt; trfExpr expr &lt;*&gt; trfOperator @n op</span></span>
+<span class="lineno">   87 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsPar (unLoc -&gt; SectionL expr (L nameLoc (HsRecFld op))))</span>
+<span class="lineno">   88 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.ULeftSection &lt;$&gt; trfExpr expr &lt;*&gt; trfAmbiguousOperator' nameLoc op</span></span>
+<span class="lineno">   89 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsPar (unLoc -&gt; SectionR (unLoc -&gt; HsVar op) expr)) = <span class="nottickedoff">AST.URightSection &lt;$&gt; trfOperator @n op &lt;*&gt; trfExpr expr</span></span>
+<span class="lineno">   90 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsPar (unLoc -&gt; SectionR (L nameLoc (HsRecFld op)) expr))</span>
+<span class="lineno">   91 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.URightSection &lt;$&gt; trfAmbiguousOperator' nameLoc op &lt;*&gt; trfExpr expr</span></span>
+<span class="lineno">   92 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsPar expr) = AST.UParen &lt;$&gt; trfExpr expr</span>
+<span class="lineno">   93 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExplicitTuple tupArgs box) | <span class="nottickedoff">all tupArgPresent tupArgs</span></span>
 <span class="lineno">   94 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">wrap &lt;$&gt; between (if box == Boxed then AnnOpenP else AnnOpen) (if box == Boxed then AnnCloseP else AnnClose)</span></span>
-<span class="lineno">   95 </span><span class="spaces">               </span><span class="istickedoff"><span class="nottickedoff">(do locs &lt;- elemLocs</span></span>
-<span class="lineno">   96 </span><span class="spaces">                   </span><span class="istickedoff"><span class="nottickedoff">makeList &quot;, &quot; atTheEnd $ mapM trfTupSecElem (zip (map unLoc tupArgs) locs))</span></span>
-<span class="lineno">   97 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">wrap = if box == Boxed then AST.UTupleSection else AST.UUnboxedTupSec</span></span>
-<span class="lineno">   98 </span><span class="spaces">        </span><span class="istickedoff">trfTupSecElem :: forall n r . TransformName n r =&gt; (HsTupArg n, SrcSpan) -&gt; Trf (Ann AST.UTupSecElem (Dom r) RangeStage)</span>
-<span class="lineno">   99 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">trfTupSecElem (Present e, l)</span></span>
-<span class="lineno">  100 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">= annLocNoSema (pure l) (AST.Present &lt;$&gt; (annCont createScopeInfo (trfExpr' (unLoc e))))</span></span>
-<span class="lineno">  101 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">trfTupSecElem (Missing _, l) = annLocNoSema (pure l) (pure AST.Missing)</span></span>
-<span class="lineno">  102 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">  103 </span><span class="spaces">        </span><span class="istickedoff">existingArgs :: [SrcSpan]</span>
-<span class="lineno">  104 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">existingArgs = catMaybes $ map (\case Present p -&gt; Just (getLoc p); _ -&gt; Nothing) $ map unLoc tupArgs</span></span>
-<span class="lineno">  105 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">  106 </span><span class="spaces">        </span><span class="istickedoff">elemLocs :: Trf [SrcSpan]</span>
-<span class="lineno">  107 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">elemLocs = do r &lt;- asks contRange</span></span>
-<span class="lineno">  108 </span><span class="spaces">                      </span><span class="istickedoff"><span class="nottickedoff">commaLocs &lt;- allTokenLoc AnnComma</span></span>
-<span class="lineno">  109 </span><span class="spaces">                      </span><span class="istickedoff"><span class="nottickedoff">return $ foldl breakUp [r] (filter freeComma commaLocs)</span></span>
-<span class="lineno">  110 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">where freeComma (RealSrcSpan s) = not $ any (\case RealSrcSpan e -&gt; e `containsSpan` s; _ -&gt; False) existingArgs</span></span>
-<span class="lineno">  111 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">freeComma _ = False</span></span>
-<span class="lineno">  112 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">  113 </span><span class="spaces">        </span><span class="istickedoff">breakUp :: [SrcSpan] -&gt; SrcSpan -&gt; [SrcSpan]</span>
-<span class="lineno">  114 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">breakUp cont sep = concatMap (breakUpOne sep) cont</span></span>
-<span class="lineno">  115 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">  116 </span><span class="spaces">        </span><span class="istickedoff">breakUpOne :: SrcSpan -&gt; SrcSpan -&gt; [SrcSpan]</span>
-<span class="lineno">  117 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">breakUpOne sep@(RealSrcSpan realSep) sp@(RealSrcSpan realSp)</span></span>
-<span class="lineno">  118 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| realSp `containsSpan` realSep = [mkSrcSpan (srcSpanStart sp) (srcSpanStart sep), mkSrcSpan (srcSpanEnd sep) (srcSpanEnd sp)]</span></span>
-<span class="lineno">  119 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">breakUpOne _ sp = [sp]</span></span>
-<span class="lineno">  120 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">  121 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsCase expr (unLoc . mg_alts -&gt; cases)) = <span class="nottickedoff">AST.UCase &lt;$&gt; trfExpr expr &lt;*&gt; (addToScope cases $ makeIndentedList (focusBeforeIfPresent AnnCloseC atTheEnd) (mapM trfAlt cases))</span></span>
-<span class="lineno">  122 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsIf _ expr thenE elseE) = AST.UIf &lt;$&gt; trfExpr expr &lt;*&gt; trfExpr thenE &lt;*&gt; trfExpr elseE</span>
-<span class="lineno">  123 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsMultiIf _ parts) = <span class="nottickedoff">AST.UMultiIf &lt;$&gt; trfAnnList &quot;&quot; trfGuardedCaseRhs' parts</span></span>
-<span class="lineno">  124 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsLet (unLoc -&gt; binds) expr) = <span class="nottickedoff">addToScope binds (AST.ULet &lt;$&gt; trfLocalBinds AnnLet binds &lt;*&gt; trfExpr expr)</span></span>
-<span class="lineno">  125 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo DoExpr (unLoc -&gt; stmts) _) = <span class="nottickedoff">AST.UDo &lt;$&gt; annLocNoSema (tokenLoc AnnDo) (pure AST.UDoKeyword)</span></span>
-<span class="lineno">  126 </span><span class="spaces">                                                    </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; makeNonemptyIndentedList (trfScopedSequence trfDoStmt stmts)</span></span>
-<span class="lineno">  127 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo MDoExpr (unLoc -&gt; [unLoc -&gt; RecStmt { recS_stmts = stmts }, lastStmt]) _)</span>
-<span class="lineno">  128 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UDo &lt;$&gt; annLocNoSema (tokenLoc AnnMdo) (pure AST.UMDoKeyword)</span></span>
-<span class="lineno">  129 </span><span class="spaces">            </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; addToScope stmts (makeNonemptyIndentedList (mapM trfDoStmt (stmts ++ [lastStmt])))</span></span>
-<span class="lineno">  130 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo MDoExpr (unLoc -&gt; stmts) _) = <span class="nottickedoff">AST.UDo &lt;$&gt; annLocNoSema (tokenLoc AnnMdo) (pure AST.UMDoKeyword)</span></span>
-<span class="lineno">  131 </span><span class="spaces">                                                     </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; addToScope stmts (makeNonemptyIndentedList (mapM trfDoStmt stmts))</span></span>
-<span class="lineno">  132 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo ListComp (unLoc -&gt; stmts) _)</span>
-<span class="lineno">  133 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UListComp &lt;$&gt; trfExpr (getLastStmt stmts) &lt;*&gt; trfListCompStmts stmts</span></span>
-<span class="lineno">  134 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo MonadComp (unLoc -&gt; stmts) _)</span>
-<span class="lineno">  135 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UListComp &lt;$&gt; trfExpr (getLastStmt stmts) &lt;*&gt; trfListCompStmts stmts</span></span>
-<span class="lineno">  136 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo PArrComp (unLoc -&gt; stmts) _)</span>
-<span class="lineno">  137 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UParArrayComp &lt;$&gt; trfExpr (getLastStmt stmts) &lt;*&gt; trfListCompStmts stmts</span></span>
-<span class="lineno">  138 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExplicitList _ _ exprs) = <span class="nottickedoff">AST.UList &lt;$&gt; trfAnnList' &quot;, &quot; trfExpr exprs</span></span>
-<span class="lineno">  139 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExplicitPArr _ exprs) = <span class="nottickedoff">AST.UParArray &lt;$&gt; trfAnnList' &quot;, &quot; trfExpr exprs</span></span>
-<span class="lineno">  140 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (RecordCon name _ _ fields) = <span class="nottickedoff">AST.URecCon &lt;$&gt; trfName @n name &lt;*&gt; trfFieldInits fields</span></span>
-<span class="lineno">  141 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (RecordUpd expr fields _ _ _ _) = <span class="nottickedoff">AST.URecUpdate &lt;$&gt; trfExpr expr &lt;*&gt; trfAnnList &quot;, &quot; trfFieldUpdate fields</span></span>
-<span class="lineno">  142 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExprWithTySig expr typ) = <span class="nottickedoff">AST.UTypeSig &lt;$&gt; trfExpr expr &lt;*&gt; trfType (hsib_body $ hswc_body typ)</span></span>
-<span class="lineno">  143 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ArithSeq _ _ (From from)) = <span class="nottickedoff">AST.UEnum &lt;$&gt; trfExpr from &lt;*&gt; nothing &quot;,&quot; &quot;&quot; (before AnnDotdot)</span></span>
-<span class="lineno">  144 </span><span class="spaces">                                                                </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; nothing &quot;&quot; &quot;&quot; (before AnnCloseS)</span></span>
-<span class="lineno">  145 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ArithSeq _ _ (FromThen from step))</span>
-<span class="lineno">  146 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UEnum &lt;$&gt; trfExpr from &lt;*&gt; (makeJust &lt;$&gt; trfExpr step) &lt;*&gt; nothing &quot;&quot; &quot;&quot; (before AnnCloseS)</span></span>
-<span class="lineno">  147 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ArithSeq _ _ (FromTo from to))</span>
-<span class="lineno">  148 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UEnum &lt;$&gt; trfExpr from &lt;*&gt; nothing &quot;,&quot; &quot;&quot; (before AnnDotdot)</span></span>
-<span class="lineno">  149 </span><span class="spaces">                               </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; (makeJust &lt;$&gt; trfExpr to)</span></span>
-<span class="lineno">  150 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ArithSeq _ _ (FromThenTo from step to))</span>
-<span class="lineno">  151 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UEnum &lt;$&gt; trfExpr from &lt;*&gt; (makeJust &lt;$&gt; trfExpr step) &lt;*&gt; (makeJust &lt;$&gt; trfExpr to)</span></span>
-<span class="lineno">  152 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (PArrSeq _ (FromTo from to))</span>
-<span class="lineno">  153 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UParArrayEnum &lt;$&gt; trfExpr from &lt;*&gt; nothing &quot;,&quot; &quot;&quot; (before AnnDotdot) &lt;*&gt; trfExpr to</span></span>
-<span class="lineno">  154 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (PArrSeq _ (FromThenTo from step to))</span>
-<span class="lineno">  155 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UParArrayEnum &lt;$&gt; trfExpr from &lt;*&gt; (makeJust &lt;$&gt; trfExpr step) &lt;*&gt; trfExpr to</span></span>
-<span class="lineno">  156 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsBracket brack) = <span class="nottickedoff">AST.UBracketExpr &lt;$&gt; annContNoSema (trfBracket' brack)</span></span>
-<span class="lineno">  157 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsSpliceE qq@(HsQuasiQuote {})) = <span class="nottickedoff">AST.UQuasiQuoteExpr &lt;$&gt; annContNoSema (trfQuasiQuotation' qq)</span></span>
-<span class="lineno">  158 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsSpliceE splice) = <span class="nottickedoff">AST.USplice &lt;$&gt; trfSplice splice</span></span>
-<span class="lineno">  159 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsRnBracketOut br _) = <span class="nottickedoff">AST.UBracketExpr &lt;$&gt; annContNoSema (trfBracket' br)</span></span>
-<span class="lineno">  160 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsProc pat cmdTop) = <span class="nottickedoff">AST.UProc &lt;$&gt; trfPattern pat &lt;*&gt; trfCmdTop cmdTop</span></span>
-<span class="lineno">  161 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsStatic _ expr) = <span class="nottickedoff">AST.UStaticPtr &lt;$&gt; trfExpr expr</span></span>
-<span class="lineno">  162 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsAppType expr typ) = <span class="nottickedoff">AST.UExplTypeApp &lt;$&gt; trfExpr expr &lt;*&gt; trfType (hswc_body typ)</span></span>
-<span class="lineno">  163 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsSCC _ lit expr) = <span class="nottickedoff">AST.UExprPragma &lt;$&gt; pragma &lt;*&gt; trfExpr expr</span></span>
-<span class="lineno">  164 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">pragma = do pragLoc &lt;- tokensLoc [AnnOpen, AnnClose]</span></span>
-<span class="lineno">  165 </span><span class="spaces">                    </span><span class="istickedoff"><span class="nottickedoff">focusOn pragLoc $ annContNoSema (AST.USccPragma &lt;$&gt; annLocNoSema (mappend &lt;$&gt; tokenLoc AnnValStr &lt;*&gt; tokenLocBack AnnVal) (trfText' lit))</span></span>
-<span class="lineno">  166 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsCoreAnn _ lit expr) = <span class="nottickedoff">AST.UExprPragma &lt;$&gt; pragma &lt;*&gt; trfExpr expr</span></span>
-<span class="lineno">  167 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">pragma = do pragLoc &lt;- tokensLoc [AnnOpen, AnnClose]</span></span>
-<span class="lineno">  168 </span><span class="spaces">                    </span><span class="istickedoff"><span class="nottickedoff">focusOn pragLoc $ annContNoSema (AST.UCorePragma &lt;$&gt; annLocNoSema (mappend &lt;$&gt; tokenLoc AnnValStr &lt;*&gt; tokenLocBack AnnVal) (trfText' lit))</span></span>
-<span class="lineno">  169 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsTickPragma _ source _ expr) = <span class="nottickedoff">AST.UExprPragma &lt;$&gt; pragma &lt;*&gt; trfExpr expr</span></span>
-<span class="lineno">  170 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">pragma = do pragLoc &lt;- tokensLoc [AnnOpen, AnnClose]</span></span>
-<span class="lineno">  171 </span><span class="spaces">                    </span><span class="istickedoff"><span class="nottickedoff">focusOn pragLoc $ annContNoSema (AST.UGeneratedPragma &lt;$&gt; (trfSourceRange source))</span></span>
-<span class="lineno">  172 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExplicitSum tag arity expr _)</span>
-<span class="lineno">  173 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do sepsBefore &lt;- focusBeforeLoc (srcSpanStart (getLoc expr)) (eachTokenLoc (AnnOpen : replicate (tag - 1) AnnVbar))</span></span>
-<span class="lineno">  174 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">sepsAfter &lt;- focusAfterLoc (srcSpanEnd (getLoc expr)) (eachTokenLoc (replicate (arity - tag) AnnVbar))</span></span>
-<span class="lineno">  175 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">let locsBefore = map srcSpanEnd $ init sepsBefore</span></span>
-<span class="lineno">  176 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">locsAfter = map srcSpanEnd sepsAfter</span></span>
-<span class="lineno">  177 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">AST.UUnboxedSum &lt;$&gt; makeList &quot; | &quot; (after AnnOpen) (mapM makePlaceholder locsBefore)</span></span>
-<span class="lineno">  178 </span><span class="spaces">                       </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfExpr expr</span></span>
-<span class="lineno">  179 </span><span class="spaces">                       </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; makeList &quot; | &quot; (before AnnClose) (mapM makePlaceholder locsAfter)</span></span>
-<span class="lineno">  180 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">makePlaceholder l = annLocNoSema (pure (srcLocSpan l)) (pure AST.UUnboxedSumPlaceHolder)</span></span>
-<span class="lineno">  181 </span><span class="spaces"></span><span class="istickedoff">trfExpr' EWildPat = <span class="nottickedoff">return AST.UHole</span></span>
-<span class="lineno">  182 </span><span class="spaces"></span><span class="istickedoff">trfExpr' t = <span class="nottickedoff">unhandledElement &quot;expression&quot; t</span></span></span>
-<span class="lineno">  183 </span>
-<span class="lineno">  184 </span>trfFieldInits :: TransformName n r =&gt; HsRecFields n (LHsExpr n) -&gt; Trf (AnnListG AST.UFieldUpdate (Dom r) RangeStage)
-<span class="lineno">  185 </span><span class="decl"><span class="nottickedoff">trfFieldInits (HsRecFields fields dotdot)</span>
-<span class="lineno">  186 </span><span class="spaces">  </span><span class="nottickedoff">= do cont &lt;- asks contRange</span>
-<span class="lineno">  187 </span><span class="spaces">       </span><span class="nottickedoff">let (normalFlds, implicitFlds) = partition ((cont /=) . getLoc) fields</span>
-<span class="lineno">  188 </span><span class="spaces">       </span><span class="nottickedoff">makeList &quot;, &quot; (before AnnCloseC)</span>
-<span class="lineno">  189 </span><span class="spaces">         </span><span class="nottickedoff">$ ((++) &lt;$&gt; mapM trfFieldInit normalFlds</span>
-<span class="lineno">  190 </span><span class="spaces">                  </span><span class="nottickedoff">&lt;*&gt; (if isJust dotdot then (:[]) &lt;$&gt; annLocNoSema (tokenLoc AnnDotdot)</span>
-<span class="lineno">  191 </span><span class="spaces">                                                                    </span><span class="nottickedoff">(AST.UFieldWildcard &lt;$&gt; (annCont (createImplicitFldInfo (unLoc . (\(HsVar n) -&gt; n) . unLoc) (map unLoc implicitFlds)) (pure AST.FldWildcard)))</span>
-<span class="lineno">  192 </span><span class="spaces">                                        </span><span class="nottickedoff">else pure []))</span></span>
-<span class="lineno">  193 </span>
-<span class="lineno">  194 </span>trfFieldInit :: forall n r . TransformName n r =&gt; Located (HsRecField n (LHsExpr n)) -&gt; Trf (Ann AST.UFieldUpdate (Dom r) RangeStage)
-<span class="lineno">  195 </span><span class="decl"><span class="nottickedoff">trfFieldInit = trfLocNoSema $ \case</span>
-<span class="lineno">  196 </span><span class="spaces">  </span><span class="nottickedoff">HsRecField id _ True -&gt; AST.UFieldPun &lt;$&gt; trfName @n (getFieldOccName id)</span>
-<span class="lineno">  197 </span><span class="spaces">  </span><span class="nottickedoff">HsRecField id val False -&gt; AST.UNormalFieldUpdate &lt;$&gt; trfName @n (getFieldOccName id) &lt;*&gt; trfExpr val</span></span>
-<span class="lineno">  198 </span>
-<span class="lineno">  199 </span>trfFieldUpdate :: TransformName n r =&gt; HsRecField' (AmbiguousFieldOcc n) (LHsExpr n) -&gt; Trf (AST.UFieldUpdate (Dom r) RangeStage)
-<span class="lineno">  200 </span><span class="decl"><span class="nottickedoff">trfFieldUpdate (HsRecField id _ True) = AST.UFieldPun &lt;$&gt; trfAmbiguousFieldName id</span>
-<span class="lineno">  201 </span><span class="spaces"></span><span class="nottickedoff">trfFieldUpdate (HsRecField id val False) = AST.UNormalFieldUpdate &lt;$&gt; trfAmbiguousFieldName id &lt;*&gt; trfExpr val</span></span>
+<span class="lineno">   95 </span><span class="spaces">               </span><span class="istickedoff"><span class="nottickedoff">(trfAnnList' &quot;, &quot; (trfExpr . (\(Present e) -&gt; e) . unLoc) tupArgs)</span></span>
+<span class="lineno">   96 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">wrap = if box == Boxed then AST.UTuple else AST.UUnboxedTuple</span></span>
+<span class="lineno">   97 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExplicitTuple tupArgs box)</span>
+<span class="lineno">   98 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">wrap &lt;$&gt; between (if box == Boxed then AnnOpenP else AnnOpen) (if box == Boxed then AnnCloseP else AnnClose)</span></span>
+<span class="lineno">   99 </span><span class="spaces">               </span><span class="istickedoff"><span class="nottickedoff">(do locs &lt;- elemLocs</span></span>
+<span class="lineno">  100 </span><span class="spaces">                   </span><span class="istickedoff"><span class="nottickedoff">makeList &quot;, &quot; atTheEnd $ mapM trfTupSecElem (zip (map unLoc tupArgs) locs))</span></span>
+<span class="lineno">  101 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">wrap = if box == Boxed then AST.UTupleSection else AST.UUnboxedTupSec</span></span>
+<span class="lineno">  102 </span><span class="spaces">        </span><span class="istickedoff">trfTupSecElem :: forall n r . TransformName n r =&gt; (HsTupArg n, SrcSpan) -&gt; Trf (Ann AST.UTupSecElem (Dom r) RangeStage)</span>
+<span class="lineno">  103 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">trfTupSecElem (Present e, l)</span></span>
+<span class="lineno">  104 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">= annLocNoSema (pure l) (AST.Present &lt;$&gt; (annCont createScopeInfo (trfExpr' (unLoc e))))</span></span>
+<span class="lineno">  105 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">trfTupSecElem (Missing _, l) = annLocNoSema (pure l) (pure AST.Missing)</span></span>
+<span class="lineno">  106 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  107 </span><span class="spaces">        </span><span class="istickedoff">existingArgs :: [SrcSpan]</span>
+<span class="lineno">  108 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">existingArgs = catMaybes $ map (\case Present p -&gt; Just (getLoc p); _ -&gt; Nothing) $ map unLoc tupArgs</span></span>
+<span class="lineno">  109 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  110 </span><span class="spaces">        </span><span class="istickedoff">elemLocs :: Trf [SrcSpan]</span>
+<span class="lineno">  111 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">elemLocs = do r &lt;- asks contRange</span></span>
+<span class="lineno">  112 </span><span class="spaces">                      </span><span class="istickedoff"><span class="nottickedoff">commaLocs &lt;- allTokenLoc AnnComma</span></span>
+<span class="lineno">  113 </span><span class="spaces">                      </span><span class="istickedoff"><span class="nottickedoff">return $ foldl breakUp [r] (filter freeComma commaLocs)</span></span>
+<span class="lineno">  114 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">where freeComma (RealSrcSpan s) = not $ any (\case RealSrcSpan e -&gt; e `containsSpan` s; _ -&gt; False) existingArgs</span></span>
+<span class="lineno">  115 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">freeComma _ = False</span></span>
+<span class="lineno">  116 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  117 </span><span class="spaces">        </span><span class="istickedoff">breakUp :: [SrcSpan] -&gt; SrcSpan -&gt; [SrcSpan]</span>
+<span class="lineno">  118 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">breakUp cont sep = concatMap (breakUpOne sep) cont</span></span>
+<span class="lineno">  119 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  120 </span><span class="spaces">        </span><span class="istickedoff">breakUpOne :: SrcSpan -&gt; SrcSpan -&gt; [SrcSpan]</span>
+<span class="lineno">  121 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">breakUpOne sep@(RealSrcSpan realSep) sp@(RealSrcSpan realSp)</span></span>
+<span class="lineno">  122 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| realSp `containsSpan` realSep = [mkSrcSpan (srcSpanStart sp) (srcSpanStart sep), mkSrcSpan (srcSpanEnd sep) (srcSpanEnd sp)]</span></span>
+<span class="lineno">  123 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">breakUpOne _ sp = [sp]</span></span>
+<span class="lineno">  124 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  125 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsCase expr (unLoc . mg_alts -&gt; cases)) = <span class="nottickedoff">AST.UCase &lt;$&gt; trfExpr expr &lt;*&gt; (addToScope cases $ makeIndentedList (focusBeforeIfPresent AnnCloseC atTheEnd) (mapM trfAlt cases))</span></span>
+<span class="lineno">  126 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsIf _ expr thenE elseE) = AST.UIf &lt;$&gt; trfExpr expr &lt;*&gt; trfExpr thenE &lt;*&gt; trfExpr elseE</span>
+<span class="lineno">  127 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsMultiIf _ parts) = <span class="nottickedoff">AST.UMultiIf &lt;$&gt; trfAnnList &quot;&quot; trfGuardedCaseRhs' parts</span></span>
+<span class="lineno">  128 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsLet (unLoc -&gt; binds) expr) = <span class="nottickedoff">addToScope binds (AST.ULet &lt;$&gt; trfLocalBinds AnnLet binds &lt;*&gt; trfExpr expr)</span></span>
+<span class="lineno">  129 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo DoExpr (unLoc -&gt; stmts) _) = <span class="nottickedoff">AST.UDo &lt;$&gt; annLocNoSema (tokenLoc AnnDo) (pure AST.UDoKeyword)</span></span>
+<span class="lineno">  130 </span><span class="spaces">                                                    </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; makeNonemptyIndentedList (trfScopedSequence trfDoStmt stmts)</span></span>
+<span class="lineno">  131 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo MDoExpr (unLoc -&gt; [unLoc -&gt; RecStmt { recS_stmts = stmts }, lastStmt]) _)</span>
+<span class="lineno">  132 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UDo &lt;$&gt; annLocNoSema (tokenLoc AnnMdo) (pure AST.UMDoKeyword)</span></span>
+<span class="lineno">  133 </span><span class="spaces">            </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; addToScope stmts (makeNonemptyIndentedList (mapM trfDoStmt (stmts ++ [lastStmt])))</span></span>
+<span class="lineno">  134 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo MDoExpr (unLoc -&gt; stmts) _) = <span class="nottickedoff">AST.UDo &lt;$&gt; annLocNoSema (tokenLoc AnnMdo) (pure AST.UMDoKeyword)</span></span>
+<span class="lineno">  135 </span><span class="spaces">                                                     </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; addToScope stmts (makeNonemptyIndentedList (mapM trfDoStmt stmts))</span></span>
+<span class="lineno">  136 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo ListComp (unLoc -&gt; stmts) _)</span>
+<span class="lineno">  137 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UListComp &lt;$&gt; trfExpr (getLastStmt stmts) &lt;*&gt; trfListCompStmts stmts</span></span>
+<span class="lineno">  138 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo MonadComp (unLoc -&gt; stmts) _)</span>
+<span class="lineno">  139 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UListComp &lt;$&gt; trfExpr (getLastStmt stmts) &lt;*&gt; trfListCompStmts stmts</span></span>
+<span class="lineno">  140 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsDo PArrComp (unLoc -&gt; stmts) _)</span>
+<span class="lineno">  141 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UParArrayComp &lt;$&gt; trfExpr (getLastStmt stmts) &lt;*&gt; trfListCompStmts stmts</span></span>
+<span class="lineno">  142 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExplicitList _ _ exprs) = <span class="nottickedoff">AST.UList &lt;$&gt; trfAnnList' &quot;, &quot; trfExpr exprs</span></span>
+<span class="lineno">  143 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExplicitPArr _ exprs) = <span class="nottickedoff">AST.UParArray &lt;$&gt; trfAnnList' &quot;, &quot; trfExpr exprs</span></span>
+<span class="lineno">  144 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (RecordCon name _ _ fields) = <span class="nottickedoff">AST.URecCon &lt;$&gt; trfName @n name &lt;*&gt; trfFieldInits fields</span></span>
+<span class="lineno">  145 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (RecordUpd expr fields _ _ _ _) = <span class="nottickedoff">AST.URecUpdate &lt;$&gt; trfExpr expr &lt;*&gt; trfAnnList &quot;, &quot; trfFieldUpdate fields</span></span>
+<span class="lineno">  146 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExprWithTySig expr typ) = <span class="nottickedoff">AST.UTypeSig &lt;$&gt; trfExpr expr &lt;*&gt; trfType (hsib_body $ hswc_body typ)</span></span>
+<span class="lineno">  147 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ArithSeq _ _ (From from)) = <span class="nottickedoff">AST.UEnum &lt;$&gt; trfExpr from &lt;*&gt; nothing &quot;,&quot; &quot;&quot; (before AnnDotdot)</span></span>
+<span class="lineno">  148 </span><span class="spaces">                                                                </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; nothing &quot;&quot; &quot;&quot; (before AnnCloseS)</span></span>
+<span class="lineno">  149 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ArithSeq _ _ (FromThen from step))</span>
+<span class="lineno">  150 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UEnum &lt;$&gt; trfExpr from &lt;*&gt; (makeJust &lt;$&gt; trfExpr step) &lt;*&gt; nothing &quot;&quot; &quot;&quot; (before AnnCloseS)</span></span>
+<span class="lineno">  151 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ArithSeq _ _ (FromTo from to))</span>
+<span class="lineno">  152 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UEnum &lt;$&gt; trfExpr from &lt;*&gt; nothing &quot;,&quot; &quot;&quot; (before AnnDotdot)</span></span>
+<span class="lineno">  153 </span><span class="spaces">                               </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; (makeJust &lt;$&gt; trfExpr to)</span></span>
+<span class="lineno">  154 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ArithSeq _ _ (FromThenTo from step to))</span>
+<span class="lineno">  155 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UEnum &lt;$&gt; trfExpr from &lt;*&gt; (makeJust &lt;$&gt; trfExpr step) &lt;*&gt; (makeJust &lt;$&gt; trfExpr to)</span></span>
+<span class="lineno">  156 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (PArrSeq _ (FromTo from to))</span>
+<span class="lineno">  157 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UParArrayEnum &lt;$&gt; trfExpr from &lt;*&gt; nothing &quot;,&quot; &quot;&quot; (before AnnDotdot) &lt;*&gt; trfExpr to</span></span>
+<span class="lineno">  158 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (PArrSeq _ (FromThenTo from step to))</span>
+<span class="lineno">  159 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">AST.UParArrayEnum &lt;$&gt; trfExpr from &lt;*&gt; (makeJust &lt;$&gt; trfExpr step) &lt;*&gt; trfExpr to</span></span>
+<span class="lineno">  160 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsBracket brack) = <span class="nottickedoff">AST.UBracketExpr &lt;$&gt; annContNoSema (trfBracket' brack)</span></span>
+<span class="lineno">  161 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsSpliceE qq@(HsQuasiQuote {})) = <span class="nottickedoff">AST.UQuasiQuoteExpr &lt;$&gt; annContNoSema (trfQuasiQuotation' qq)</span></span>
+<span class="lineno">  162 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsSpliceE splice) = <span class="nottickedoff">AST.USplice &lt;$&gt; trfSplice splice</span></span>
+<span class="lineno">  163 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsRnBracketOut br _) = <span class="nottickedoff">AST.UBracketExpr &lt;$&gt; annContNoSema (trfBracket' br)</span></span>
+<span class="lineno">  164 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsProc pat cmdTop) = <span class="nottickedoff">AST.UProc &lt;$&gt; trfPattern pat &lt;*&gt; trfCmdTop cmdTop</span></span>
+<span class="lineno">  165 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsStatic _ expr) = <span class="nottickedoff">AST.UStaticPtr &lt;$&gt; trfExpr expr</span></span>
+<span class="lineno">  166 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsAppType expr typ) = <span class="nottickedoff">AST.UExplTypeApp &lt;$&gt; trfExpr expr &lt;*&gt; trfType (hswc_body typ)</span></span>
+<span class="lineno">  167 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsSCC _ lit expr) = <span class="nottickedoff">AST.UExprPragma &lt;$&gt; pragma &lt;*&gt; trfExpr expr</span></span>
+<span class="lineno">  168 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">pragma = do pragLoc &lt;- tokensLoc [AnnOpen, AnnClose]</span></span>
+<span class="lineno">  169 </span><span class="spaces">                    </span><span class="istickedoff"><span class="nottickedoff">focusOn pragLoc $ annContNoSema (AST.USccPragma &lt;$&gt; annLocNoSema (mappend &lt;$&gt; tokenLoc AnnValStr &lt;*&gt; tokenLocBack AnnVal) (trfText' lit))</span></span>
+<span class="lineno">  170 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsCoreAnn _ lit expr) = <span class="nottickedoff">AST.UExprPragma &lt;$&gt; pragma &lt;*&gt; trfExpr expr</span></span>
+<span class="lineno">  171 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">pragma = do pragLoc &lt;- tokensLoc [AnnOpen, AnnClose]</span></span>
+<span class="lineno">  172 </span><span class="spaces">                    </span><span class="istickedoff"><span class="nottickedoff">focusOn pragLoc $ annContNoSema (AST.UCorePragma &lt;$&gt; annLocNoSema (mappend &lt;$&gt; tokenLoc AnnValStr &lt;*&gt; tokenLocBack AnnVal) (trfText' lit))</span></span>
+<span class="lineno">  173 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (HsTickPragma _ source _ expr) = <span class="nottickedoff">AST.UExprPragma &lt;$&gt; pragma &lt;*&gt; trfExpr expr</span></span>
+<span class="lineno">  174 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">pragma = do pragLoc &lt;- tokensLoc [AnnOpen, AnnClose]</span></span>
+<span class="lineno">  175 </span><span class="spaces">                    </span><span class="istickedoff"><span class="nottickedoff">focusOn pragLoc $ annContNoSema (AST.UGeneratedPragma &lt;$&gt; (trfSourceRange source))</span></span>
+<span class="lineno">  176 </span><span class="spaces"></span><span class="istickedoff">trfExpr' (ExplicitSum tag arity expr _)</span>
+<span class="lineno">  177 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">do sepsBefore &lt;- focusBeforeLoc (srcSpanStart (getLoc expr)) (eachTokenLoc (AnnOpen : replicate (tag - 1) AnnVbar))</span></span>
+<span class="lineno">  178 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">sepsAfter &lt;- focusAfterLoc (srcSpanEnd (getLoc expr)) (eachTokenLoc (replicate (arity - tag) AnnVbar))</span></span>
+<span class="lineno">  179 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">let locsBefore = map srcSpanEnd $ init sepsBefore</span></span>
+<span class="lineno">  180 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">locsAfter = map srcSpanEnd sepsAfter</span></span>
+<span class="lineno">  181 </span><span class="spaces">       </span><span class="istickedoff"><span class="nottickedoff">AST.UUnboxedSum &lt;$&gt; makeList &quot; | &quot; (after AnnOpen) (mapM makePlaceholder locsBefore)</span></span>
+<span class="lineno">  182 </span><span class="spaces">                       </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfExpr expr</span></span>
+<span class="lineno">  183 </span><span class="spaces">                       </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; makeList &quot; | &quot; (before AnnClose) (mapM makePlaceholder locsAfter)</span></span>
+<span class="lineno">  184 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">makePlaceholder l = annLocNoSema (pure (srcLocSpan l)) (pure AST.UUnboxedSumPlaceHolder)</span></span>
+<span class="lineno">  185 </span><span class="spaces"></span><span class="istickedoff">trfExpr' EWildPat = <span class="nottickedoff">return AST.UHole</span></span>
+<span class="lineno">  186 </span><span class="spaces"></span><span class="istickedoff">trfExpr' t = <span class="nottickedoff">unhandledElement &quot;expression&quot; t</span></span></span>
+<span class="lineno">  187 </span>
+<span class="lineno">  188 </span>trfFieldInits :: TransformName n r =&gt; HsRecFields n (LHsExpr n) -&gt; Trf (AnnListG AST.UFieldUpdate (Dom r) RangeStage)
+<span class="lineno">  189 </span><span class="decl"><span class="nottickedoff">trfFieldInits (HsRecFields fields dotdot)</span>
+<span class="lineno">  190 </span><span class="spaces">  </span><span class="nottickedoff">= do cont &lt;- asks contRange</span>
+<span class="lineno">  191 </span><span class="spaces">       </span><span class="nottickedoff">let (normalFlds, implicitFlds) = partition ((cont /=) . getLoc) fields</span>
+<span class="lineno">  192 </span><span class="spaces">       </span><span class="nottickedoff">makeList &quot;, &quot; (before AnnCloseC)</span>
+<span class="lineno">  193 </span><span class="spaces">         </span><span class="nottickedoff">$ ((++) &lt;$&gt; mapM trfFieldInit normalFlds</span>
+<span class="lineno">  194 </span><span class="spaces">                  </span><span class="nottickedoff">&lt;*&gt; (if isJust dotdot then (:[]) &lt;$&gt; annLocNoSema (tokenLoc AnnDotdot)</span>
+<span class="lineno">  195 </span><span class="spaces">                                                                    </span><span class="nottickedoff">(AST.UFieldWildcard &lt;$&gt; (annCont (createImplicitFldInfo (unLoc . (\(HsVar n) -&gt; n) . unLoc) (map unLoc implicitFlds)) (pure AST.FldWildcard)))</span>
+<span class="lineno">  196 </span><span class="spaces">                                        </span><span class="nottickedoff">else pure []))</span></span>
+<span class="lineno">  197 </span>
+<span class="lineno">  198 </span>trfFieldInit :: forall n r . TransformName n r =&gt; Located (HsRecField n (LHsExpr n)) -&gt; Trf (Ann AST.UFieldUpdate (Dom r) RangeStage)
+<span class="lineno">  199 </span><span class="decl"><span class="nottickedoff">trfFieldInit = trfLocNoSema $ \case</span>
+<span class="lineno">  200 </span><span class="spaces">  </span><span class="nottickedoff">HsRecField id _ True -&gt; AST.UFieldPun &lt;$&gt; trfName @n (getFieldOccName id)</span>
+<span class="lineno">  201 </span><span class="spaces">  </span><span class="nottickedoff">HsRecField id val False -&gt; AST.UNormalFieldUpdate &lt;$&gt; trfName @n (getFieldOccName id) &lt;*&gt; trfExpr val</span></span>
 <span class="lineno">  202 </span>
-<span class="lineno">  203 </span>trfAlt :: TransformName n r =&gt; Located (Match n (LHsExpr n)) -&gt; Trf (Ann AST.UAlt (Dom r) RangeStage)
-<span class="lineno">  204 </span><span class="decl"><span class="nottickedoff">trfAlt = trfLocNoSema trfAlt'</span></span>
-<span class="lineno">  205 </span>
-<span class="lineno">  206 </span>trfAlt' :: TransformName n r =&gt; Match n (LHsExpr n) -&gt; Trf (AST.UAlt (Dom r) RangeStage)
-<span class="lineno">  207 </span><span class="decl"><span class="nottickedoff">trfAlt' = gTrfAlt' trfExpr</span></span>
-<span class="lineno">  208 </span>
-<span class="lineno">  209 </span>gTrfAlt' :: TransformName n r =&gt; (Located (ge n) -&gt; Trf (Ann ae (Dom r) RangeStage)) -&gt; Match n (Located (ge n)) -&gt; Trf (AST.UAlt' ae (Dom r) RangeStage)
-<span class="lineno">  210 </span><span class="decl"><span class="nottickedoff">gTrfAlt' te (Match _ [pat] (GRHSs rhss (unLoc -&gt; locBinds)))</span>
-<span class="lineno">  211 </span><span class="spaces">  </span><span class="nottickedoff">= AST.UAlt &lt;$&gt; trfPattern pat &lt;*&gt; gTrfCaseRhss te rhss &lt;*&gt; trfWhereLocalBinds (collectLocs rhss) locBinds</span>
-<span class="lineno">  212 </span><span class="spaces"></span><span class="nottickedoff">gTrfAlt' _ _ = convertionProblem &quot;gTrfAlt': not exactly one alternative when transforming a case alternative&quot;</span></span>
-<span class="lineno">  213 </span>
-<span class="lineno">  214 </span>trfCaseRhss :: TransformName n r =&gt; [Located (GRHS n (LHsExpr n))] -&gt; Trf (Ann AST.UCaseRhs (Dom r) RangeStage)
-<span class="lineno">  215 </span><span class="decl"><span class="nottickedoff">trfCaseRhss = gTrfCaseRhss trfExpr</span></span>
-<span class="lineno">  216 </span>
-<span class="lineno">  217 </span>gTrfCaseRhss :: TransformName n r =&gt; (Located (ge n) -&gt; Trf (Ann ae (Dom r) RangeStage)) -&gt; [Located (GRHS n (Located (ge n)))] -&gt; Trf (Ann (AST.UCaseRhs' ae) (Dom r) RangeStage)
-<span class="lineno">  218 </span><span class="decl"><span class="nottickedoff">gTrfCaseRhss te [unLoc -&gt; GRHS [] body] = annLocNoSema (combineSrcSpans (getLoc body) &lt;$&gt; updateFocus (pure . updateEnd (const $ srcSpanStart $ getLoc body))</span>
-<span class="lineno">  219 </span><span class="spaces">                                                                                                      </span><span class="nottickedoff">(tokenLocBack AnnRarrow))</span>
-<span class="lineno">  220 </span><span class="spaces">                                                 </span><span class="nottickedoff">(AST.UUnguardedCaseRhs &lt;$&gt; te body)</span>
-<span class="lineno">  221 </span><span class="spaces"></span><span class="nottickedoff">gTrfCaseRhss te rhss = annLocNoSema (pure $ collectLocs rhss)</span>
-<span class="lineno">  222 </span><span class="spaces">                              </span><span class="nottickedoff">(AST.UGuardedCaseRhss &lt;$&gt; trfAnnList &quot;;&quot; (gTrfGuardedCaseRhs' te) rhss)</span></span>
-<span class="lineno">  223 </span>
-<span class="lineno">  224 </span>trfGuardedCaseRhs :: TransformName n r =&gt; Located (GRHS n (LHsExpr n)) -&gt; Trf (Ann AST.UGuardedCaseRhs (Dom r) RangeStage)
-<span class="lineno">  225 </span><span class="decl"><span class="nottickedoff">trfGuardedCaseRhs = trfLocNoSema trfGuardedCaseRhs'</span></span>
-<span class="lineno">  226 </span>
-<span class="lineno">  227 </span>trfGuardedCaseRhs' :: TransformName n r =&gt; GRHS n (LHsExpr n) -&gt; Trf (AST.UGuardedCaseRhs (Dom r) RangeStage)
-<span class="lineno">  228 </span><span class="decl"><span class="nottickedoff">trfGuardedCaseRhs' = gTrfGuardedCaseRhs' trfExpr</span></span>
-<span class="lineno">  229 </span>
-<span class="lineno">  230 </span>gTrfGuardedCaseRhs' :: TransformName n r =&gt; (Located (ge n) -&gt; Trf (Ann ae (Dom r) RangeStage)) -&gt; GRHS n (Located (ge n)) -&gt; Trf (AST.UGuardedCaseRhs' ae (Dom r) RangeStage)
-<span class="lineno">  231 </span><span class="decl"><span class="nottickedoff">gTrfGuardedCaseRhs' te (GRHS guards body) = AST.UGuardedCaseRhs &lt;$&gt; trfAnnList &quot; &quot; trfRhsGuard' guards &lt;*&gt; te body</span></span>
-<span class="lineno">  232 </span>
-<span class="lineno">  233 </span>trfCmdTop :: TransformName n r =&gt; Located (HsCmdTop n) -&gt; Trf (Ann AST.UCmd (Dom r) RangeStage)
-<span class="lineno">  234 </span><span class="decl"><span class="nottickedoff">trfCmdTop (L _ (HsCmdTop cmd _ _ _)) = trfCmd cmd</span></span>
-<span class="lineno">  235 </span>
-<span class="lineno">  236 </span>trfCmd :: TransformName n r =&gt; Located (HsCmd n) -&gt; Trf (Ann AST.UCmd (Dom r) RangeStage)
-<span class="lineno">  237 </span><span class="decl"><span class="nottickedoff">trfCmd = trfLocNoSema trfCmd'</span></span>
-<span class="lineno">  238 </span>
-<span class="lineno">  239 </span>trfCmd' :: TransformName n r =&gt; HsCmd n -&gt; Trf (AST.UCmd (Dom r) RangeStage)
-<span class="lineno">  240 </span><span class="decl"><span class="nottickedoff">trfCmd' (HsCmdArrApp left right _ typ dir) = AST.UArrowAppCmd &lt;$&gt; trfExpr left &lt;*&gt; op &lt;*&gt; trfExpr right</span>
-<span class="lineno">  241 </span><span class="spaces">  </span><span class="nottickedoff">where op = case (typ, dir) of (HsFirstOrderApp, False) -&gt; annLocNoSema (tokenLoc Annrarrowtail) (pure AST.URightAppl)</span>
-<span class="lineno">  242 </span><span class="spaces">                                </span><span class="nottickedoff">(HsFirstOrderApp, True) -&gt; annLocNoSema (tokenLoc Annlarrowtail) (pure AST.ULeftAppl)</span>
-<span class="lineno">  243 </span><span class="spaces">                                </span><span class="nottickedoff">(HsHigherOrderApp, False) -&gt; annLocNoSema (tokenLoc AnnRarrowtail) (pure AST.URightHighApp)</span>
-<span class="lineno">  244 </span><span class="spaces">                                </span><span class="nottickedoff">(HsHigherOrderApp, True) -&gt; annLocNoSema (tokenLoc AnnLarrowtail) (pure AST.ULeftHighApp)</span>
-<span class="lineno">  245 </span><span class="spaces">                                                                       </span><span class="nottickedoff">-- FIXME: needs a before</span>
-<span class="lineno">  246 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdArrForm expr _ _ cmds) = AST.UArrowFormCmd &lt;$&gt; trfExpr expr &lt;*&gt; makeList &quot; &quot; (before AnnClose) (mapM trfCmdTop cmds)</span>
-<span class="lineno">  247 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdApp cmd expr) = AST.UAppCmd &lt;$&gt; trfCmd cmd &lt;*&gt; trfExpr expr</span>
-<span class="lineno">  248 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdLam (MG (unLoc -&gt; [unLoc -&gt; Match _ pats (GRHSs [unLoc -&gt; GRHS [] body] _)]) _ _ _))</span>
-<span class="lineno">  249 </span><span class="spaces">  </span><span class="nottickedoff">= AST.ULambdaCmd &lt;$&gt; (makeNonemptyList &quot; &quot; $ mapM trfPattern pats) &lt;*&gt; trfCmd body</span>
-<span class="lineno">  250 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdPar cmd) = AST.UParenCmd &lt;$&gt; trfCmd cmd</span>
-<span class="lineno">  251 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdCase expr (MG (unLoc -&gt; alts) _ _ _))</span>
-<span class="lineno">  252 </span><span class="spaces">  </span><span class="nottickedoff">= AST.UCaseCmd &lt;$&gt; trfExpr expr &lt;*&gt; makeNonemptyIndentedList (mapM (trfLocNoSema (gTrfAlt' trfCmd)) alts)</span>
-<span class="lineno">  253 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdIf _ pred thenExpr elseExpr) = AST.UIfCmd &lt;$&gt; trfExpr pred &lt;*&gt; trfCmd thenExpr &lt;*&gt; trfCmd elseExpr</span>
-<span class="lineno">  254 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdLet (unLoc -&gt; binds) cmd) = addToScope binds (AST.ULetCmd &lt;$&gt; trfLocalBinds AnnLet binds &lt;*&gt; trfCmd cmd)</span>
-<span class="lineno">  255 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdDo (unLoc -&gt; stmts) _) = AST.UDoCmd &lt;$&gt; makeNonemptyIndentedList (mapM (trfLocNoSema (gTrfDoStmt' trfCmd)) stmts)</span>
-<span class="lineno">  256 </span><span class="spaces"></span><span class="nottickedoff">-- | TODO: implement</span>
-<span class="lineno">  257 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdLam {}) = convertionProblem &quot;trfCmd': cmd lambda not supported yet&quot;</span>
-<span class="lineno">  258 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdWrap {}) = convertionProblem &quot;trfCmd': cmd wrap not supported yet&quot;</span></span>
-<span class="lineno">  259 </span>
-<span class="lineno">  260 </span>trfText' :: StringLiteral -&gt; Trf (AST.UStringNode (Dom r) RangeStage)
-<span class="lineno">  261 </span><span class="decl"><span class="nottickedoff">trfText' = pure . AST.UStringNode . unpackFS . sl_fs</span></span>
-<span class="lineno">  262 </span>
-<span class="lineno">  263 </span>trfSourceRange :: (StringLiteral, (Int, Int), (Int, Int)) -&gt; Trf (Ann AST.USourceRange (Dom r) RangeStage)
-<span class="lineno">  264 </span><span class="decl"><span class="nottickedoff">trfSourceRange (fileName, (startRow, startCol), (endRow, endCol))</span>
-<span class="lineno">  265 </span><span class="spaces">  </span><span class="nottickedoff">= do fnLoc &lt;- tokenLoc AnnValStr</span>
-<span class="lineno">  266 </span><span class="spaces">       </span><span class="nottickedoff">[srLoc, scLoc, erLoc, ecLoc] &lt;- allTokenLoc AnnVal</span>
-<span class="lineno">  267 </span><span class="spaces">       </span><span class="nottickedoff">annLocNoSema (pure (fnLoc `combineSrcSpans` ecLoc))</span>
-<span class="lineno">  268 </span><span class="spaces">         </span><span class="nottickedoff">(AST.USourceRange &lt;$&gt; annLocNoSema (pure fnLoc) (trfText' fileName)</span>
-<span class="lineno">  269 </span><span class="spaces">                           </span><span class="nottickedoff">&lt;*&gt; annLocNoSema (pure srLoc) (pure $ AST.Number $ fromIntegral startRow)</span>
-<span class="lineno">  270 </span><span class="spaces">                           </span><span class="nottickedoff">&lt;*&gt; annLocNoSema (pure scLoc) (pure $ AST.Number $ fromIntegral startCol)</span>
-<span class="lineno">  271 </span><span class="spaces">                           </span><span class="nottickedoff">&lt;*&gt; annLocNoSema (pure erLoc) (pure $ AST.Number $ fromIntegral endRow)</span>
-<span class="lineno">  272 </span><span class="spaces">                           </span><span class="nottickedoff">&lt;*&gt; annLocNoSema (pure ecLoc) (pure $ AST.Number $ fromIntegral endCol))</span></span>
+<span class="lineno">  203 </span>trfFieldUpdate :: TransformName n r =&gt; HsRecField' (AmbiguousFieldOcc n) (LHsExpr n) -&gt; Trf (AST.UFieldUpdate (Dom r) RangeStage)
+<span class="lineno">  204 </span><span class="decl"><span class="nottickedoff">trfFieldUpdate (HsRecField id _ True) = AST.UFieldPun &lt;$&gt; trfAmbiguousFieldName id</span>
+<span class="lineno">  205 </span><span class="spaces"></span><span class="nottickedoff">trfFieldUpdate (HsRecField id val False) = AST.UNormalFieldUpdate &lt;$&gt; trfAmbiguousFieldName id &lt;*&gt; trfExpr val</span></span>
+<span class="lineno">  206 </span>
+<span class="lineno">  207 </span>trfAlt :: TransformName n r =&gt; Located (Match n (LHsExpr n)) -&gt; Trf (Ann AST.UAlt (Dom r) RangeStage)
+<span class="lineno">  208 </span><span class="decl"><span class="nottickedoff">trfAlt = trfLocNoSema trfAlt'</span></span>
+<span class="lineno">  209 </span>
+<span class="lineno">  210 </span>trfAlt' :: TransformName n r =&gt; Match n (LHsExpr n) -&gt; Trf (AST.UAlt (Dom r) RangeStage)
+<span class="lineno">  211 </span><span class="decl"><span class="nottickedoff">trfAlt' = gTrfAlt' trfExpr</span></span>
+<span class="lineno">  212 </span>
+<span class="lineno">  213 </span>gTrfAlt' :: TransformName n r =&gt; (Located (ge n) -&gt; Trf (Ann ae (Dom r) RangeStage)) -&gt; Match n (Located (ge n)) -&gt; Trf (AST.UAlt' ae (Dom r) RangeStage)
+<span class="lineno">  214 </span><span class="decl"><span class="nottickedoff">gTrfAlt' te (Match _ [pat] (GRHSs rhss (unLoc -&gt; locBinds)))</span>
+<span class="lineno">  215 </span><span class="spaces">  </span><span class="nottickedoff">= AST.UAlt &lt;$&gt; trfPattern pat &lt;*&gt; gTrfCaseRhss te rhss &lt;*&gt; trfWhereLocalBinds (collectLocs rhss) locBinds</span>
+<span class="lineno">  216 </span><span class="spaces"></span><span class="nottickedoff">gTrfAlt' _ _ = convertionProblem &quot;gTrfAlt': not exactly one alternative when transforming a case alternative&quot;</span></span>
+<span class="lineno">  217 </span>
+<span class="lineno">  218 </span>trfCaseRhss :: TransformName n r =&gt; [Located (GRHS n (LHsExpr n))] -&gt; Trf (Ann AST.UCaseRhs (Dom r) RangeStage)
+<span class="lineno">  219 </span><span class="decl"><span class="nottickedoff">trfCaseRhss = gTrfCaseRhss trfExpr</span></span>
+<span class="lineno">  220 </span>
+<span class="lineno">  221 </span>gTrfCaseRhss :: TransformName n r =&gt; (Located (ge n) -&gt; Trf (Ann ae (Dom r) RangeStage)) -&gt; [Located (GRHS n (Located (ge n)))] -&gt; Trf (Ann (AST.UCaseRhs' ae) (Dom r) RangeStage)
+<span class="lineno">  222 </span><span class="decl"><span class="nottickedoff">gTrfCaseRhss te [unLoc -&gt; GRHS [] body] = annLocNoSema (combineSrcSpans (getLoc body) &lt;$&gt; updateFocus (pure . updateEnd (const $ srcSpanStart $ getLoc body))</span>
+<span class="lineno">  223 </span><span class="spaces">                                                                                                      </span><span class="nottickedoff">(tokenLocBack AnnRarrow))</span>
+<span class="lineno">  224 </span><span class="spaces">                                                 </span><span class="nottickedoff">(AST.UUnguardedCaseRhs &lt;$&gt; te body)</span>
+<span class="lineno">  225 </span><span class="spaces"></span><span class="nottickedoff">gTrfCaseRhss te rhss = annLocNoSema (pure $ collectLocs rhss)</span>
+<span class="lineno">  226 </span><span class="spaces">                              </span><span class="nottickedoff">(AST.UGuardedCaseRhss &lt;$&gt; trfAnnList &quot;;&quot; (gTrfGuardedCaseRhs' te) rhss)</span></span>
+<span class="lineno">  227 </span>
+<span class="lineno">  228 </span>trfGuardedCaseRhs :: TransformName n r =&gt; Located (GRHS n (LHsExpr n)) -&gt; Trf (Ann AST.UGuardedCaseRhs (Dom r) RangeStage)
+<span class="lineno">  229 </span><span class="decl"><span class="nottickedoff">trfGuardedCaseRhs = trfLocNoSema trfGuardedCaseRhs'</span></span>
+<span class="lineno">  230 </span>
+<span class="lineno">  231 </span>trfGuardedCaseRhs' :: TransformName n r =&gt; GRHS n (LHsExpr n) -&gt; Trf (AST.UGuardedCaseRhs (Dom r) RangeStage)
+<span class="lineno">  232 </span><span class="decl"><span class="nottickedoff">trfGuardedCaseRhs' = gTrfGuardedCaseRhs' trfExpr</span></span>
+<span class="lineno">  233 </span>
+<span class="lineno">  234 </span>gTrfGuardedCaseRhs' :: TransformName n r =&gt; (Located (ge n) -&gt; Trf (Ann ae (Dom r) RangeStage)) -&gt; GRHS n (Located (ge n)) -&gt; Trf (AST.UGuardedCaseRhs' ae (Dom r) RangeStage)
+<span class="lineno">  235 </span><span class="decl"><span class="nottickedoff">gTrfGuardedCaseRhs' te (GRHS guards body) = AST.UGuardedCaseRhs &lt;$&gt; trfAnnList &quot; &quot; trfRhsGuard' guards &lt;*&gt; te body</span></span>
+<span class="lineno">  236 </span>
+<span class="lineno">  237 </span>trfCmdTop :: TransformName n r =&gt; Located (HsCmdTop n) -&gt; Trf (Ann AST.UCmd (Dom r) RangeStage)
+<span class="lineno">  238 </span><span class="decl"><span class="nottickedoff">trfCmdTop (L _ (HsCmdTop cmd _ _ _)) = trfCmd cmd</span></span>
+<span class="lineno">  239 </span>
+<span class="lineno">  240 </span>trfCmd :: TransformName n r =&gt; Located (HsCmd n) -&gt; Trf (Ann AST.UCmd (Dom r) RangeStage)
+<span class="lineno">  241 </span><span class="decl"><span class="nottickedoff">trfCmd = trfLocNoSema trfCmd'</span></span>
+<span class="lineno">  242 </span>
+<span class="lineno">  243 </span>trfCmd' :: TransformName n r =&gt; HsCmd n -&gt; Trf (AST.UCmd (Dom r) RangeStage)
+<span class="lineno">  244 </span><span class="decl"><span class="nottickedoff">trfCmd' (HsCmdArrApp left right _ typ dir) = AST.UArrowAppCmd &lt;$&gt; trfExpr left &lt;*&gt; op &lt;*&gt; trfExpr right</span>
+<span class="lineno">  245 </span><span class="spaces">  </span><span class="nottickedoff">where op = case (typ, dir) of (HsFirstOrderApp, False) -&gt; annLocNoSema (tokenLoc Annrarrowtail) (pure AST.URightAppl)</span>
+<span class="lineno">  246 </span><span class="spaces">                                </span><span class="nottickedoff">(HsFirstOrderApp, True) -&gt; annLocNoSema (tokenLoc Annlarrowtail) (pure AST.ULeftAppl)</span>
+<span class="lineno">  247 </span><span class="spaces">                                </span><span class="nottickedoff">(HsHigherOrderApp, False) -&gt; annLocNoSema (tokenLoc AnnRarrowtail) (pure AST.URightHighApp)</span>
+<span class="lineno">  248 </span><span class="spaces">                                </span><span class="nottickedoff">(HsHigherOrderApp, True) -&gt; annLocNoSema (tokenLoc AnnLarrowtail) (pure AST.ULeftHighApp)</span>
+<span class="lineno">  249 </span><span class="spaces">                                                                       </span><span class="nottickedoff">-- FIXME: needs a before</span>
+<span class="lineno">  250 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdArrForm expr _ _ cmds) = AST.UArrowFormCmd &lt;$&gt; trfExpr expr &lt;*&gt; makeList &quot; &quot; (before AnnClose) (mapM trfCmdTop cmds)</span>
+<span class="lineno">  251 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdApp cmd expr) = AST.UAppCmd &lt;$&gt; trfCmd cmd &lt;*&gt; trfExpr expr</span>
+<span class="lineno">  252 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdLam (MG (unLoc -&gt; [unLoc -&gt; Match _ pats (GRHSs [unLoc -&gt; GRHS [] body] _)]) _ _ _))</span>
+<span class="lineno">  253 </span><span class="spaces">  </span><span class="nottickedoff">= AST.ULambdaCmd &lt;$&gt; (makeNonemptyList &quot; &quot; $ mapM trfPattern pats) &lt;*&gt; trfCmd body</span>
+<span class="lineno">  254 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdPar cmd) = AST.UParenCmd &lt;$&gt; trfCmd cmd</span>
+<span class="lineno">  255 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdCase expr (MG (unLoc -&gt; alts) _ _ _))</span>
+<span class="lineno">  256 </span><span class="spaces">  </span><span class="nottickedoff">= AST.UCaseCmd &lt;$&gt; trfExpr expr &lt;*&gt; makeNonemptyIndentedList (mapM (trfLocNoSema (gTrfAlt' trfCmd)) alts)</span>
+<span class="lineno">  257 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdIf _ pred thenExpr elseExpr) = AST.UIfCmd &lt;$&gt; trfExpr pred &lt;*&gt; trfCmd thenExpr &lt;*&gt; trfCmd elseExpr</span>
+<span class="lineno">  258 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdLet (unLoc -&gt; binds) cmd) = addToScope binds (AST.ULetCmd &lt;$&gt; trfLocalBinds AnnLet binds &lt;*&gt; trfCmd cmd)</span>
+<span class="lineno">  259 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdDo (unLoc -&gt; stmts) _) = AST.UDoCmd &lt;$&gt; makeNonemptyIndentedList (mapM (trfLocNoSema (gTrfDoStmt' trfCmd)) stmts)</span>
+<span class="lineno">  260 </span><span class="spaces"></span><span class="nottickedoff">-- | TODO: implement</span>
+<span class="lineno">  261 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdLam {}) = convertionProblem &quot;trfCmd': cmd lambda not supported yet&quot;</span>
+<span class="lineno">  262 </span><span class="spaces"></span><span class="nottickedoff">trfCmd' (HsCmdWrap {}) = convertionProblem &quot;trfCmd': cmd wrap not supported yet&quot;</span></span>
+<span class="lineno">  263 </span>
+<span class="lineno">  264 </span>trfText' :: StringLiteral -&gt; Trf (AST.UStringNode (Dom r) RangeStage)
+<span class="lineno">  265 </span><span class="decl"><span class="nottickedoff">trfText' = pure . AST.UStringNode . unpackFS . sl_fs</span></span>
+<span class="lineno">  266 </span>
+<span class="lineno">  267 </span>trfSourceRange :: (StringLiteral, (Int, Int), (Int, Int)) -&gt; Trf (Ann AST.USourceRange (Dom r) RangeStage)
+<span class="lineno">  268 </span><span class="decl"><span class="nottickedoff">trfSourceRange (fileName, (startRow, startCol), (endRow, endCol))</span>
+<span class="lineno">  269 </span><span class="spaces">  </span><span class="nottickedoff">= do fnLoc &lt;- tokenLoc AnnValStr</span>
+<span class="lineno">  270 </span><span class="spaces">       </span><span class="nottickedoff">[srLoc, scLoc, erLoc, ecLoc] &lt;- allTokenLoc AnnVal</span>
+<span class="lineno">  271 </span><span class="spaces">       </span><span class="nottickedoff">annLocNoSema (pure (fnLoc `combineSrcSpans` ecLoc))</span>
+<span class="lineno">  272 </span><span class="spaces">         </span><span class="nottickedoff">(AST.USourceRange &lt;$&gt; annLocNoSema (pure fnLoc) (trfText' fileName)</span>
+<span class="lineno">  273 </span><span class="spaces">                           </span><span class="nottickedoff">&lt;*&gt; annLocNoSema (pure srLoc) (pure $ AST.Number $ fromIntegral startRow)</span>
+<span class="lineno">  274 </span><span class="spaces">                           </span><span class="nottickedoff">&lt;*&gt; annLocNoSema (pure scLoc) (pure $ AST.Number $ fromIntegral startCol)</span>
+<span class="lineno">  275 </span><span class="spaces">                           </span><span class="nottickedoff">&lt;*&gt; annLocNoSema (pure erLoc) (pure $ AST.Number $ fromIntegral endRow)</span>
+<span class="lineno">  276 </span><span class="spaces">                           </span><span class="nottickedoff">&lt;*&gt; annLocNoSema (pure ecLoc) (pure $ AST.Number $ fromIntegral endCol))</span></span>
 
 </pre>
 </body>

@@ -2227,6 +2227,8 @@ module Language.Haskell.Tools.Rewrite.Match.Types
 
 -- | Kind of the unit value <tt>()</tt>.
 
+-- | An unboxed sum type.
+
 -- | Type variable declaration
 
 -- | Kinded type variable declaration (<tt> v :: * </tt>)

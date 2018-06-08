@@ -19,70 +19,71 @@ span.spaces    { background: white }
 <pre>
 <span class="lineno">    1 </span>-- | Generation of statement-level AST fragments for refactorings.
 <span class="lineno">    2 </span>-- The bindings defined here are the AST constructor names with an &quot;mk&quot; prefix.
-<span class="lineno">    3 </span>{-# LANGUAGE MonoLocalBinds, OverloadedStrings #-}
-<span class="lineno">    4 </span>
-<span class="lineno">    5 </span>module Language.Haskell.Tools.Rewrite.Create.Stmts where
-<span class="lineno">    6 </span>
-<span class="lineno">    7 </span>import Language.Haskell.Tools.AST (UCompStmt(..), UListCompBody(..), UStmt'(..))
-<span class="lineno">    8 </span>import Language.Haskell.Tools.PrettyPrint.Prepare
-<span class="lineno">    9 </span>import Language.Haskell.Tools.Rewrite.Create.Utils (mkAnn, mkAnnList, mkAnnMaybe)
-<span class="lineno">   10 </span>import Language.Haskell.Tools.Rewrite.ElementTypes
-<span class="lineno">   11 </span>
-<span class="lineno">   12 </span>-- | Creates a binding statement (@ x &lt;- action @)
-<span class="lineno">   13 </span>mkBindStmt :: Pattern -&gt; Expr -&gt; Stmt
-<span class="lineno">   14 </span><span class="decl"><span class="istickedoff">mkBindStmt bound expr = mkAnn (child &lt;&gt; &quot; &lt;- &quot; &lt;&gt; child) $ UBindStmt bound expr</span></span>
-<span class="lineno">   15 </span>
-<span class="lineno">   16 </span>-- | Creates a non-binding statement (@ action @)
-<span class="lineno">   17 </span>mkExprStmt :: Expr -&gt; Stmt
-<span class="lineno">   18 </span><span class="decl"><span class="istickedoff">mkExprStmt = mkAnn child . UExprStmt</span></span>
-<span class="lineno">   19 </span>
-<span class="lineno">   20 </span>-- | Creates a let statement (@ let x = 3; y = 4 @)
-<span class="lineno">   21 </span>mkLetStmt :: [LocalBind] -&gt; Stmt
-<span class="lineno">   22 </span><span class="decl"><span class="nottickedoff">mkLetStmt = mkAnn (&quot;let &quot; &lt;&gt; child) . ULetStmt . mkAnnList (indented list)</span></span>
-<span class="lineno">   23 </span>
-<span class="lineno">   24 </span>-- | Creates a recursive binding statement with (@ rec b &lt;- f a c; c &lt;- f b a @)
-<span class="lineno">   25 </span>mkRecStmt :: [Stmt] -&gt; Stmt
-<span class="lineno">   26 </span><span class="decl"><span class="nottickedoff">mkRecStmt = mkAnn (&quot;rec &quot; &lt;&gt; child) . URecStmt . mkAnnList (indented list)</span></span>
-<span class="lineno">   27 </span>
-<span class="lineno">   28 </span>-- * List comprehensions
-<span class="lineno">   29 </span>
-<span class="lineno">   30 </span>-- | Body of a list comprehension: (@ | x &lt;- [1..10] @)
-<span class="lineno">   31 </span>mkListCompBody :: [CompStmt] -&gt; ListCompBody
-<span class="lineno">   32 </span><span class="decl"><span class="nottickedoff">mkListCompBody = mkAnn child . UListCompBody . mkAnnList (separatedBy &quot; &quot; list)</span></span>
-<span class="lineno">   33 </span>
-<span class="lineno">   34 </span>-- | Normal monadic statement of a list comprehension
-<span class="lineno">   35 </span>mkCompStmt :: Stmt -&gt; CompStmt
-<span class="lineno">   36 </span><span class="decl"><span class="nottickedoff">mkCompStmt = mkAnn child . UCompStmt</span></span>
-<span class="lineno">   37 </span>
-<span class="lineno">   38 </span>-- | Then statements by @TransformListComp@ (@ then sortWith by (x + y) @)
-<span class="lineno">   39 </span>mkThenStmt :: Expr -&gt; Maybe Expr -&gt; CompStmt
-<span class="lineno">   40 </span><span class="decl"><span class="nottickedoff">mkThenStmt th by = mkAnn (&quot;then &quot; &lt;&gt; child) </span>
-<span class="lineno">   41 </span><span class="spaces">                     </span><span class="nottickedoff">$ UThenStmt th $ mkAnnMaybe (after &quot; by &quot; opt) by</span></span>
-<span class="lineno">   42 </span>
-<span class="lineno">   43 </span>-- | Grouping statements by @TransformListComp@ (@ then group by (x + y) using groupWith @) 
-<span class="lineno">   44 </span>mkGroupStmt :: Maybe Expr -&gt; Maybe Expr -&gt; CompStmt
-<span class="lineno">   45 </span><span class="decl"><span class="nottickedoff">mkGroupStmt by using = mkAnn (&quot;then group&quot; &lt;&gt; child) </span>
-<span class="lineno">   46 </span><span class="spaces">                         </span><span class="nottickedoff">$ UGroupStmt (mkAnnMaybe (after &quot; by &quot; opt) by)</span>
-<span class="lineno">   47 </span><span class="spaces">                                      </span><span class="nottickedoff">(mkAnnMaybe (after &quot; using &quot; opt) using)</span></span>
-<span class="lineno">   48 </span>
-<span class="lineno">   49 </span>-- * Commands
-<span class="lineno">   50 </span>
-<span class="lineno">   51 </span>-- | Creates a binding command (@ x &lt;- action @)
-<span class="lineno">   52 </span>mkBindCmd :: Pattern -&gt; Cmd -&gt; CmdStmt
-<span class="lineno">   53 </span><span class="decl"><span class="nottickedoff">mkBindCmd bound expr = mkAnn (child &lt;&gt; &quot; &lt;- &quot; &lt;&gt; child) $ UBindStmt bound expr</span></span>
-<span class="lineno">   54 </span>
-<span class="lineno">   55 </span>-- | Creates a non-binding command (@ action @)
-<span class="lineno">   56 </span>mkExprCmd :: Cmd -&gt; CmdStmt
-<span class="lineno">   57 </span><span class="decl"><span class="nottickedoff">mkExprCmd = mkAnn child . UExprStmt</span></span>
-<span class="lineno">   58 </span>
-<span class="lineno">   59 </span>-- | Creates a let command (@ let x = 3; y = 4 @)
-<span class="lineno">   60 </span>mkLetStmtCmd :: [LocalBind] -&gt; CmdStmt
-<span class="lineno">   61 </span><span class="decl"><span class="nottickedoff">mkLetStmtCmd = mkAnn (&quot;let &quot; &lt;&gt; child) . ULetStmt . mkAnnList (indented list)</span></span>
-<span class="lineno">   62 </span>
-<span class="lineno">   63 </span>-- | Creates a recursive binding command with (@ rec b &lt;- f a c; c &lt;- f b a @)
-<span class="lineno">   64 </span>mkRecCmd :: [CmdStmt] -&gt; CmdStmt
-<span class="lineno">   65 </span><span class="decl"><span class="nottickedoff">mkRecCmd = mkAnn (&quot;rec &quot; &lt;&gt; child) . URecStmt . mkAnnList (indented list)</span></span>
-<span class="lineno">   66 </span>
+<span class="lineno">    3 </span>{-# LANGUAGE MonoLocalBinds #-}
+<span class="lineno">    4 </span>{-# LANGUAGE OverloadedStrings #-}
+<span class="lineno">    5 </span>
+<span class="lineno">    6 </span>module Language.Haskell.Tools.Rewrite.Create.Stmts where
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>import Language.Haskell.Tools.AST (UCompStmt(..), UListCompBody(..), UStmt'(..))
+<span class="lineno">    9 </span>import Language.Haskell.Tools.PrettyPrint.Prepare
+<span class="lineno">   10 </span>import Language.Haskell.Tools.Rewrite.Create.Utils (mkAnn, mkAnnList, mkAnnMaybe)
+<span class="lineno">   11 </span>import Language.Haskell.Tools.Rewrite.ElementTypes
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>-- | Creates a binding statement (@ x &lt;- action @)
+<span class="lineno">   14 </span>mkBindStmt :: Pattern -&gt; Expr -&gt; Stmt
+<span class="lineno">   15 </span><span class="decl"><span class="istickedoff">mkBindStmt bound expr = mkAnn (child &lt;&gt; &quot; &lt;- &quot; &lt;&gt; child) $ UBindStmt bound expr</span></span>
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>-- | Creates a non-binding statement (@ action @)
+<span class="lineno">   18 </span>mkExprStmt :: Expr -&gt; Stmt
+<span class="lineno">   19 </span><span class="decl"><span class="istickedoff">mkExprStmt = mkAnn child . UExprStmt</span></span>
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>-- | Creates a let statement (@ let x = 3; y = 4 @)
+<span class="lineno">   22 </span>mkLetStmt :: [LocalBind] -&gt; Stmt
+<span class="lineno">   23 </span><span class="decl"><span class="nottickedoff">mkLetStmt = mkAnn (&quot;let &quot; &lt;&gt; child) . ULetStmt . mkAnnList (indented list)</span></span>
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>-- | Creates a recursive binding statement with (@ rec b &lt;- f a c; c &lt;- f b a @)
+<span class="lineno">   26 </span>mkRecStmt :: [Stmt] -&gt; Stmt
+<span class="lineno">   27 </span><span class="decl"><span class="nottickedoff">mkRecStmt = mkAnn (&quot;rec &quot; &lt;&gt; child) . URecStmt . mkAnnList (indented list)</span></span>
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>-- * List comprehensions
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span>-- | Body of a list comprehension: (@ | x &lt;- [1..10] @)
+<span class="lineno">   32 </span>mkListCompBody :: [CompStmt] -&gt; ListCompBody
+<span class="lineno">   33 </span><span class="decl"><span class="nottickedoff">mkListCompBody = mkAnn child . UListCompBody . mkAnnList (separatedBy &quot; &quot; list)</span></span>
+<span class="lineno">   34 </span>
+<span class="lineno">   35 </span>-- | Normal monadic statement of a list comprehension
+<span class="lineno">   36 </span>mkCompStmt :: Stmt -&gt; CompStmt
+<span class="lineno">   37 </span><span class="decl"><span class="nottickedoff">mkCompStmt = mkAnn child . UCompStmt</span></span>
+<span class="lineno">   38 </span>
+<span class="lineno">   39 </span>-- | Then statements by @TransformListComp@ (@ then sortWith by (x + y) @)
+<span class="lineno">   40 </span>mkThenStmt :: Expr -&gt; Maybe Expr -&gt; CompStmt
+<span class="lineno">   41 </span><span class="decl"><span class="nottickedoff">mkThenStmt th by = mkAnn (&quot;then &quot; &lt;&gt; child) </span>
+<span class="lineno">   42 </span><span class="spaces">                     </span><span class="nottickedoff">$ UThenStmt th $ mkAnnMaybe (after &quot; by &quot; opt) by</span></span>
+<span class="lineno">   43 </span>
+<span class="lineno">   44 </span>-- | Grouping statements by @TransformListComp@ (@ then group by (x + y) using groupWith @) 
+<span class="lineno">   45 </span>mkGroupStmt :: Maybe Expr -&gt; Maybe Expr -&gt; CompStmt
+<span class="lineno">   46 </span><span class="decl"><span class="nottickedoff">mkGroupStmt by using = mkAnn (&quot;then group&quot; &lt;&gt; child) </span>
+<span class="lineno">   47 </span><span class="spaces">                         </span><span class="nottickedoff">$ UGroupStmt (mkAnnMaybe (after &quot; by &quot; opt) by)</span>
+<span class="lineno">   48 </span><span class="spaces">                                      </span><span class="nottickedoff">(mkAnnMaybe (after &quot; using &quot; opt) using)</span></span>
+<span class="lineno">   49 </span>
+<span class="lineno">   50 </span>-- * Commands
+<span class="lineno">   51 </span>
+<span class="lineno">   52 </span>-- | Creates a binding command (@ x &lt;- action @)
+<span class="lineno">   53 </span>mkBindCmd :: Pattern -&gt; Cmd -&gt; CmdStmt
+<span class="lineno">   54 </span><span class="decl"><span class="nottickedoff">mkBindCmd bound expr = mkAnn (child &lt;&gt; &quot; &lt;- &quot; &lt;&gt; child) $ UBindStmt bound expr</span></span>
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>-- | Creates a non-binding command (@ action @)
+<span class="lineno">   57 </span>mkExprCmd :: Cmd -&gt; CmdStmt
+<span class="lineno">   58 </span><span class="decl"><span class="nottickedoff">mkExprCmd = mkAnn child . UExprStmt</span></span>
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>-- | Creates a let command (@ let x = 3; y = 4 @)
+<span class="lineno">   61 </span>mkLetStmtCmd :: [LocalBind] -&gt; CmdStmt
+<span class="lineno">   62 </span><span class="decl"><span class="nottickedoff">mkLetStmtCmd = mkAnn (&quot;let &quot; &lt;&gt; child) . ULetStmt . mkAnnList (indented list)</span></span>
+<span class="lineno">   63 </span>
+<span class="lineno">   64 </span>-- | Creates a recursive binding command with (@ rec b &lt;- f a c; c &lt;- f b a @)
+<span class="lineno">   65 </span>mkRecCmd :: [CmdStmt] -&gt; CmdStmt
+<span class="lineno">   66 </span><span class="decl"><span class="nottickedoff">mkRecCmd = mkAnn (&quot;rec &quot; &lt;&gt; child) . URecStmt . mkAnnList (indented list)</span></span>
+<span class="lineno">   67 </span>
 
 </pre>
 </body>

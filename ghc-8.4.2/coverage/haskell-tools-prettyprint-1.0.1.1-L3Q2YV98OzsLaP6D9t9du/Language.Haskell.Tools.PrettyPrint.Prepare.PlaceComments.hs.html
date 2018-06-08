@@ -17,192 +17,194 @@ span.spaces    { background: white }
 <span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
 </pre>
 <pre>
-<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts, LambdaCase, ScopedTypeVariables #-}
-<span class="lineno">    2 </span>
-<span class="lineno">    3 </span>-- | This transformation expands nodes to contain the comments that should be attached to them. After this, a
-<span class="lineno">    4 </span>-- normalizing transformation should be performed that expands parents to contain their children.
-<span class="lineno">    5 </span>module Language.Haskell.Tools.PrettyPrint.Prepare.PlaceComments where
-<span class="lineno">    6 </span>
-<span class="lineno">    7 </span>import Control.Monad.Reader
-<span class="lineno">    8 </span>import Control.Monad.State
-<span class="lineno">    9 </span>import Control.Monad.Writer
-<span class="lineno">   10 </span>import Control.Reference hiding (element)
-<span class="lineno">   11 </span>import Data.Char (isSpace, isAlphaNum)
-<span class="lineno">   12 </span>import qualified Data.Map as Map
-<span class="lineno">   13 </span>import Data.Map (Map)
-<span class="lineno">   14 </span>import Data.Maybe
-<span class="lineno">   15 </span>import qualified Data.Set as Set
-<span class="lineno">   16 </span>import Data.Set (Set)
-<span class="lineno">   17 </span>
-<span class="lineno">   18 </span>import ApiAnnotation (ApiAnnKey, AnnotationComment(..))
-<span class="lineno">   19 </span>import SrcLoc
-<span class="lineno">   20 </span>
-<span class="lineno">   21 </span>import Language.Haskell.Tools.AST
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts #-}
+<span class="lineno">    2 </span>{-# LANGUAGE LambdaCase #-}
+<span class="lineno">    3 </span>{-# LANGUAGE ScopedTypeVariables #-}
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>-- | This transformation expands nodes to contain the comments that should be attached to them. After this, a
+<span class="lineno">    6 </span>-- normalizing transformation should be performed that expands parents to contain their children.
+<span class="lineno">    7 </span>module Language.Haskell.Tools.PrettyPrint.Prepare.PlaceComments where
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>import Control.Monad.Reader
+<span class="lineno">   10 </span>import Control.Monad.State
+<span class="lineno">   11 </span>import Control.Monad.Writer
+<span class="lineno">   12 </span>import Control.Reference hiding (element)
+<span class="lineno">   13 </span>import Data.Char (isSpace, isAlphaNum)
+<span class="lineno">   14 </span>import qualified Data.Map as Map
+<span class="lineno">   15 </span>import Data.Map (Map)
+<span class="lineno">   16 </span>import Data.Maybe
+<span class="lineno">   17 </span>import qualified Data.Set as Set
+<span class="lineno">   18 </span>import Data.Set (Set)
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>import ApiAnnotation (ApiAnnKey, AnnotationComment(..))
+<span class="lineno">   21 </span>import SrcLoc
 <span class="lineno">   22 </span>
-<span class="lineno">   23 </span>getNormalComments :: Map SrcSpan [Located AnnotationComment] -&gt; Map.Map SrcSpan [Located AnnotationComment]
-<span class="lineno">   24 </span><span class="decl"><span class="istickedoff">getNormalComments = Map.map (filter (not . isPragma . unLoc))</span></span>
-<span class="lineno">   25 </span>
-<span class="lineno">   26 </span>getPragmaComments :: Map SrcSpan [Located AnnotationComment] -&gt; Map.Map String [Located String]
-<span class="lineno">   27 </span><span class="decl"><span class="istickedoff">getPragmaComments comms = Map.fromListWith <span class="nottickedoff">(++)</span> $ map (\(L l (AnnBlockComment str)) -&gt; (getPragmaCommand str, [L l str]))</span>
-<span class="lineno">   28 </span><span class="spaces">                                                </span><span class="istickedoff">$ filter (isPragma . unLoc) $ concatMap snd $ Map.toList comms</span>
-<span class="lineno">   29 </span><span class="spaces">  </span><span class="istickedoff">where getPragmaCommand = takeWhile (\c -&gt; isAlphaNum c || c == '_') . dropWhile isSpace . drop 3</span></span>
-<span class="lineno">   30 </span>
-<span class="lineno">   31 </span>isPragma :: AnnotationComment -&gt; Bool
-<span class="lineno">   32 </span><span class="decl"><span class="istickedoff">isPragma (AnnBlockComment str) = take 3 str == &quot;{-#&quot; &amp;&amp; take 3 (reverse str) == &quot;}-#&quot;</span>
-<span class="lineno">   33 </span><span class="spaces"></span><span class="istickedoff">isPragma _ = <span class="nottickedoff">False</span></span></span>
-<span class="lineno">   34 </span>
-<span class="lineno">   35 </span>-- | Puts comments in the nodes they should be attached to. Watches for lexical tokens
-<span class="lineno">   36 </span>-- that may divide the comment and the supposed element.
-<span class="lineno">   37 </span>-- Leaves the AST in a state where parent nodes does not contain all of their children.
-<span class="lineno">   38 </span>placeComments :: RangeInfo stage =&gt; Map ApiAnnKey [SrcSpan] -&gt; Map.Map SrcSpan [Located AnnotationComment]
-<span class="lineno">   39 </span>              -&gt; Ann UModule dom stage -&gt; Ann UModule dom stage
-<span class="lineno">   40 </span><span class="decl"><span class="istickedoff">placeComments tokens comms mod</span>
-<span class="lineno">   41 </span><span class="spaces">  </span><span class="istickedoff">= resizeAnnots <span class="nottickedoff">(Set.filter (\rng -&gt; srcSpanStart rng /= srcSpanEnd rng) $ Set.fromList $ concat (Map.elems tokens))</span></span>
-<span class="lineno">   42 </span><span class="spaces">      </span><span class="istickedoff">(concatMap (map <span class="nottickedoff">nextSrcLoc</span> . snd) (Map.toList cleanedComments)) mod</span>
-<span class="lineno">   43 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">spans = allElemSpans mod</span></span>
-<span class="lineno">   44 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">sortedElemStarts = Set.fromList $ map srcSpanStart spans</span></span>
-<span class="lineno">   45 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">sortedElemEnds = Set.fromList $ map srcSpanEnd spans</span></span>
-<span class="lineno">   46 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">nextSrcLoc comm@(L sp _)</span></span>
-<span class="lineno">   47 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">= let after = fromMaybe noSrcLoc (Set.lookupLE (srcSpanStart sp) sortedElemEnds)</span></span>
-<span class="lineno">   48 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">before = fromMaybe noSrcLoc (Set.lookupGE (srcSpanEnd sp) sortedElemStarts)</span></span>
-<span class="lineno">   49 </span><span class="spaces">             </span><span class="istickedoff"><span class="nottickedoff">in ((after,before),comm)</span></span>
-<span class="lineno">   50 </span><span class="spaces">        </span><span class="istickedoff">cleanedComments = Map.map (map <span class="nottickedoff">cleanComment</span>) comms</span>
-<span class="lineno">   51 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">cleanComment (L loc (AnnLineComment txt))</span></span>
-<span class="lineno">   52 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| last txt `elem` &quot;\n\r&quot; = L (mkSrcSpan (srcSpanStart loc) (decreaseCol (srcSpanEnd loc))) (AnnLineComment (init txt))</span></span>
-<span class="lineno">   53 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">cleanComment c = c</span></span>
-<span class="lineno">   54 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">decreaseCol (RealSrcLoc l) = mkSrcLoc (srcLocFile l) (srcLocLine l) (srcLocCol l - 1)</span></span>
-<span class="lineno">   55 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">decreaseCol l = l</span></span></span>
-<span class="lineno">   56 </span>
-<span class="lineno">   57 </span>allElemSpans :: (SourceInfoTraversal node, RangeInfo stage) =&gt; Ann node dom stage -&gt; [SrcSpan]
-<span class="lineno">   58 </span><span class="decl"><span class="nottickedoff">allElemSpans = execWriter . sourceInfoTraverse (SourceInfoTrf (\ni -&gt; tell [ni ^. nodeSpan] &gt;&gt; pure ni) pure pure)</span></span>
-<span class="lineno">   59 </span>
-<span class="lineno">   60 </span>resizeAnnots :: RangeInfo stage =&gt; Set SrcSpan -&gt; [((SrcLoc, SrcLoc), Located AnnotationComment)]
-<span class="lineno">   61 </span>              -&gt; Ann UModule dom stage
-<span class="lineno">   62 </span>              -&gt; Ann UModule dom stage
-<span class="lineno">   63 </span><span class="decl"><span class="istickedoff">resizeAnnots tokens comments elem</span>
-<span class="lineno">   64 </span><span class="spaces">  </span><span class="istickedoff">= flip evalState comments $ flip runReaderT <span class="nottickedoff">tokens</span> $</span>
-<span class="lineno">   65 </span><span class="spaces">        </span><span class="istickedoff">-- if a comment that could be attached to more than one documentable element (possibly nested)</span>
-<span class="lineno">   66 </span><span class="spaces">        </span><span class="istickedoff">-- the order of different documentable elements here decide which will be chosen</span>
-<span class="lineno">   67 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">   68 </span><span class="spaces">        </span><span class="istickedoff">modImports&amp;annList !~ expandAnnot -- expand imports to cover their comments</span>
-<span class="lineno">   69 </span><span class="spaces">          </span><span class="istickedoff">&gt;=&gt; modDecl&amp;annList !~ expandTopLevelDecl -- expand declarations to cover their comments</span>
-<span class="lineno">   70 </span><span class="spaces">          </span><span class="istickedoff">&gt;=&gt; expandAnnot -- expand the module itself to cover its comments</span>
-<span class="lineno">   71 </span><span class="spaces">      </span><span class="istickedoff">$ elem</span></span>
-<span class="lineno">   72 </span>
-<span class="lineno">   73 </span>type ExpandType elem dom stage = Ann elem dom stage -&gt; ReaderT (Set SrcSpan) (State [((SrcLoc, SrcLoc), Located AnnotationComment)]) (Ann elem dom stage)
+<span class="lineno">   23 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>getNormalComments :: Map SrcSpan [Located AnnotationComment] -&gt; Map.Map SrcSpan [Located AnnotationComment]
+<span class="lineno">   26 </span><span class="decl"><span class="istickedoff">getNormalComments = Map.map (filter (not . isPragma . unLoc))</span></span>
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>getPragmaComments :: Map SrcSpan [Located AnnotationComment] -&gt; Map.Map String [Located String]
+<span class="lineno">   29 </span><span class="decl"><span class="istickedoff">getPragmaComments comms = Map.fromListWith <span class="nottickedoff">(++)</span> $ map (\(L l (AnnBlockComment str)) -&gt; (getPragmaCommand str, [L l str]))</span>
+<span class="lineno">   30 </span><span class="spaces">                                                </span><span class="istickedoff">$ filter (isPragma . unLoc) $ concatMap snd $ Map.toList comms</span>
+<span class="lineno">   31 </span><span class="spaces">  </span><span class="istickedoff">where getPragmaCommand = takeWhile (\c -&gt; isAlphaNum c || c == '_') . dropWhile isSpace . drop 3</span></span>
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>isPragma :: AnnotationComment -&gt; Bool
+<span class="lineno">   34 </span><span class="decl"><span class="istickedoff">isPragma (AnnBlockComment str) = take 3 str == &quot;{-#&quot; &amp;&amp; take 3 (reverse str) == &quot;}-#&quot;</span>
+<span class="lineno">   35 </span><span class="spaces"></span><span class="istickedoff">isPragma _ = <span class="nottickedoff">False</span></span></span>
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>-- | Puts comments in the nodes they should be attached to. Watches for lexical tokens
+<span class="lineno">   38 </span>-- that may divide the comment and the supposed element.
+<span class="lineno">   39 </span>-- Leaves the AST in a state where parent nodes does not contain all of their children.
+<span class="lineno">   40 </span>placeComments :: RangeInfo stage =&gt; Map ApiAnnKey [SrcSpan] -&gt; Map.Map SrcSpan [Located AnnotationComment]
+<span class="lineno">   41 </span>              -&gt; Ann UModule dom stage -&gt; Ann UModule dom stage
+<span class="lineno">   42 </span><span class="decl"><span class="istickedoff">placeComments tokens comms mod</span>
+<span class="lineno">   43 </span><span class="spaces">  </span><span class="istickedoff">= resizeAnnots <span class="nottickedoff">(Set.filter (\rng -&gt; srcSpanStart rng /= srcSpanEnd rng) $ Set.fromList $ concat (Map.elems tokens))</span></span>
+<span class="lineno">   44 </span><span class="spaces">      </span><span class="istickedoff">(concatMap (map <span class="nottickedoff">nextSrcLoc</span> . snd) (Map.toList cleanedComments)) mod</span>
+<span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">where <span class="nottickedoff">spans = allElemSpans mod</span></span>
+<span class="lineno">   46 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">sortedElemStarts = Set.fromList $ map srcSpanStart spans</span></span>
+<span class="lineno">   47 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">sortedElemEnds = Set.fromList $ map srcSpanEnd spans</span></span>
+<span class="lineno">   48 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">nextSrcLoc comm@(L sp _)</span></span>
+<span class="lineno">   49 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">= let after = fromMaybe noSrcLoc (Set.lookupLE (srcSpanStart sp) sortedElemEnds)</span></span>
+<span class="lineno">   50 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">before = fromMaybe noSrcLoc (Set.lookupGE (srcSpanEnd sp) sortedElemStarts)</span></span>
+<span class="lineno">   51 </span><span class="spaces">             </span><span class="istickedoff"><span class="nottickedoff">in ((after,before),comm)</span></span>
+<span class="lineno">   52 </span><span class="spaces">        </span><span class="istickedoff">cleanedComments = Map.map (map <span class="nottickedoff">cleanComment</span>) comms</span>
+<span class="lineno">   53 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">cleanComment (L loc (AnnLineComment txt))</span></span>
+<span class="lineno">   54 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| last txt `elem` &quot;\n\r&quot; = L (mkSrcSpan (srcSpanStart loc) (decreaseCol (srcSpanEnd loc))) (AnnLineComment (init txt))</span></span>
+<span class="lineno">   55 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">cleanComment c = c</span></span>
+<span class="lineno">   56 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">decreaseCol (RealSrcLoc l) = mkSrcLoc (srcLocFile l) (srcLocLine l) (srcLocCol l - 1)</span></span>
+<span class="lineno">   57 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">decreaseCol l = l</span></span></span>
+<span class="lineno">   58 </span>
+<span class="lineno">   59 </span>allElemSpans :: (SourceInfoTraversal node, RangeInfo stage) =&gt; Ann node dom stage -&gt; [SrcSpan]
+<span class="lineno">   60 </span><span class="decl"><span class="nottickedoff">allElemSpans = execWriter . sourceInfoTraverse (SourceInfoTrf (\ni -&gt; tell [ni ^. nodeSpan] &gt;&gt; pure ni) pure pure)</span></span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>resizeAnnots :: RangeInfo stage =&gt; Set SrcSpan -&gt; [((SrcLoc, SrcLoc), Located AnnotationComment)]
+<span class="lineno">   63 </span>              -&gt; Ann UModule dom stage
+<span class="lineno">   64 </span>              -&gt; Ann UModule dom stage
+<span class="lineno">   65 </span><span class="decl"><span class="istickedoff">resizeAnnots tokens comments elem</span>
+<span class="lineno">   66 </span><span class="spaces">  </span><span class="istickedoff">= flip evalState comments $ flip runReaderT <span class="nottickedoff">tokens</span> $</span>
+<span class="lineno">   67 </span><span class="spaces">        </span><span class="istickedoff">-- if a comment that could be attached to more than one documentable element (possibly nested)</span>
+<span class="lineno">   68 </span><span class="spaces">        </span><span class="istickedoff">-- the order of different documentable elements here decide which will be chosen</span>
+<span class="lineno">   69 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   70 </span><span class="spaces">        </span><span class="istickedoff">modImports&amp;annList !~ expandAnnot -- expand imports to cover their comments</span>
+<span class="lineno">   71 </span><span class="spaces">          </span><span class="istickedoff">&gt;=&gt; modDecl&amp;annList !~ expandTopLevelDecl -- expand declarations to cover their comments</span>
+<span class="lineno">   72 </span><span class="spaces">          </span><span class="istickedoff">&gt;=&gt; expandAnnot -- expand the module itself to cover its comments</span>
+<span class="lineno">   73 </span><span class="spaces">      </span><span class="istickedoff">$ elem</span></span>
 <span class="lineno">   74 </span>
-<span class="lineno">   75 </span>expandTopLevelDecl :: RangeInfo stage =&gt; ExpandType UDecl dom stage
-<span class="lineno">   76 </span><span class="decl"><span class="istickedoff">expandTopLevelDecl</span>
-<span class="lineno">   77 </span><span class="spaces">  </span><span class="istickedoff">= declBody &amp; <span class="nottickedoff">annJust</span> &amp; <span class="nottickedoff">cbElements</span> &amp; <span class="nottickedoff">annList</span> !~ <span class="nottickedoff">expandClsElement</span></span>
-<span class="lineno">   78 </span><span class="spaces">      </span><span class="istickedoff">&gt;=&gt; declCons &amp; annList !~ expandConDecl</span>
-<span class="lineno">   79 </span><span class="spaces">      </span><span class="istickedoff">&gt;=&gt; declGadt &amp; <span class="nottickedoff">annList</span> !~ <span class="nottickedoff">expandGadtConDecl</span></span>
-<span class="lineno">   80 </span><span class="spaces">      </span><span class="istickedoff">&gt;=&gt; declTypeSig !~ <span class="nottickedoff">expandTypeSig</span></span>
-<span class="lineno">   81 </span><span class="spaces">      </span><span class="istickedoff">&gt;=&gt; expandAnnot</span></span>
-<span class="lineno">   82 </span>
-<span class="lineno">   83 </span>expandTypeSig :: RangeInfo stage =&gt; ExpandType UTypeSignature dom stage
-<span class="lineno">   84 </span><span class="decl"><span class="nottickedoff">expandTypeSig</span>
-<span class="lineno">   85 </span><span class="spaces">  </span><span class="nottickedoff">= tsType &amp; typeParams !~ expandAnnot &gt;=&gt; expandAnnot</span></span>
-<span class="lineno">   86 </span>
-<span class="lineno">   87 </span>expandClsElement :: RangeInfo stage =&gt; ExpandType UClassElement dom stage
-<span class="lineno">   88 </span><span class="decl"><span class="nottickedoff">expandClsElement</span>
-<span class="lineno">   89 </span><span class="spaces">  </span><span class="nottickedoff">= ceTypeSig !~ expandTypeSig</span>
-<span class="lineno">   90 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; ceBind !~ expandValueBind</span>
-<span class="lineno">   91 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; expandAnnot</span></span>
-<span class="lineno">   92 </span>
-<span class="lineno">   93 </span>expandValueBind :: RangeInfo stage =&gt; ExpandType UValueBind dom stage
-<span class="lineno">   94 </span><span class="decl"><span class="nottickedoff">expandValueBind</span>
-<span class="lineno">   95 </span><span class="spaces">  </span><span class="nottickedoff">= valBindLocals &amp; annJust &amp; localBinds &amp; annList !~ expandLocalBind</span>
-<span class="lineno">   96 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; funBindMatches &amp; annList &amp; matchBinds &amp; annJust &amp; localBinds &amp; annList !~ expandLocalBind</span>
-<span class="lineno">   97 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; expandAnnot</span></span>
-<span class="lineno">   98 </span>
-<span class="lineno">   99 </span>expandLocalBind :: RangeInfo stage =&gt; ExpandType ULocalBind dom stage
-<span class="lineno">  100 </span><span class="decl"><span class="nottickedoff">expandLocalBind</span>
-<span class="lineno">  101 </span><span class="spaces">  </span><span class="nottickedoff">= localVal !~ expandValueBind</span>
-<span class="lineno">  102 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; localSig !~ expandTypeSig</span>
-<span class="lineno">  103 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; expandAnnot</span></span>
-<span class="lineno">  104 </span>
-<span class="lineno">  105 </span>expandConDecl :: RangeInfo stage =&gt; ExpandType UConDecl dom stage
-<span class="lineno">  106 </span><span class="decl"><span class="istickedoff">expandConDecl</span>
-<span class="lineno">  107 </span><span class="spaces">  </span><span class="istickedoff">= conDeclFields &amp; <span class="nottickedoff">annList</span> !~ <span class="nottickedoff">expandAnnot</span> &gt;=&gt; expandAnnot</span></span>
-<span class="lineno">  108 </span>
-<span class="lineno">  109 </span>expandGadtConDecl :: RangeInfo stage =&gt; ExpandType UGadtConDecl dom stage
-<span class="lineno">  110 </span><span class="decl"><span class="nottickedoff">expandGadtConDecl</span>
-<span class="lineno">  111 </span><span class="spaces">  </span><span class="nottickedoff">= gadtConType &amp; gadtConRecordFields &amp; annList !~ expandAnnot &gt;=&gt; expandAnnot</span></span>
-<span class="lineno">  112 </span>
-<span class="lineno">  113 </span>-- | Expands tree elements to contain the comments that should be attached to them.
-<span class="lineno">  114 </span>expandAnnot :: forall elem dom stage . RangeInfo stage =&gt; ExpandType elem dom stage
-<span class="lineno">  115 </span><span class="decl"><span class="istickedoff">expandAnnot elem</span>
-<span class="lineno">  116 </span><span class="spaces">  </span><span class="istickedoff">= do let Just sp = <span class="nottickedoff">elem ^? annotation&amp;sourceInfo&amp;nodeSpan</span></span>
-<span class="lineno">  117 </span><span class="spaces">       </span><span class="istickedoff">tokens &lt;- ask</span>
-<span class="lineno">  118 </span><span class="spaces">       </span><span class="istickedoff">applicable &lt;- lift $ gets (applicableComments <span class="nottickedoff">tokens</span> <span class="nottickedoff">(srcSpanStart sp)</span> <span class="nottickedoff">(srcSpanEnd sp)</span>)</span>
-<span class="lineno">  119 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">  120 </span><span class="spaces">       </span><span class="istickedoff">-- this check is just for performance (quick return if no modification is needed)</span>
-<span class="lineno">  121 </span><span class="spaces">       </span><span class="istickedoff">if <span class="tickonlyfalse">not (null applicable)</span> then <span class="nottickedoff">do</span></span>
-<span class="lineno">  122 </span><span class="spaces">         </span><span class="istickedoff"><span class="nottickedoff">-- the new span is the original plus all the covered spans</span></span>
-<span class="lineno">  123 </span><span class="spaces">         </span><span class="istickedoff"><span class="nottickedoff">let newSp@(RealSrcSpan newSpan)</span></span>
-<span class="lineno">  124 </span><span class="spaces">               </span><span class="istickedoff"><span class="nottickedoff">= foldl combineSrcSpans (fromJust $ elem ^? nodeSp) (map (getLoc . snd) applicable)</span></span>
-<span class="lineno">  125 </span><span class="spaces">         </span><span class="istickedoff"><span class="nottickedoff">-- take out all comments that are now covered</span></span>
-<span class="lineno">  126 </span><span class="spaces">         </span><span class="istickedoff"><span class="nottickedoff">lift $ modify (filter (not . (\case RealSrcSpan s -&gt; newSpan `containsSpan` s; _ -&gt; True) . getLoc . snd))</span></span>
-<span class="lineno">  127 </span><span class="spaces">         </span><span class="istickedoff"><span class="nottickedoff">return $ nodeSp .= newSp $ elem</span></span>
-<span class="lineno">  128 </span><span class="spaces">       </span><span class="istickedoff">else return elem</span>
-<span class="lineno">  129 </span><span class="spaces">  </span><span class="istickedoff">where nodeSp :: Simple Partial (Ann elem dom stage) SrcSpan</span>
-<span class="lineno">  130 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">nodeSp = annotation&amp;sourceInfo&amp;nodeSpan</span></span></span>
-<span class="lineno">  131 </span>
-<span class="lineno">  132 </span>-- This classification does not prefer inline comments to previous line comments, this is implicitly done
-<span class="lineno">  133 </span>-- by the order in which the elements are traversed.
-<span class="lineno">  134 </span>applicableComments :: Set SrcSpan -&gt; SrcLoc -&gt; SrcLoc
-<span class="lineno">  135 </span>                   -&gt; [((SrcLoc, SrcLoc), Located AnnotationComment)]
-<span class="lineno">  136 </span>                   -&gt; [((SrcLoc, SrcLoc), Located AnnotationComment)]
-<span class="lineno">  137 </span><span class="decl"><span class="istickedoff">applicableComments tokens start end = filter <span class="nottickedoff">applicableComment</span></span>
-<span class="lineno">  138 </span><span class="spaces">  </span><span class="istickedoff">where -- A comment that starts with | binds to the next documented element</span>
-<span class="lineno">  139 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">applicableComment ((_, before), L sp comm)</span></span>
-<span class="lineno">  140 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| isCommentOnNext comm = before == start &amp;&amp; noTokenBetween (srcSpanEnd sp) start</span></span>
-<span class="lineno">  141 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">-- A comment that starts with ^ binds to the previous documented element</span></span>
-<span class="lineno">  142 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">applicableComment ((after, _), L sp comm)</span></span>
-<span class="lineno">  143 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| isCommentOnPrev comm = after == end &amp;&amp; noTokenBetween end (srcSpanStart sp)</span></span>
-<span class="lineno">  144 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">-- All other comment binds to the previous definition if it is on the same line</span></span>
-<span class="lineno">  145 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">applicableComment ((after, _), L sp@(RealSrcSpan loc) _)</span></span>
-<span class="lineno">  146 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| after == end &amp;&amp; srcLocLine (realSrcSpanStart loc) == getLineLocDefault end = True</span></span>
-<span class="lineno">  147 </span><span class="spaces">                         </span><span class="istickedoff"><span class="nottickedoff">&amp;&amp; noTokenBetween end (srcSpanStart sp)</span></span>
-<span class="lineno">  148 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">-- or the next one if that is on the next line and the columns line up</span></span>
-<span class="lineno">  149 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">applicableComment ((_, before), L sp@(RealSrcSpan loc) _)</span></span>
-<span class="lineno">  150 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| before == start &amp;&amp; srcLocLine (realSrcSpanEnd loc) + 1 == getLineLocDefault start</span></span>
-<span class="lineno">  151 </span><span class="spaces">                            </span><span class="istickedoff"><span class="nottickedoff">&amp;&amp; srcLocCol (realSrcSpanStart loc) == getLineColDefault start</span></span>
-<span class="lineno">  152 </span><span class="spaces">                            </span><span class="istickedoff"><span class="nottickedoff">&amp;&amp; noTokenBetween (srcSpanEnd sp) start</span></span>
-<span class="lineno">  153 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">= True</span></span>
-<span class="lineno">  154 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">applicableComment _ = False</span></span>
-<span class="lineno">  155 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">  156 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">getLineLocDefault (RealSrcLoc l) = srcLocLine l</span></span>
-<span class="lineno">  157 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">getLineLocDefault _              = -1</span></span>
-<span class="lineno">  158 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">  159 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">getLineColDefault (RealSrcLoc l) = srcLocCol l</span></span>
-<span class="lineno">  160 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">getLineColDefault _              = -1</span></span>
-<span class="lineno">  161 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">  162 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">noTokenBetween start end</span></span>
-<span class="lineno">  163 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">= case Set.lookupGE (srcLocSpan start) tokens of</span></span>
-<span class="lineno">  164 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">Just tok -&gt; srcSpanStart tok &gt;= end</span></span>
-<span class="lineno">  165 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">Nothing -&gt; True</span></span></span>
-<span class="lineno">  166 </span>
-<span class="lineno">  167 </span>-- * GHC mistakenly parses -- ^ and -- | comments as simple line comments.
-<span class="lineno">  168 </span>-- These functions check if a given comment is attached to the previous or next comment.
-<span class="lineno">  169 </span>
-<span class="lineno">  170 </span>-- | Checks if a doc comment belongs to the next definition.
-<span class="lineno">  171 </span>isCommentOnNext :: AnnotationComment -&gt; Bool
-<span class="lineno">  172 </span><span class="decl"><span class="nottickedoff">isCommentOnNext (AnnDocCommentNext _) = True</span>
-<span class="lineno">  173 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnNext (AnnLineComment s) = firstNonspaceCharIs '|' s</span>
-<span class="lineno">  174 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnNext (AnnBlockComment s) = firstNonspaceCharIs '|' s</span>
-<span class="lineno">  175 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnNext _ = False</span></span>
-<span class="lineno">  176 </span>
-<span class="lineno">  177 </span>-- | Checks if a doc comment belongs to the previous definition.
-<span class="lineno">  178 </span>isCommentOnPrev :: AnnotationComment -&gt; Bool
-<span class="lineno">  179 </span><span class="decl"><span class="nottickedoff">isCommentOnPrev (AnnDocCommentPrev _) = True</span>
-<span class="lineno">  180 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnPrev (AnnLineComment s) = firstNonspaceCharIs '^' s</span>
-<span class="lineno">  181 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnPrev (AnnBlockComment s) = firstNonspaceCharIs '^' s</span>
-<span class="lineno">  182 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnPrev _ = False</span></span>
-<span class="lineno">  183 </span>
-<span class="lineno">  184 </span>-- the comment string contains the -- or {- characters
-<span class="lineno">  185 </span>firstNonspaceCharIs :: Char -&gt; String -&gt; Bool
-<span class="lineno">  186 </span><span class="decl"><span class="nottickedoff">firstNonspaceCharIs c s = Just c == listToMaybe (dropWhile isSpace (drop 2 s))</span></span>
+<span class="lineno">   75 </span>type ExpandType elem dom stage = Ann elem dom stage -&gt; ReaderT (Set SrcSpan) (State [((SrcLoc, SrcLoc), Located AnnotationComment)]) (Ann elem dom stage)
+<span class="lineno">   76 </span>
+<span class="lineno">   77 </span>expandTopLevelDecl :: RangeInfo stage =&gt; ExpandType UDecl dom stage
+<span class="lineno">   78 </span><span class="decl"><span class="istickedoff">expandTopLevelDecl</span>
+<span class="lineno">   79 </span><span class="spaces">  </span><span class="istickedoff">= declBody &amp; <span class="nottickedoff">annJust</span> &amp; <span class="nottickedoff">cbElements</span> &amp; <span class="nottickedoff">annList</span> !~ <span class="nottickedoff">expandClsElement</span></span>
+<span class="lineno">   80 </span><span class="spaces">      </span><span class="istickedoff">&gt;=&gt; declCons &amp; annList !~ expandConDecl</span>
+<span class="lineno">   81 </span><span class="spaces">      </span><span class="istickedoff">&gt;=&gt; declGadt &amp; <span class="nottickedoff">annList</span> !~ <span class="nottickedoff">expandGadtConDecl</span></span>
+<span class="lineno">   82 </span><span class="spaces">      </span><span class="istickedoff">&gt;=&gt; declTypeSig !~ <span class="nottickedoff">expandTypeSig</span></span>
+<span class="lineno">   83 </span><span class="spaces">      </span><span class="istickedoff">&gt;=&gt; expandAnnot</span></span>
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>expandTypeSig :: RangeInfo stage =&gt; ExpandType UTypeSignature dom stage
+<span class="lineno">   86 </span><span class="decl"><span class="nottickedoff">expandTypeSig</span>
+<span class="lineno">   87 </span><span class="spaces">  </span><span class="nottickedoff">= tsType &amp; typeParams !~ expandAnnot &gt;=&gt; expandAnnot</span></span>
+<span class="lineno">   88 </span>
+<span class="lineno">   89 </span>expandClsElement :: RangeInfo stage =&gt; ExpandType UClassElement dom stage
+<span class="lineno">   90 </span><span class="decl"><span class="nottickedoff">expandClsElement</span>
+<span class="lineno">   91 </span><span class="spaces">  </span><span class="nottickedoff">= ceTypeSig !~ expandTypeSig</span>
+<span class="lineno">   92 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; ceBind !~ expandValueBind</span>
+<span class="lineno">   93 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; expandAnnot</span></span>
+<span class="lineno">   94 </span>
+<span class="lineno">   95 </span>expandValueBind :: RangeInfo stage =&gt; ExpandType UValueBind dom stage
+<span class="lineno">   96 </span><span class="decl"><span class="nottickedoff">expandValueBind</span>
+<span class="lineno">   97 </span><span class="spaces">  </span><span class="nottickedoff">= valBindLocals &amp; annJust &amp; localBinds &amp; annList !~ expandLocalBind</span>
+<span class="lineno">   98 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; funBindMatches &amp; annList &amp; matchBinds &amp; annJust &amp; localBinds &amp; annList !~ expandLocalBind</span>
+<span class="lineno">   99 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; expandAnnot</span></span>
+<span class="lineno">  100 </span>
+<span class="lineno">  101 </span>expandLocalBind :: RangeInfo stage =&gt; ExpandType ULocalBind dom stage
+<span class="lineno">  102 </span><span class="decl"><span class="nottickedoff">expandLocalBind</span>
+<span class="lineno">  103 </span><span class="spaces">  </span><span class="nottickedoff">= localVal !~ expandValueBind</span>
+<span class="lineno">  104 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; localSig !~ expandTypeSig</span>
+<span class="lineno">  105 </span><span class="spaces">      </span><span class="nottickedoff">&gt;=&gt; expandAnnot</span></span>
+<span class="lineno">  106 </span>
+<span class="lineno">  107 </span>expandConDecl :: RangeInfo stage =&gt; ExpandType UConDecl dom stage
+<span class="lineno">  108 </span><span class="decl"><span class="istickedoff">expandConDecl</span>
+<span class="lineno">  109 </span><span class="spaces">  </span><span class="istickedoff">= conDeclFields &amp; <span class="nottickedoff">annList</span> !~ <span class="nottickedoff">expandAnnot</span> &gt;=&gt; expandAnnot</span></span>
+<span class="lineno">  110 </span>
+<span class="lineno">  111 </span>expandGadtConDecl :: RangeInfo stage =&gt; ExpandType UGadtConDecl dom stage
+<span class="lineno">  112 </span><span class="decl"><span class="nottickedoff">expandGadtConDecl</span>
+<span class="lineno">  113 </span><span class="spaces">  </span><span class="nottickedoff">= gadtConType &amp; gadtConRecordFields &amp; annList !~ expandAnnot &gt;=&gt; expandAnnot</span></span>
+<span class="lineno">  114 </span>
+<span class="lineno">  115 </span>-- | Expands tree elements to contain the comments that should be attached to them.
+<span class="lineno">  116 </span>expandAnnot :: forall elem dom stage . RangeInfo stage =&gt; ExpandType elem dom stage
+<span class="lineno">  117 </span><span class="decl"><span class="istickedoff">expandAnnot elem</span>
+<span class="lineno">  118 </span><span class="spaces">  </span><span class="istickedoff">= do let Just sp = <span class="nottickedoff">elem ^? annotation&amp;sourceInfo&amp;nodeSpan</span></span>
+<span class="lineno">  119 </span><span class="spaces">       </span><span class="istickedoff">tokens &lt;- ask</span>
+<span class="lineno">  120 </span><span class="spaces">       </span><span class="istickedoff">applicable &lt;- lift $ gets (applicableComments <span class="nottickedoff">tokens</span> <span class="nottickedoff">(srcSpanStart sp)</span> <span class="nottickedoff">(srcSpanEnd sp)</span>)</span>
+<span class="lineno">  121 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  122 </span><span class="spaces">       </span><span class="istickedoff">-- this check is just for performance (quick return if no modification is needed)</span>
+<span class="lineno">  123 </span><span class="spaces">       </span><span class="istickedoff">if <span class="tickonlyfalse">not (null applicable)</span> then <span class="nottickedoff">do</span></span>
+<span class="lineno">  124 </span><span class="spaces">         </span><span class="istickedoff"><span class="nottickedoff">-- the new span is the original plus all the covered spans</span></span>
+<span class="lineno">  125 </span><span class="spaces">         </span><span class="istickedoff"><span class="nottickedoff">let newSp@(RealSrcSpan newSpan)</span></span>
+<span class="lineno">  126 </span><span class="spaces">               </span><span class="istickedoff"><span class="nottickedoff">= foldl combineSrcSpans (fromJust $ elem ^? nodeSp) (map (getLoc . snd) applicable)</span></span>
+<span class="lineno">  127 </span><span class="spaces">         </span><span class="istickedoff"><span class="nottickedoff">-- take out all comments that are now covered</span></span>
+<span class="lineno">  128 </span><span class="spaces">         </span><span class="istickedoff"><span class="nottickedoff">lift $ modify (filter (not . (\case RealSrcSpan s -&gt; newSpan `containsSpan` s; _ -&gt; True) . getLoc . snd))</span></span>
+<span class="lineno">  129 </span><span class="spaces">         </span><span class="istickedoff"><span class="nottickedoff">return $ nodeSp .= newSp $ elem</span></span>
+<span class="lineno">  130 </span><span class="spaces">       </span><span class="istickedoff">else return elem</span>
+<span class="lineno">  131 </span><span class="spaces">  </span><span class="istickedoff">where nodeSp :: Simple Partial (Ann elem dom stage) SrcSpan</span>
+<span class="lineno">  132 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">nodeSp = annotation&amp;sourceInfo&amp;nodeSpan</span></span></span>
+<span class="lineno">  133 </span>
+<span class="lineno">  134 </span>-- This classification does not prefer inline comments to previous line comments, this is implicitly done
+<span class="lineno">  135 </span>-- by the order in which the elements are traversed.
+<span class="lineno">  136 </span>applicableComments :: Set SrcSpan -&gt; SrcLoc -&gt; SrcLoc
+<span class="lineno">  137 </span>                   -&gt; [((SrcLoc, SrcLoc), Located AnnotationComment)]
+<span class="lineno">  138 </span>                   -&gt; [((SrcLoc, SrcLoc), Located AnnotationComment)]
+<span class="lineno">  139 </span><span class="decl"><span class="istickedoff">applicableComments tokens start end = filter <span class="nottickedoff">applicableComment</span></span>
+<span class="lineno">  140 </span><span class="spaces">  </span><span class="istickedoff">where -- A comment that starts with | binds to the next documented element</span>
+<span class="lineno">  141 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">applicableComment ((_, before), L sp comm)</span></span>
+<span class="lineno">  142 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| isCommentOnNext comm = before == start &amp;&amp; noTokenBetween (srcSpanEnd sp) start</span></span>
+<span class="lineno">  143 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">-- A comment that starts with ^ binds to the previous documented element</span></span>
+<span class="lineno">  144 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">applicableComment ((after, _), L sp comm)</span></span>
+<span class="lineno">  145 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| isCommentOnPrev comm = after == end &amp;&amp; noTokenBetween end (srcSpanStart sp)</span></span>
+<span class="lineno">  146 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">-- All other comment binds to the previous definition if it is on the same line</span></span>
+<span class="lineno">  147 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">applicableComment ((after, _), L sp@(RealSrcSpan loc) _)</span></span>
+<span class="lineno">  148 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| after == end &amp;&amp; srcLocLine (realSrcSpanStart loc) == getLineLocDefault end = True</span></span>
+<span class="lineno">  149 </span><span class="spaces">                         </span><span class="istickedoff"><span class="nottickedoff">&amp;&amp; noTokenBetween end (srcSpanStart sp)</span></span>
+<span class="lineno">  150 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">-- or the next one if that is on the next line and the columns line up</span></span>
+<span class="lineno">  151 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">applicableComment ((_, before), L sp@(RealSrcSpan loc) _)</span></span>
+<span class="lineno">  152 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">| before == start &amp;&amp; srcLocLine (realSrcSpanEnd loc) + 1 == getLineLocDefault start</span></span>
+<span class="lineno">  153 </span><span class="spaces">                            </span><span class="istickedoff"><span class="nottickedoff">&amp;&amp; srcLocCol (realSrcSpanStart loc) == getLineColDefault start</span></span>
+<span class="lineno">  154 </span><span class="spaces">                            </span><span class="istickedoff"><span class="nottickedoff">&amp;&amp; noTokenBetween (srcSpanEnd sp) start</span></span>
+<span class="lineno">  155 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">= True</span></span>
+<span class="lineno">  156 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">applicableComment _ = False</span></span>
+<span class="lineno">  157 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  158 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">getLineLocDefault (RealSrcLoc l) = srcLocLine l</span></span>
+<span class="lineno">  159 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">getLineLocDefault _              = -1</span></span>
+<span class="lineno">  160 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  161 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">getLineColDefault (RealSrcLoc l) = srcLocCol l</span></span>
+<span class="lineno">  162 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">getLineColDefault _              = -1</span></span>
+<span class="lineno">  163 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  164 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">noTokenBetween start end</span></span>
+<span class="lineno">  165 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">= case Set.lookupGE (srcLocSpan start) tokens of</span></span>
+<span class="lineno">  166 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">Just tok -&gt; srcSpanStart tok &gt;= end</span></span>
+<span class="lineno">  167 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">Nothing -&gt; True</span></span></span>
+<span class="lineno">  168 </span>
+<span class="lineno">  169 </span>-- * GHC mistakenly parses -- ^ and -- | comments as simple line comments.
+<span class="lineno">  170 </span>-- These functions check if a given comment is attached to the previous or next comment.
+<span class="lineno">  171 </span>
+<span class="lineno">  172 </span>-- | Checks if a doc comment belongs to the next definition.
+<span class="lineno">  173 </span>isCommentOnNext :: AnnotationComment -&gt; Bool
+<span class="lineno">  174 </span><span class="decl"><span class="nottickedoff">isCommentOnNext (AnnDocCommentNext _) = True</span>
+<span class="lineno">  175 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnNext (AnnLineComment s) = firstNonspaceCharIs '|' s</span>
+<span class="lineno">  176 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnNext (AnnBlockComment s) = firstNonspaceCharIs '|' s</span>
+<span class="lineno">  177 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnNext _ = False</span></span>
+<span class="lineno">  178 </span>
+<span class="lineno">  179 </span>-- | Checks if a doc comment belongs to the previous definition.
+<span class="lineno">  180 </span>isCommentOnPrev :: AnnotationComment -&gt; Bool
+<span class="lineno">  181 </span><span class="decl"><span class="nottickedoff">isCommentOnPrev (AnnDocCommentPrev _) = True</span>
+<span class="lineno">  182 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnPrev (AnnLineComment s) = firstNonspaceCharIs '^' s</span>
+<span class="lineno">  183 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnPrev (AnnBlockComment s) = firstNonspaceCharIs '^' s</span>
+<span class="lineno">  184 </span><span class="spaces"></span><span class="nottickedoff">isCommentOnPrev _ = False</span></span>
+<span class="lineno">  185 </span>
+<span class="lineno">  186 </span>-- the comment string contains the -- or {- characters
+<span class="lineno">  187 </span>firstNonspaceCharIs :: Char -&gt; String -&gt; Bool
+<span class="lineno">  188 </span><span class="decl"><span class="nottickedoff">firstNonspaceCharIs c s = Just c == listToMaybe (dropWhile isSpace (drop 2 s))</span></span>
 
 </pre>
 </body>

@@ -17,127 +17,129 @@ span.spaces    { background: white }
 <span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
 </pre>
 <pre>
-<span class="lineno">    1 </span>{-# LANGUAGE ScopedTypeVariables, ViewPatterns, TypeApplications #-}
-<span class="lineno">    2 </span>
-<span class="lineno">    3 </span>-- | Functions that convert the type-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
-<span class="lineno">    4 </span>module Language.Haskell.Tools.BackendGHC.Types where
-<span class="lineno">    5 </span>
-<span class="lineno">    6 </span>import ApiAnnotation as GHC (AnnKeywordId(..))
-<span class="lineno">    7 </span>import HsExpr (HsSplice(..))
-<span class="lineno">    8 </span>import HsExtension (IdP)
-<span class="lineno">    9 </span>import HsTypes as GHC
-<span class="lineno">   10 </span>import Id (mkVanillaGlobal)
-<span class="lineno">   11 </span>import SrcLoc as GHC
-<span class="lineno">   12 </span>import TyCon as GHC (TyCon(..))
-<span class="lineno">   13 </span>import TysWiredIn (heqTyCon)
-<span class="lineno">   14 </span>
-<span class="lineno">   15 </span>import Control.Applicative (Applicative(..), (&lt;$&gt;), Alternative(..))
-<span class="lineno">   16 </span>import Control.Monad.Reader.Class (asks)
-<span class="lineno">   17 </span>import Control.Reference ((^.))
-<span class="lineno">   18 </span>import Data.Function (on)
-<span class="lineno">   19 </span>import Data.List
-<span class="lineno">   20 </span>import Data.Maybe (Maybe(..), fromJust)
-<span class="lineno">   21 </span>
-<span class="lineno">   22 </span>import Language.Haskell.Tools.AST as AST
-<span class="lineno">   23 </span>import Language.Haskell.Tools.BackendGHC.GHCUtils (GHCName(..), cleanHsType)
-<span class="lineno">   24 </span>import Language.Haskell.Tools.BackendGHC.Kinds (trfKindSig, trfKind, trfPromoted')
-<span class="lineno">   25 </span>import Language.Haskell.Tools.BackendGHC.Monad
-<span class="lineno">   26 </span>import Language.Haskell.Tools.BackendGHC.Names
-<span class="lineno">   27 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.TH (trfSplice, trfQuasiQuotation')
-<span class="lineno">   28 </span>import Language.Haskell.Tools.BackendGHC.Utils
-<span class="lineno">   29 </span>
-<span class="lineno">   30 </span>trfType :: forall n r . TransformName n r =&gt; Located (HsType n) -&gt; Trf (Ann AST.UType (Dom r) RangeStage)
-<span class="lineno">   31 </span><span class="decl"><span class="istickedoff">trfType typ | RealSrcSpan loce &lt;- getLoc typ</span>
-<span class="lineno">   32 </span><span class="spaces">  </span><span class="istickedoff">= do othSplices &lt;- asks typeSplices</span>
-<span class="lineno">   33 </span><span class="spaces">       </span><span class="istickedoff">let contSplice = filter <span class="nottickedoff">(\sp -&gt; case getLoc sp of (RealSrcSpan spLoc) -&gt; spLoc `containsSpan` loce; _ -&gt; False)</span> othSplices</span>
-<span class="lineno">   34 </span><span class="spaces">       </span><span class="istickedoff">case contSplice of [] -&gt; trfLocNoSema trfType' typ</span>
-<span class="lineno">   35 </span><span class="spaces">                          </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">let lsp@(L l sp) = minimumBy (compareSpans `on` getLoc) contSplice</span></span>
-<span class="lineno">   36 </span><span class="spaces">                                </span><span class="istickedoff"><span class="nottickedoff">in typeSpliceInserted lsp (annLocNoSema (pure l) (AST.UTySplice &lt;$&gt; (trfSplice =&lt;&lt; rdrSplice sp)))</span></span>
-<span class="lineno">   37 </span><span class="spaces">  </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">trfLocNoSema trfType' typ</span></span></span>
-<span class="lineno">   38 </span>
-<span class="lineno">   39 </span>trfType' :: forall n r . TransformName n r =&gt; HsType n -&gt; Trf (AST.UType (Dom r) RangeStage)
-<span class="lineno">   40 </span><span class="decl"><span class="istickedoff">trfType' = trfType'' . cleanHsType where</span>
-<span class="lineno">   41 </span><span class="spaces">  </span><span class="istickedoff">trfType'' :: HsType n -&gt; Trf (AST.UType (Dom r) RangeStage)</span>
-<span class="lineno">   42 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsForAllTy [] typ) = <span class="nottickedoff">trfType' (unLoc typ)</span></span>
-<span class="lineno">   43 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsForAllTy bndrs typ) = <span class="nottickedoff">AST.UTyForall &lt;$&gt; defineTypeVars (trfBindings bndrs)</span></span>
-<span class="lineno">   44 </span><span class="spaces">                                                   </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; addToScope bndrs (trfType typ)</span></span>
-<span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsQualTy (L _ []) typ) = <span class="nottickedoff">trfType' (unLoc typ)</span></span>
-<span class="lineno">   46 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsQualTy ctx typ) = <span class="nottickedoff">AST.UTyCtx &lt;$&gt; (fromJust . (^. annMaybe) &lt;$&gt; trfCtx atTheStart ctx)</span></span>
-<span class="lineno">   47 </span><span class="spaces">                                            </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfType typ</span></span>
-<span class="lineno">   48 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsTyVar _ name) = AST.UTyVar &lt;$&gt; transformingPossibleVar name (trfName @n name)</span>
-<span class="lineno">   49 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsAppsTy apps) | Just (head, args, _) &lt;- <span class="nottickedoff">getAppsTyHead_maybe apps</span></span>
-<span class="lineno">   50 </span><span class="spaces">    </span><span class="istickedoff">= <span class="nottickedoff">foldl (\core t -&gt; AST.UTyApp &lt;$&gt; annLocNoSema (pure $ getLoc head `combineSrcSpans` getLoc t) core &lt;*&gt; trfType t) (trfType' (unLoc head)) args</span></span>
-<span class="lineno">   51 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsAppTy t1 t2) = <span class="nottickedoff">AST.UTyApp &lt;$&gt; trfType t1 &lt;*&gt; trfType t2</span></span>
-<span class="lineno">   52 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsFunTy t1 t2) = <span class="nottickedoff">AST.UTyFun &lt;$&gt; trfType t1 &lt;*&gt; trfType t2</span></span>
-<span class="lineno">   53 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsListTy typ) = <span class="nottickedoff">AST.UTyList &lt;$&gt; trfType typ</span></span>
-<span class="lineno">   54 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsPArrTy typ) = <span class="nottickedoff">AST.UTyParArray &lt;$&gt; trfType typ</span></span>
-<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsTupleTy HsBoxedOrConstraintTuple typs) = <span class="nottickedoff">AST.UTyTuple &lt;$&gt; trfAnnList &quot;, &quot; trfType' typs</span></span>
-<span class="lineno">   56 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsTupleTy HsBoxedTuple typs) = <span class="nottickedoff">AST.UTyTuple &lt;$&gt; trfAnnList &quot;, &quot; trfType' typs</span></span>
-<span class="lineno">   57 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsTupleTy HsUnboxedTuple typs) = <span class="nottickedoff">AST.UTyUnbTuple &lt;$&gt; trfAnnList &quot;, &quot; trfType' typs</span></span>
-<span class="lineno">   58 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsOpTy t1 op t2) = <span class="nottickedoff">AST.UTyInfix &lt;$&gt; trfType t1 &lt;*&gt; trfOperator @n op &lt;*&gt; trfType t2</span></span>
-<span class="lineno">   59 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsParTy typ) = <span class="nottickedoff">AST.UTyParen &lt;$&gt; trfType typ</span></span>
-<span class="lineno">   60 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsKindSig typ kind) = <span class="nottickedoff">AST.UTyKinded &lt;$&gt; trfType typ &lt;*&gt; trfKind kind</span></span>
-<span class="lineno">   61 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsSpliceTy qq@(HsQuasiQuote {}) _) = <span class="nottickedoff">AST.UTyQuasiQuote &lt;$&gt; annContNoSema (trfQuasiQuotation' qq)</span></span>
-<span class="lineno">   62 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsSpliceTy splice _) = <span class="nottickedoff">AST.UTySplice &lt;$&gt; trfSplice splice</span></span>
-<span class="lineno">   63 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsBangTy (HsSrcBang _ SrcUnpack _) typ) = <span class="nottickedoff">AST.UTyUnpack &lt;$&gt; trfType typ</span></span>
-<span class="lineno">   64 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsBangTy (HsSrcBang _ SrcNoUnpack _) typ) = <span class="nottickedoff">AST.UTyNoUnpack &lt;$&gt; trfType typ</span></span>
-<span class="lineno">   65 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsBangTy (HsSrcBang _ _ SrcStrict) typ) = <span class="nottickedoff">AST.UTyBang &lt;$&gt; trfType typ</span></span>
-<span class="lineno">   66 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsBangTy (HsSrcBang _ _ SrcLazy) typ) = <span class="nottickedoff">AST.UTyLazy &lt;$&gt; trfType typ</span></span>
-<span class="lineno">   67 </span><span class="spaces">  </span><span class="istickedoff">trfType'' pt@(HsExplicitListTy {}) = <span class="nottickedoff">AST.UTyPromoted &lt;$&gt; annContNoSema (trfPromoted' trfType' pt)</span></span>
-<span class="lineno">   68 </span><span class="spaces">  </span><span class="istickedoff">trfType'' pt@(HsExplicitTupleTy {}) = <span class="nottickedoff">AST.UTyPromoted &lt;$&gt; annContNoSema (trfPromoted' trfType' pt)</span></span>
-<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">trfType'' pt@(HsTyLit {}) = <span class="nottickedoff">AST.UTyPromoted &lt;$&gt; annContNoSema (trfPromoted' trfType' pt)</span></span>
-<span class="lineno">   70 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsWildCardTy _) = <span class="nottickedoff">pure AST.UTyWildcard</span> -- TODO: named wildcards</span>
-<span class="lineno">   71 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsSumTy types) = <span class="nottickedoff">AST.UUnbSumType &lt;$&gt; trfAnnList &quot; | &quot; trfType' types</span></span>
-<span class="lineno">   72 </span><span class="spaces">  </span><span class="istickedoff">trfType'' t = <span class="nottickedoff">unhandledElement &quot;type&quot; t</span></span></span>
-<span class="lineno">   73 </span>
-<span class="lineno">   74 </span>trfBindings :: TransformName n r =&gt; [Located (HsTyVarBndr n)] -&gt; Trf (AnnListG AST.UTyVar (Dom r) RangeStage)
-<span class="lineno">   75 </span><span class="decl"><span class="nottickedoff">trfBindings vars = trfAnnList &quot; &quot; trfTyVar' vars</span></span>
-<span class="lineno">   76 </span>
-<span class="lineno">   77 </span>trfTyVar :: TransformName n r =&gt; Located (HsTyVarBndr n) -&gt; Trf (Ann AST.UTyVar (Dom r) RangeStage)
-<span class="lineno">   78 </span><span class="decl"><span class="nottickedoff">trfTyVar = trfLocNoSema trfTyVar'</span></span>
-<span class="lineno">   79 </span>
-<span class="lineno">   80 </span>trfTyVar' :: forall n r . TransformName n r =&gt; HsTyVarBndr n -&gt; Trf (AST.UTyVar (Dom r) RangeStage)
-<span class="lineno">   81 </span><span class="decl"><span class="nottickedoff">trfTyVar' (UserTyVar name) = AST.UTyVarDecl &lt;$&gt; typeVarTransform (trfName @n name)</span>
-<span class="lineno">   82 </span><span class="spaces">                                           </span><span class="nottickedoff">&lt;*&gt; (nothing &quot; &quot; &quot;&quot; atTheEnd)</span>
-<span class="lineno">   83 </span><span class="spaces"></span><span class="nottickedoff">trfTyVar' (KindedTyVar name kind) = AST.UTyVarDecl &lt;$&gt; typeVarTransform (trfName @n name)</span>
-<span class="lineno">   84 </span><span class="spaces">                                                  </span><span class="nottickedoff">&lt;*&gt; trfKindSig (Just kind)</span></span>
-<span class="lineno">   85 </span>
-<span class="lineno">   86 </span>trfCtx :: TransformName n r =&gt; Trf SrcLoc -&gt; Located (HsContext n) -&gt; Trf (AnnMaybeG AST.UContext (Dom r) RangeStage)
-<span class="lineno">   87 </span><span class="decl"><span class="istickedoff">trfCtx sp (L _ []) = nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> sp</span>
-<span class="lineno">   88 </span><span class="spaces"></span><span class="istickedoff">trfCtx _ (L l [L _ (HsParTy t)])</span>
-<span class="lineno">   89 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">makeJust &lt;$&gt; annLocNoSema (combineSrcSpans l &lt;$&gt; tokenLoc AnnDarrow)</span></span>
-<span class="lineno">   90 </span><span class="spaces">                              </span><span class="istickedoff"><span class="nottickedoff">(AST.UContext &lt;$&gt; annLocNoSema (pure l) (AST.UTupleAssert &lt;$&gt; (trfAnnList &quot;, &quot; trfAssertion' [t])))</span></span>
-<span class="lineno">   91 </span><span class="spaces"></span><span class="istickedoff">trfCtx _ (L l [t])</span>
-<span class="lineno">   92 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">makeJust &lt;$&gt; annLocNoSema (combineSrcSpans l &lt;$&gt; tokenLoc AnnDarrow)</span></span>
-<span class="lineno">   93 </span><span class="spaces">                              </span><span class="istickedoff"><span class="nottickedoff">(AST.UContext &lt;$&gt; trfAssertion t)</span></span>
-<span class="lineno">   94 </span><span class="spaces"></span><span class="istickedoff">trfCtx _ (L l ctx) = <span class="nottickedoff">makeJust &lt;$&gt; annLocNoSema (combineSrcSpans l &lt;$&gt; tokenLoc AnnDarrow)</span></span>
-<span class="lineno">   95 </span><span class="spaces">                                               </span><span class="istickedoff"><span class="nottickedoff">(AST.UContext &lt;$&gt; annLocNoSema (pure l) (AST.UTupleAssert &lt;$&gt; (trfAnnList &quot;, &quot; trfAssertion' ctx)))</span></span></span>
-<span class="lineno">   96 </span>
-<span class="lineno">   97 </span>trfAssertion :: TransformName n r =&gt; LHsType n -&gt; Trf (Ann AST.UAssertion (Dom r) RangeStage)
-<span class="lineno">   98 </span><span class="decl"><span class="nottickedoff">trfAssertion = trfLocNoSema trfAssertion'</span></span>
-<span class="lineno">   99 </span>
-<span class="lineno">  100 </span>trfAssertion' :: forall n r . TransformName n r =&gt; HsType n -&gt; Trf (AST.UAssertion (Dom r) RangeStage)
-<span class="lineno">  101 </span><span class="decl"><span class="nottickedoff">trfAssertion' (cleanHsType -&gt; HsParTy t)</span>
-<span class="lineno">  102 </span><span class="spaces">  </span><span class="nottickedoff">= trfAssertion' (unLoc t)</span>
-<span class="lineno">  103 </span><span class="spaces"></span><span class="nottickedoff">trfAssertion' (cleanHsType -&gt; HsOpTy left op right)</span>
-<span class="lineno">  104 </span><span class="spaces">  </span><span class="nottickedoff">= AST.UInfixAssert &lt;$&gt; trfType left &lt;*&gt; trfOperator @n op &lt;*&gt; trfType right</span>
-<span class="lineno">  105 </span><span class="spaces"></span><span class="nottickedoff">trfAssertion' (cleanHsType -&gt; HsTupleTy _ tys)</span>
-<span class="lineno">  106 </span><span class="spaces">  </span><span class="nottickedoff">= AST.UTupleAssert &lt;$&gt; makeList &quot;, &quot; (after AnnOpenP) (mapM trfAssertion tys)</span>
-<span class="lineno">  107 </span><span class="spaces"></span><span class="nottickedoff">trfAssertion' (cleanHsType -&gt; HsWildCardTy _)</span>
-<span class="lineno">  108 </span><span class="spaces">  </span><span class="nottickedoff">= pure AST.UWildcardAssert</span>
-<span class="lineno">  109 </span><span class="spaces"></span><span class="nottickedoff">trfAssertion' (cleanHsType -&gt; t) = case cleanHsType base of</span>
-<span class="lineno">  110 </span><span class="spaces">   </span><span class="nottickedoff">HsTyVar _ name -&gt; AST.UClassAssert &lt;$&gt; trfName @n name &lt;*&gt; trfAnnList &quot; &quot; trfType' args</span>
-<span class="lineno">  111 </span><span class="spaces">   </span><span class="nottickedoff">HsEqTy t1 t2 -&gt; AST.UInfixAssert &lt;$&gt; trfType t1 &lt;*&gt; annLocNoSema (tokenLoc AnnTilde) (trfOperator' @n typeEq) &lt;*&gt; trfType t2</span>
-<span class="lineno">  112 </span><span class="spaces">   </span><span class="nottickedoff">HsIParamTy name t -&gt; AST.UImplicitAssert &lt;$&gt; define (focusOn (getLoc name) (trfImplicitName (unLoc name))) &lt;*&gt; trfType t</span>
-<span class="lineno">  113 </span><span class="spaces">   </span><span class="nottickedoff">t -&gt; unhandledElement &quot;assertion&quot; t</span>
-<span class="lineno">  114 </span><span class="spaces">  </span><span class="nottickedoff">where (args, _, base) = getArgs t</span>
-<span class="lineno">  115 </span><span class="spaces"></span><span class="nottickedoff"></span>
-<span class="lineno">  116 </span><span class="spaces">        </span><span class="nottickedoff">getArgs :: HsType n -&gt; ([LHsType n], Maybe SrcSpan, HsType n)</span>
-<span class="lineno">  117 </span><span class="spaces">        </span><span class="nottickedoff">getArgs (HsAppTy (L l ft) at) = case getArgs ft of (args, sp, base) -&gt; (args++[at], sp &lt;|&gt; Just l, base)</span>
-<span class="lineno">  118 </span><span class="spaces">        </span><span class="nottickedoff">getArgs t = ([], Nothing, t)</span>
-<span class="lineno">  119 </span><span class="spaces"></span><span class="nottickedoff"></span>
-<span class="lineno">  120 </span><span class="spaces">        </span><span class="nottickedoff">typeEq :: IdP n</span>
-<span class="lineno">  121 </span><span class="spaces">        </span><span class="nottickedoff">typeEq = nameFromId @n (mkVanillaGlobal (tyConName heqTyCon) (tyConKind heqTyCon))</span></span>
+<span class="lineno">    1 </span>{-# LANGUAGE ScopedTypeVariables #-}
+<span class="lineno">    2 </span>{-# LANGUAGE TypeApplications #-}
+<span class="lineno">    3 </span>{-# LANGUAGE ViewPatterns #-}
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>-- | Functions that convert the type-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
+<span class="lineno">    6 </span>module Language.Haskell.Tools.BackendGHC.Types where
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>import ApiAnnotation as GHC (AnnKeywordId(..))
+<span class="lineno">    9 </span>import HsExpr (HsSplice(..))
+<span class="lineno">   10 </span>import HsExtension (IdP)
+<span class="lineno">   11 </span>import HsTypes as GHC
+<span class="lineno">   12 </span>import Id (mkVanillaGlobal)
+<span class="lineno">   13 </span>import SrcLoc as GHC
+<span class="lineno">   14 </span>import TyCon as GHC (TyCon(..))
+<span class="lineno">   15 </span>import TysWiredIn (heqTyCon)
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>import Control.Applicative (Applicative(..), (&lt;$&gt;), Alternative(..))
+<span class="lineno">   18 </span>import Control.Monad.Reader.Class (asks)
+<span class="lineno">   19 </span>import Control.Reference ((^.))
+<span class="lineno">   20 </span>import Data.Function (on)
+<span class="lineno">   21 </span>import Data.List
+<span class="lineno">   22 </span>import Data.Maybe (Maybe(..), fromJust)
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>import Language.Haskell.Tools.AST as AST
+<span class="lineno">   25 </span>import Language.Haskell.Tools.BackendGHC.GHCUtils (GHCName(..), cleanHsType)
+<span class="lineno">   26 </span>import Language.Haskell.Tools.BackendGHC.Kinds (trfKindSig, trfKind, trfPromoted')
+<span class="lineno">   27 </span>import Language.Haskell.Tools.BackendGHC.Monad
+<span class="lineno">   28 </span>import Language.Haskell.Tools.BackendGHC.Names
+<span class="lineno">   29 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.TH (trfSplice, trfQuasiQuotation')
+<span class="lineno">   30 </span>import Language.Haskell.Tools.BackendGHC.Utils
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>trfType :: forall n r . TransformName n r =&gt; Located (HsType n) -&gt; Trf (Ann AST.UType (Dom r) RangeStage)
+<span class="lineno">   33 </span><span class="decl"><span class="istickedoff">trfType typ | RealSrcSpan loce &lt;- getLoc typ</span>
+<span class="lineno">   34 </span><span class="spaces">  </span><span class="istickedoff">= do othSplices &lt;- asks typeSplices</span>
+<span class="lineno">   35 </span><span class="spaces">       </span><span class="istickedoff">let contSplice = filter <span class="nottickedoff">(\sp -&gt; case getLoc sp of (RealSrcSpan spLoc) -&gt; spLoc `containsSpan` loce; _ -&gt; False)</span> othSplices</span>
+<span class="lineno">   36 </span><span class="spaces">       </span><span class="istickedoff">case contSplice of [] -&gt; trfLocNoSema trfType' typ</span>
+<span class="lineno">   37 </span><span class="spaces">                          </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">let lsp@(L l sp) = minimumBy (compareSpans `on` getLoc) contSplice</span></span>
+<span class="lineno">   38 </span><span class="spaces">                                </span><span class="istickedoff"><span class="nottickedoff">in typeSpliceInserted lsp (annLocNoSema (pure l) (AST.UTySplice &lt;$&gt; (trfSplice =&lt;&lt; rdrSplice sp)))</span></span>
+<span class="lineno">   39 </span><span class="spaces">  </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">trfLocNoSema trfType' typ</span></span></span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>trfType' :: forall n r . TransformName n r =&gt; HsType n -&gt; Trf (AST.UType (Dom r) RangeStage)
+<span class="lineno">   42 </span><span class="decl"><span class="istickedoff">trfType' = trfType'' . cleanHsType where</span>
+<span class="lineno">   43 </span><span class="spaces">  </span><span class="istickedoff">trfType'' :: HsType n -&gt; Trf (AST.UType (Dom r) RangeStage)</span>
+<span class="lineno">   44 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsForAllTy [] typ) = <span class="nottickedoff">trfType' (unLoc typ)</span></span>
+<span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsForAllTy bndrs typ) = <span class="nottickedoff">AST.UTyForall &lt;$&gt; defineTypeVars (trfBindings bndrs)</span></span>
+<span class="lineno">   46 </span><span class="spaces">                                                   </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; addToScope bndrs (trfType typ)</span></span>
+<span class="lineno">   47 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsQualTy (L _ []) typ) = <span class="nottickedoff">trfType' (unLoc typ)</span></span>
+<span class="lineno">   48 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsQualTy ctx typ) = <span class="nottickedoff">AST.UTyCtx &lt;$&gt; (fromJust . (^. annMaybe) &lt;$&gt; trfCtx atTheStart ctx)</span></span>
+<span class="lineno">   49 </span><span class="spaces">                                            </span><span class="istickedoff"><span class="nottickedoff">&lt;*&gt; trfType typ</span></span>
+<span class="lineno">   50 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsTyVar _ name) = AST.UTyVar &lt;$&gt; transformingPossibleVar name (trfName @n name)</span>
+<span class="lineno">   51 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsAppsTy apps) | Just (head, args, _) &lt;- <span class="nottickedoff">getAppsTyHead_maybe apps</span></span>
+<span class="lineno">   52 </span><span class="spaces">    </span><span class="istickedoff">= <span class="nottickedoff">foldl (\core t -&gt; AST.UTyApp &lt;$&gt; annLocNoSema (pure $ getLoc head `combineSrcSpans` getLoc t) core &lt;*&gt; trfType t) (trfType' (unLoc head)) args</span></span>
+<span class="lineno">   53 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsAppTy t1 t2) = <span class="nottickedoff">AST.UTyApp &lt;$&gt; trfType t1 &lt;*&gt; trfType t2</span></span>
+<span class="lineno">   54 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsFunTy t1 t2) = <span class="nottickedoff">AST.UTyFun &lt;$&gt; trfType t1 &lt;*&gt; trfType t2</span></span>
+<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsListTy typ) = <span class="nottickedoff">AST.UTyList &lt;$&gt; trfType typ</span></span>
+<span class="lineno">   56 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsPArrTy typ) = <span class="nottickedoff">AST.UTyParArray &lt;$&gt; trfType typ</span></span>
+<span class="lineno">   57 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsTupleTy HsBoxedOrConstraintTuple typs) = <span class="nottickedoff">AST.UTyTuple &lt;$&gt; trfAnnList &quot;, &quot; trfType' typs</span></span>
+<span class="lineno">   58 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsTupleTy HsBoxedTuple typs) = <span class="nottickedoff">AST.UTyTuple &lt;$&gt; trfAnnList &quot;, &quot; trfType' typs</span></span>
+<span class="lineno">   59 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsTupleTy HsUnboxedTuple typs) = <span class="nottickedoff">AST.UTyUnbTuple &lt;$&gt; trfAnnList &quot;, &quot; trfType' typs</span></span>
+<span class="lineno">   60 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsOpTy t1 op t2) = <span class="nottickedoff">AST.UTyInfix &lt;$&gt; trfType t1 &lt;*&gt; trfOperator @n op &lt;*&gt; trfType t2</span></span>
+<span class="lineno">   61 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsParTy typ) = <span class="nottickedoff">AST.UTyParen &lt;$&gt; trfType typ</span></span>
+<span class="lineno">   62 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsKindSig typ kind) = <span class="nottickedoff">AST.UTyKinded &lt;$&gt; trfType typ &lt;*&gt; trfKind kind</span></span>
+<span class="lineno">   63 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsSpliceTy qq@(HsQuasiQuote {}) _) = <span class="nottickedoff">AST.UTyQuasiQuote &lt;$&gt; annContNoSema (trfQuasiQuotation' qq)</span></span>
+<span class="lineno">   64 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsSpliceTy splice _) = <span class="nottickedoff">AST.UTySplice &lt;$&gt; trfSplice splice</span></span>
+<span class="lineno">   65 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsBangTy (HsSrcBang _ SrcUnpack _) typ) = <span class="nottickedoff">AST.UTyUnpack &lt;$&gt; trfType typ</span></span>
+<span class="lineno">   66 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsBangTy (HsSrcBang _ SrcNoUnpack _) typ) = <span class="nottickedoff">AST.UTyNoUnpack &lt;$&gt; trfType typ</span></span>
+<span class="lineno">   67 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsBangTy (HsSrcBang _ _ SrcStrict) typ) = <span class="nottickedoff">AST.UTyBang &lt;$&gt; trfType typ</span></span>
+<span class="lineno">   68 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsBangTy (HsSrcBang _ _ SrcLazy) typ) = <span class="nottickedoff">AST.UTyLazy &lt;$&gt; trfType typ</span></span>
+<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">trfType'' pt@(HsExplicitListTy {}) = <span class="nottickedoff">AST.UTyPromoted &lt;$&gt; annContNoSema (trfPromoted' trfType' pt)</span></span>
+<span class="lineno">   70 </span><span class="spaces">  </span><span class="istickedoff">trfType'' pt@(HsExplicitTupleTy {}) = <span class="nottickedoff">AST.UTyPromoted &lt;$&gt; annContNoSema (trfPromoted' trfType' pt)</span></span>
+<span class="lineno">   71 </span><span class="spaces">  </span><span class="istickedoff">trfType'' pt@(HsTyLit {}) = <span class="nottickedoff">AST.UTyPromoted &lt;$&gt; annContNoSema (trfPromoted' trfType' pt)</span></span>
+<span class="lineno">   72 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsWildCardTy _) = <span class="nottickedoff">pure AST.UTyWildcard</span> -- TODO: named wildcards</span>
+<span class="lineno">   73 </span><span class="spaces">  </span><span class="istickedoff">trfType'' (HsSumTy types) = <span class="nottickedoff">AST.UUnbSumType &lt;$&gt; trfAnnList &quot; | &quot; trfType' types</span></span>
+<span class="lineno">   74 </span><span class="spaces">  </span><span class="istickedoff">trfType'' t = <span class="nottickedoff">unhandledElement &quot;type&quot; t</span></span></span>
+<span class="lineno">   75 </span>
+<span class="lineno">   76 </span>trfBindings :: TransformName n r =&gt; [Located (HsTyVarBndr n)] -&gt; Trf (AnnListG AST.UTyVar (Dom r) RangeStage)
+<span class="lineno">   77 </span><span class="decl"><span class="nottickedoff">trfBindings vars = trfAnnList &quot; &quot; trfTyVar' vars</span></span>
+<span class="lineno">   78 </span>
+<span class="lineno">   79 </span>trfTyVar :: TransformName n r =&gt; Located (HsTyVarBndr n) -&gt; Trf (Ann AST.UTyVar (Dom r) RangeStage)
+<span class="lineno">   80 </span><span class="decl"><span class="nottickedoff">trfTyVar = trfLocNoSema trfTyVar'</span></span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>trfTyVar' :: forall n r . TransformName n r =&gt; HsTyVarBndr n -&gt; Trf (AST.UTyVar (Dom r) RangeStage)
+<span class="lineno">   83 </span><span class="decl"><span class="nottickedoff">trfTyVar' (UserTyVar name) = AST.UTyVarDecl &lt;$&gt; typeVarTransform (trfName @n name)</span>
+<span class="lineno">   84 </span><span class="spaces">                                           </span><span class="nottickedoff">&lt;*&gt; (nothing &quot; &quot; &quot;&quot; atTheEnd)</span>
+<span class="lineno">   85 </span><span class="spaces"></span><span class="nottickedoff">trfTyVar' (KindedTyVar name kind) = AST.UTyVarDecl &lt;$&gt; typeVarTransform (trfName @n name)</span>
+<span class="lineno">   86 </span><span class="spaces">                                                  </span><span class="nottickedoff">&lt;*&gt; trfKindSig (Just kind)</span></span>
+<span class="lineno">   87 </span>
+<span class="lineno">   88 </span>trfCtx :: TransformName n r =&gt; Trf SrcLoc -&gt; Located (HsContext n) -&gt; Trf (AnnMaybeG AST.UContext (Dom r) RangeStage)
+<span class="lineno">   89 </span><span class="decl"><span class="istickedoff">trfCtx sp (L _ []) = nothing <span class="nottickedoff">&quot; &quot;</span> <span class="nottickedoff">&quot;&quot;</span> sp</span>
+<span class="lineno">   90 </span><span class="spaces"></span><span class="istickedoff">trfCtx _ (L l [L _ (HsParTy t)])</span>
+<span class="lineno">   91 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">makeJust &lt;$&gt; annLocNoSema (combineSrcSpans l &lt;$&gt; tokenLoc AnnDarrow)</span></span>
+<span class="lineno">   92 </span><span class="spaces">                              </span><span class="istickedoff"><span class="nottickedoff">(AST.UContext &lt;$&gt; annLocNoSema (pure l) (AST.UTupleAssert &lt;$&gt; (trfAnnList &quot;, &quot; trfAssertion' [t])))</span></span>
+<span class="lineno">   93 </span><span class="spaces"></span><span class="istickedoff">trfCtx _ (L l [t])</span>
+<span class="lineno">   94 </span><span class="spaces">  </span><span class="istickedoff">= <span class="nottickedoff">makeJust &lt;$&gt; annLocNoSema (combineSrcSpans l &lt;$&gt; tokenLoc AnnDarrow)</span></span>
+<span class="lineno">   95 </span><span class="spaces">                              </span><span class="istickedoff"><span class="nottickedoff">(AST.UContext &lt;$&gt; trfAssertion t)</span></span>
+<span class="lineno">   96 </span><span class="spaces"></span><span class="istickedoff">trfCtx _ (L l ctx) = <span class="nottickedoff">makeJust &lt;$&gt; annLocNoSema (combineSrcSpans l &lt;$&gt; tokenLoc AnnDarrow)</span></span>
+<span class="lineno">   97 </span><span class="spaces">                                               </span><span class="istickedoff"><span class="nottickedoff">(AST.UContext &lt;$&gt; annLocNoSema (pure l) (AST.UTupleAssert &lt;$&gt; (trfAnnList &quot;, &quot; trfAssertion' ctx)))</span></span></span>
+<span class="lineno">   98 </span>
+<span class="lineno">   99 </span>trfAssertion :: TransformName n r =&gt; LHsType n -&gt; Trf (Ann AST.UAssertion (Dom r) RangeStage)
+<span class="lineno">  100 </span><span class="decl"><span class="nottickedoff">trfAssertion = trfLocNoSema trfAssertion'</span></span>
+<span class="lineno">  101 </span>
+<span class="lineno">  102 </span>trfAssertion' :: forall n r . TransformName n r =&gt; HsType n -&gt; Trf (AST.UAssertion (Dom r) RangeStage)
+<span class="lineno">  103 </span><span class="decl"><span class="nottickedoff">trfAssertion' (cleanHsType -&gt; HsParTy t)</span>
+<span class="lineno">  104 </span><span class="spaces">  </span><span class="nottickedoff">= trfAssertion' (unLoc t)</span>
+<span class="lineno">  105 </span><span class="spaces"></span><span class="nottickedoff">trfAssertion' (cleanHsType -&gt; HsOpTy left op right)</span>
+<span class="lineno">  106 </span><span class="spaces">  </span><span class="nottickedoff">= AST.UInfixAssert &lt;$&gt; trfType left &lt;*&gt; trfOperator @n op &lt;*&gt; trfType right</span>
+<span class="lineno">  107 </span><span class="spaces"></span><span class="nottickedoff">trfAssertion' (cleanHsType -&gt; HsTupleTy _ tys)</span>
+<span class="lineno">  108 </span><span class="spaces">  </span><span class="nottickedoff">= AST.UTupleAssert &lt;$&gt; makeList &quot;, &quot; (after AnnOpenP) (mapM trfAssertion tys)</span>
+<span class="lineno">  109 </span><span class="spaces"></span><span class="nottickedoff">trfAssertion' (cleanHsType -&gt; HsWildCardTy _)</span>
+<span class="lineno">  110 </span><span class="spaces">  </span><span class="nottickedoff">= pure AST.UWildcardAssert</span>
+<span class="lineno">  111 </span><span class="spaces"></span><span class="nottickedoff">trfAssertion' (cleanHsType -&gt; t) = case cleanHsType base of</span>
+<span class="lineno">  112 </span><span class="spaces">   </span><span class="nottickedoff">HsTyVar _ name -&gt; AST.UClassAssert &lt;$&gt; trfName @n name &lt;*&gt; trfAnnList &quot; &quot; trfType' args</span>
+<span class="lineno">  113 </span><span class="spaces">   </span><span class="nottickedoff">HsEqTy t1 t2 -&gt; AST.UInfixAssert &lt;$&gt; trfType t1 &lt;*&gt; annLocNoSema (tokenLoc AnnTilde) (trfOperator' @n typeEq) &lt;*&gt; trfType t2</span>
+<span class="lineno">  114 </span><span class="spaces">   </span><span class="nottickedoff">HsIParamTy name t -&gt; AST.UImplicitAssert &lt;$&gt; define (focusOn (getLoc name) (trfImplicitName (unLoc name))) &lt;*&gt; trfType t</span>
+<span class="lineno">  115 </span><span class="spaces">   </span><span class="nottickedoff">t -&gt; unhandledElement &quot;assertion&quot; t</span>
+<span class="lineno">  116 </span><span class="spaces">  </span><span class="nottickedoff">where (args, _, base) = getArgs t</span>
+<span class="lineno">  117 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  118 </span><span class="spaces">        </span><span class="nottickedoff">getArgs :: HsType n -&gt; ([LHsType n], Maybe SrcSpan, HsType n)</span>
+<span class="lineno">  119 </span><span class="spaces">        </span><span class="nottickedoff">getArgs (HsAppTy (L l ft) at) = case getArgs ft of (args, sp, base) -&gt; (args++[at], sp &lt;|&gt; Just l, base)</span>
+<span class="lineno">  120 </span><span class="spaces">        </span><span class="nottickedoff">getArgs t = ([], Nothing, t)</span>
+<span class="lineno">  121 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  122 </span><span class="spaces">        </span><span class="nottickedoff">typeEq :: IdP n</span>
+<span class="lineno">  123 </span><span class="spaces">        </span><span class="nottickedoff">typeEq = nameFromId @n (mkVanillaGlobal (tyConName heqTyCon) (tyConKind heqTyCon))</span></span>
 
 </pre>
 </body>

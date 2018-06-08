@@ -20,109 +20,110 @@ span.spaces    { background: white }
 <span class="lineno">    1 </span>-- | Generation of UModule-level AST fragments for refactorings.
 <span class="lineno">    2 </span>-- The bindings defined here create a the annotated version of the AST constructor with the same name.
 <span class="lineno">    3 </span>-- For example, @mkModule@ creates the annotated version of the @UModule@ AST constructor.
-<span class="lineno">    4 </span>{-# LANGUAGE MonoLocalBinds, OverloadedStrings #-}
-<span class="lineno">    5 </span>
-<span class="lineno">    6 </span>module Language.Haskell.Tools.Rewrite.Create.Modules where
-<span class="lineno">    7 </span>
-<span class="lineno">    8 </span>import Data.String (IsString(..), String)
-<span class="lineno">    9 </span>import Language.Haskell.Tools.AST
-<span class="lineno">   10 </span>import Language.Haskell.Tools.PrettyPrint.Prepare
-<span class="lineno">   11 </span>import Language.Haskell.Tools.Rewrite.Create.Names (mkStringNode)
-<span class="lineno">   12 </span>import Language.Haskell.Tools.Rewrite.Create.Utils
-<span class="lineno">   13 </span>import Language.Haskell.Tools.Rewrite.ElementTypes
-<span class="lineno">   14 </span>
-<span class="lineno">   15 </span>-- | The representation of a haskell module, that is a separate compilation unit.
-<span class="lineno">   16 </span>-- It may or may not have a header.
-<span class="lineno">   17 </span>mkModule :: [FilePragma] -&gt; Maybe ModuleHead -&gt; [ImportDecl] -&gt; [Decl] -&gt; Module
-<span class="lineno">   18 </span><span class="decl"><span class="istickedoff">mkModule filePrags head imps decls</span>
-<span class="lineno">   19 </span><span class="spaces">  </span><span class="istickedoff">= mkAnn (child &lt;&gt; child &lt;&gt; child &lt;&gt; child)</span>
-<span class="lineno">   20 </span><span class="spaces">      </span><span class="istickedoff">$ UModule (mkAnnList (followedBy <span class="nottickedoff">&quot;\n&quot;</span> $ separatedBy <span class="nottickedoff">&quot;\n&quot;</span> list) filePrags) (mkAnnMaybe opt head)</span>
-<span class="lineno">   21 </span><span class="spaces">                </span><span class="istickedoff">(mkAnnList (after &quot;\n&quot; $ indented list) imps) (mkAnnList (after <span class="nottickedoff">&quot;\n&quot;</span> $ indented list) decls)</span></span>
-<span class="lineno">   22 </span>
-<span class="lineno">   23 </span>-- | Module declaration with name and (optional) exports
-<span class="lineno">   24 </span>mkModuleHead :: ModuleName -&gt; Maybe ModulePragma -&gt; Maybe ExportSpecs -&gt; ModuleHead
-<span class="lineno">   25 </span><span class="decl"><span class="istickedoff">mkModuleHead n pr es = mkAnn (&quot;module &quot; &lt;&gt; child &lt;&gt; child &lt;&gt; child &lt;&gt; &quot; where&quot;)</span>
-<span class="lineno">   26 </span><span class="spaces">                         </span><span class="istickedoff">$ UModuleHead n (mkAnnMaybe (after <span class="nottickedoff">&quot;\n&quot;</span> opt) pr) (mkAnnMaybe opt es)</span></span>
-<span class="lineno">   27 </span>
-<span class="lineno">   28 </span>-- | A list of export specifications surrounded by parentheses
-<span class="lineno">   29 </span>mkExportSpecs :: [ExportSpec] -&gt; ExportSpecs
-<span class="lineno">   30 </span><span class="decl"><span class="istickedoff">mkExportSpecs = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) . UExportSpecs . mkAnnList (separatedBy &quot;, &quot; list)</span></span>
-<span class="lineno">   31 </span>
-<span class="lineno">   32 </span>-- | Export a name and related names
-<span class="lineno">   33 </span>mkExportSpec :: IESpec -&gt; ExportSpec
-<span class="lineno">   34 </span><span class="decl"><span class="istickedoff">mkExportSpec = mkAnn child . UDeclExport</span></span>
-<span class="lineno">   35 </span>
-<span class="lineno">   36 </span>-- | The export of an imported module (@ module A @)
-<span class="lineno">   37 </span>mkModuleExport :: ModuleName -&gt; ExportSpec
-<span class="lineno">   38 </span><span class="decl"><span class="nottickedoff">mkModuleExport = mkAnn (&quot;module &quot; &lt;&gt; child) . UModuleExport</span></span>
-<span class="lineno">   39 </span>
-<span class="lineno">   40 </span>-- | Marks a name to be imported or exported with related names (subspecifier)
-<span class="lineno">   41 </span>mkIESpec :: Name -&gt; Maybe SubSpec -&gt; IESpec
-<span class="lineno">   42 </span><span class="decl"><span class="istickedoff">mkIESpec name ss = mkAnn (child &lt;&gt; child &lt;&gt; child) (UIESpec noth name (mkAnnMaybe (after &quot;(&quot; $ followedBy &quot;)&quot; opt) ss))</span></span>
-<span class="lineno">   43 </span>
-<span class="lineno">   44 </span>-- | Marks a pattern synonym to be imported or exported
-<span class="lineno">   45 </span>mkPatternIESpec :: Name -&gt; IESpec
-<span class="lineno">   46 </span><span class="decl"><span class="nottickedoff">mkPatternIESpec name = mkAnn (child &lt;&gt; child) (UIESpec (justVal $ mkAnn child UImportPattern) name noth)</span></span>
-<span class="lineno">   47 </span>
-<span class="lineno">   48 </span>-- | @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
-<span class="lineno">   49 </span>mkSubList :: [Name] -&gt; SubSpec
-<span class="lineno">   50 </span><span class="decl"><span class="istickedoff">mkSubList = mkAnn child . USubSpecList . mkAnnList (separatedBy <span class="nottickedoff">&quot;, &quot;</span> list)</span></span>
-<span class="lineno">   51 </span>
-<span class="lineno">   52 </span>-- | @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
-<span class="lineno">   53 </span>mkSubAll :: SubSpec
-<span class="lineno">   54 </span><span class="decl"><span class="istickedoff">mkSubAll = mkAnn &quot;..&quot; USubSpecAll</span></span>
-<span class="lineno">   55 </span>
-<span class="lineno">   56 </span>-- | An import declaration: @import Module.Name@
-<span class="lineno">   57 </span>mkImportDecl :: Bool -&gt; Bool -&gt; Bool -&gt; Maybe String -&gt; ModuleName -&gt; Maybe ModuleName -&gt; Maybe ImportSpec
-<span class="lineno">   58 </span>                  -&gt; ImportDecl
-<span class="lineno">   59 </span><span class="decl"><span class="istickedoff">mkImportDecl source qualified safe pkg name rename spec</span>
-<span class="lineno">   60 </span><span class="spaces">  </span><span class="istickedoff">= mkAnn (&quot;import &quot; &lt;&gt; child &lt;&gt; child &lt;&gt; child &lt;&gt; child &lt;&gt; child &lt;&gt; child &lt;&gt; child) $</span>
-<span class="lineno">   61 </span><span class="spaces">      </span><span class="istickedoff">UImportDecl (if <span class="tickonlyfalse">source</span> then <span class="nottickedoff">justVal (mkAnn &quot;{-# SOURCE #-} &quot; UImportSource)</span> else noth)</span>
-<span class="lineno">   62 </span><span class="spaces">                  </span><span class="istickedoff">(if qualified then justVal (mkAnn &quot;qualified &quot; UImportQualified) else noth)</span>
-<span class="lineno">   63 </span><span class="spaces">                  </span><span class="istickedoff">(if <span class="tickonlyfalse">safe</span> then <span class="nottickedoff">justVal (mkAnn &quot;safe &quot; UImportSafe)</span> else noth)</span>
-<span class="lineno">   64 </span><span class="spaces">                  </span><span class="istickedoff">(case pkg of Just str -&gt; <span class="nottickedoff">justVal (mkStringNode str)</span>; _ -&gt; noth)</span>
-<span class="lineno">   65 </span><span class="spaces">                  </span><span class="istickedoff">name (mkAnnMaybe opt (fmap (mkAnn (&quot; as &quot; &lt;&gt; child) . UImportRenaming) rename)) (mkAnnMaybe opt spec)</span></span>
-<span class="lineno">   66 </span>
-<span class="lineno">   67 </span>-- | Restrict the import definition to ONLY import the listed names
-<span class="lineno">   68 </span>mkImportSpecList :: [IESpec] -&gt; ImportSpec
-<span class="lineno">   69 </span><span class="decl"><span class="istickedoff">mkImportSpecList = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) . UImportSpecList . mkAnnList (separatedBy <span class="nottickedoff">&quot;, &quot;</span> list)</span></span>
-<span class="lineno">   70 </span>
-<span class="lineno">   71 </span>-- | Restrict the import definition to DONT import the listed names
-<span class="lineno">   72 </span>mkImportHidingList :: [IESpec] -&gt; ImportSpec
-<span class="lineno">   73 </span><span class="decl"><span class="istickedoff">mkImportHidingList = mkAnn (&quot; hiding (&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) . UImportSpecHiding . mkAnnList (separatedBy <span class="nottickedoff">&quot;, &quot;</span> list)</span></span>
-<span class="lineno">   74 </span>
-<span class="lineno">   75 </span>-- | The name of a module
-<span class="lineno">   76 </span>mkModuleName :: String -&gt; ModuleName
-<span class="lineno">   77 </span><span class="decl"><span class="istickedoff">mkModuleName s = mkAnn (fromString s) (UModuleName <span class="nottickedoff">s</span>)</span></span>
-<span class="lineno">   78 </span>
-<span class="lineno">   79 </span>-- * Pragmas
-<span class="lineno">   80 </span>
-<span class="lineno">   81 </span>mkFilePragmas :: [FilePragma] -&gt; FilePragmaList
-<span class="lineno">   82 </span><span class="decl"><span class="nottickedoff">mkFilePragmas = mkAnnList (separatedBy &quot;\n&quot; list)</span></span>
-<span class="lineno">   83 </span>
-<span class="lineno">   84 </span>-- | @LANGUAGE@ pragma, listing the enabled language extensions in that file
-<span class="lineno">   85 </span>mkLanguagePragma :: [String] -&gt; FilePragma
-<span class="lineno">   86 </span><span class="decl"><span class="nottickedoff">mkLanguagePragma extensions</span>
-<span class="lineno">   87 </span><span class="spaces">  </span><span class="nottickedoff">= mkAnn (&quot;{-# LANGUAGE &quot; &lt;&gt; child &lt;&gt; &quot; #-}&quot;) $ ULanguagePragma</span>
-<span class="lineno">   88 </span><span class="spaces">      </span><span class="nottickedoff">$ mkAnnList (separatedBy &quot;, &quot; list) (map (\ext -&gt; mkAnn (fromString ext) (ULanguageExtension ext)) extensions)</span></span>
-<span class="lineno">   89 </span>
-<span class="lineno">   90 </span>-- | @OPTIONS@ pragma, possibly qualified with a tool, e.g. OPTIONS_GHC
-<span class="lineno">   91 </span>mkOptionsGHC :: String -&gt; FilePragma
-<span class="lineno">   92 </span><span class="decl"><span class="nottickedoff">mkOptionsGHC opts</span>
-<span class="lineno">   93 </span><span class="spaces">  </span><span class="nottickedoff">= mkAnn (&quot;{-# OPTIONS_GHC &quot; &lt;&gt; child &lt;&gt; &quot; #-}&quot;) $ UOptionsPragma</span>
-<span class="lineno">   94 </span><span class="spaces">      </span><span class="nottickedoff">$ mkStringNode opts</span></span>
-<span class="lineno">   95 </span>
-<span class="lineno">   96 </span>-- | A warning pragma attached to the module
-<span class="lineno">   97 </span>mkModuleWarningPragma :: [String] -&gt; ModulePragma
-<span class="lineno">   98 </span><span class="decl"><span class="nottickedoff">mkModuleWarningPragma msg</span>
-<span class="lineno">   99 </span><span class="spaces">  </span><span class="nottickedoff">= mkAnn (&quot;{-# WARNING &quot; &lt;&gt; child &lt;&gt; &quot; #-}&quot;) $ UModuleWarningPragma</span>
-<span class="lineno">  100 </span><span class="spaces">      </span><span class="nottickedoff">$ mkAnnList (separatedBy &quot; &quot; list) $ map mkStringNode msg</span></span>
-<span class="lineno">  101 </span>
-<span class="lineno">  102 </span>-- | A deprecated pragma attached to the module
-<span class="lineno">  103 </span>mkModuleDeprecatedPragma :: [String] -&gt; ModulePragma
-<span class="lineno">  104 </span><span class="decl"><span class="nottickedoff">mkModuleDeprecatedPragma msg</span>
-<span class="lineno">  105 </span><span class="spaces">  </span><span class="nottickedoff">= mkAnn (&quot;{-# DEPRECATED &quot; &lt;&gt; child &lt;&gt; &quot; #-}&quot;) $ UModuleDeprecatedPragma</span>
-<span class="lineno">  106 </span><span class="spaces">      </span><span class="nottickedoff">$ mkAnnList (separatedBy &quot; &quot; list) $ map mkStringNode msg</span></span>
+<span class="lineno">    4 </span>{-# LANGUAGE MonoLocalBinds #-}
+<span class="lineno">    5 </span>{-# LANGUAGE OverloadedStrings #-}
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>module Language.Haskell.Tools.Rewrite.Create.Modules where
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>import Data.String (IsString(..), String)
+<span class="lineno">   10 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   11 </span>import Language.Haskell.Tools.PrettyPrint.Prepare
+<span class="lineno">   12 </span>import Language.Haskell.Tools.Rewrite.Create.Names (mkStringNode)
+<span class="lineno">   13 </span>import Language.Haskell.Tools.Rewrite.Create.Utils
+<span class="lineno">   14 </span>import Language.Haskell.Tools.Rewrite.ElementTypes
+<span class="lineno">   15 </span>
+<span class="lineno">   16 </span>-- | The representation of a haskell module, that is a separate compilation unit.
+<span class="lineno">   17 </span>-- It may or may not have a header.
+<span class="lineno">   18 </span>mkModule :: [FilePragma] -&gt; Maybe ModuleHead -&gt; [ImportDecl] -&gt; [Decl] -&gt; Module
+<span class="lineno">   19 </span><span class="decl"><span class="istickedoff">mkModule filePrags head imps decls</span>
+<span class="lineno">   20 </span><span class="spaces">  </span><span class="istickedoff">= mkAnn (child &lt;&gt; child &lt;&gt; child &lt;&gt; child)</span>
+<span class="lineno">   21 </span><span class="spaces">      </span><span class="istickedoff">$ UModule (mkAnnList (followedBy <span class="nottickedoff">&quot;\n&quot;</span> $ separatedBy <span class="nottickedoff">&quot;\n&quot;</span> list) filePrags) (mkAnnMaybe opt head)</span>
+<span class="lineno">   22 </span><span class="spaces">                </span><span class="istickedoff">(mkAnnList (after &quot;\n&quot; $ indented list) imps) (mkAnnList (after <span class="nottickedoff">&quot;\n&quot;</span> $ indented list) decls)</span></span>
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>-- | Module declaration with name and (optional) exports
+<span class="lineno">   25 </span>mkModuleHead :: ModuleName -&gt; Maybe ModulePragma -&gt; Maybe ExportSpecs -&gt; ModuleHead
+<span class="lineno">   26 </span><span class="decl"><span class="istickedoff">mkModuleHead n pr es = mkAnn (&quot;module &quot; &lt;&gt; child &lt;&gt; child &lt;&gt; child &lt;&gt; &quot; where&quot;)</span>
+<span class="lineno">   27 </span><span class="spaces">                         </span><span class="istickedoff">$ UModuleHead n (mkAnnMaybe (after <span class="nottickedoff">&quot;\n&quot;</span> opt) pr) (mkAnnMaybe opt es)</span></span>
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>-- | A list of export specifications surrounded by parentheses
+<span class="lineno">   30 </span>mkExportSpecs :: [ExportSpec] -&gt; ExportSpecs
+<span class="lineno">   31 </span><span class="decl"><span class="istickedoff">mkExportSpecs = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) . UExportSpecs . mkAnnList (separatedBy &quot;, &quot; list)</span></span>
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>-- | Export a name and related names
+<span class="lineno">   34 </span>mkExportSpec :: IESpec -&gt; ExportSpec
+<span class="lineno">   35 </span><span class="decl"><span class="istickedoff">mkExportSpec = mkAnn child . UDeclExport</span></span>
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>-- | The export of an imported module (@ module A @)
+<span class="lineno">   38 </span>mkModuleExport :: ModuleName -&gt; ExportSpec
+<span class="lineno">   39 </span><span class="decl"><span class="nottickedoff">mkModuleExport = mkAnn (&quot;module &quot; &lt;&gt; child) . UModuleExport</span></span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>-- | Marks a name to be imported or exported with related names (subspecifier)
+<span class="lineno">   42 </span>mkIESpec :: Name -&gt; Maybe SubSpec -&gt; IESpec
+<span class="lineno">   43 </span><span class="decl"><span class="istickedoff">mkIESpec name ss = mkAnn (child &lt;&gt; child &lt;&gt; child) (UIESpec noth name (mkAnnMaybe (after &quot;(&quot; $ followedBy &quot;)&quot; opt) ss))</span></span>
+<span class="lineno">   44 </span>
+<span class="lineno">   45 </span>-- | Marks a pattern synonym to be imported or exported
+<span class="lineno">   46 </span>mkPatternIESpec :: Name -&gt; IESpec
+<span class="lineno">   47 </span><span class="decl"><span class="nottickedoff">mkPatternIESpec name = mkAnn (child &lt;&gt; child) (UIESpec (justVal $ mkAnn child UImportPattern) name noth)</span></span>
+<span class="lineno">   48 </span>
+<span class="lineno">   49 </span>-- | @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
+<span class="lineno">   50 </span>mkSubList :: [Name] -&gt; SubSpec
+<span class="lineno">   51 </span><span class="decl"><span class="istickedoff">mkSubList = mkAnn child . USubSpecList . mkAnnList (separatedBy <span class="nottickedoff">&quot;, &quot;</span> list)</span></span>
+<span class="lineno">   52 </span>
+<span class="lineno">   53 </span>-- | @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
+<span class="lineno">   54 </span>mkSubAll :: SubSpec
+<span class="lineno">   55 </span><span class="decl"><span class="istickedoff">mkSubAll = mkAnn &quot;..&quot; USubSpecAll</span></span>
+<span class="lineno">   56 </span>
+<span class="lineno">   57 </span>-- | An import declaration: @import Module.Name@
+<span class="lineno">   58 </span>mkImportDecl :: Bool -&gt; Bool -&gt; Bool -&gt; Maybe String -&gt; ModuleName -&gt; Maybe ModuleName -&gt; Maybe ImportSpec
+<span class="lineno">   59 </span>                  -&gt; ImportDecl
+<span class="lineno">   60 </span><span class="decl"><span class="istickedoff">mkImportDecl source qualified safe pkg name rename spec</span>
+<span class="lineno">   61 </span><span class="spaces">  </span><span class="istickedoff">= mkAnn (&quot;import &quot; &lt;&gt; child &lt;&gt; child &lt;&gt; child &lt;&gt; child &lt;&gt; child &lt;&gt; child &lt;&gt; child) $</span>
+<span class="lineno">   62 </span><span class="spaces">      </span><span class="istickedoff">UImportDecl (if <span class="tickonlyfalse">source</span> then <span class="nottickedoff">justVal (mkAnn &quot;{-# SOURCE #-} &quot; UImportSource)</span> else noth)</span>
+<span class="lineno">   63 </span><span class="spaces">                  </span><span class="istickedoff">(if qualified then justVal (mkAnn &quot;qualified &quot; UImportQualified) else noth)</span>
+<span class="lineno">   64 </span><span class="spaces">                  </span><span class="istickedoff">(if <span class="tickonlyfalse">safe</span> then <span class="nottickedoff">justVal (mkAnn &quot;safe &quot; UImportSafe)</span> else noth)</span>
+<span class="lineno">   65 </span><span class="spaces">                  </span><span class="istickedoff">(case pkg of Just str -&gt; <span class="nottickedoff">justVal (mkStringNode str)</span>; _ -&gt; noth)</span>
+<span class="lineno">   66 </span><span class="spaces">                  </span><span class="istickedoff">name (mkAnnMaybe opt (fmap (mkAnn (&quot; as &quot; &lt;&gt; child) . UImportRenaming) rename)) (mkAnnMaybe opt spec)</span></span>
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>-- | Restrict the import definition to ONLY import the listed names
+<span class="lineno">   69 </span>mkImportSpecList :: [IESpec] -&gt; ImportSpec
+<span class="lineno">   70 </span><span class="decl"><span class="istickedoff">mkImportSpecList = mkAnn (&quot;(&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) . UImportSpecList . mkAnnList (separatedBy <span class="nottickedoff">&quot;, &quot;</span> list)</span></span>
+<span class="lineno">   71 </span>
+<span class="lineno">   72 </span>-- | Restrict the import definition to DONT import the listed names
+<span class="lineno">   73 </span>mkImportHidingList :: [IESpec] -&gt; ImportSpec
+<span class="lineno">   74 </span><span class="decl"><span class="istickedoff">mkImportHidingList = mkAnn (&quot; hiding (&quot; &lt;&gt; child &lt;&gt; &quot;)&quot;) . UImportSpecHiding . mkAnnList (separatedBy <span class="nottickedoff">&quot;, &quot;</span> list)</span></span>
+<span class="lineno">   75 </span>
+<span class="lineno">   76 </span>-- | The name of a module
+<span class="lineno">   77 </span>mkModuleName :: String -&gt; ModuleName
+<span class="lineno">   78 </span><span class="decl"><span class="istickedoff">mkModuleName s = mkAnn (fromString s) (UModuleName <span class="nottickedoff">s</span>)</span></span>
+<span class="lineno">   79 </span>
+<span class="lineno">   80 </span>-- * Pragmas
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>mkFilePragmas :: [FilePragma] -&gt; FilePragmaList
+<span class="lineno">   83 </span><span class="decl"><span class="nottickedoff">mkFilePragmas = mkAnnList (separatedBy &quot;\n&quot; list)</span></span>
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>-- | @LANGUAGE@ pragma, listing the enabled language extensions in that file
+<span class="lineno">   86 </span>mkLanguagePragma :: [String] -&gt; FilePragma
+<span class="lineno">   87 </span><span class="decl"><span class="nottickedoff">mkLanguagePragma extensions</span>
+<span class="lineno">   88 </span><span class="spaces">  </span><span class="nottickedoff">= mkAnn (&quot;{-# LANGUAGE &quot; &lt;&gt; child &lt;&gt; &quot; #-}&quot;) $ ULanguagePragma</span>
+<span class="lineno">   89 </span><span class="spaces">      </span><span class="nottickedoff">$ mkAnnList (separatedBy &quot;, &quot; list) (map (\ext -&gt; mkAnn (fromString ext) (ULanguageExtension ext)) extensions)</span></span>
+<span class="lineno">   90 </span>
+<span class="lineno">   91 </span>-- | @OPTIONS@ pragma, possibly qualified with a tool, e.g. OPTIONS_GHC
+<span class="lineno">   92 </span>mkOptionsGHC :: String -&gt; FilePragma
+<span class="lineno">   93 </span><span class="decl"><span class="nottickedoff">mkOptionsGHC opts</span>
+<span class="lineno">   94 </span><span class="spaces">  </span><span class="nottickedoff">= mkAnn (&quot;{-# OPTIONS_GHC &quot; &lt;&gt; child &lt;&gt; &quot; #-}&quot;) $ UOptionsPragma</span>
+<span class="lineno">   95 </span><span class="spaces">      </span><span class="nottickedoff">$ mkStringNode opts</span></span>
+<span class="lineno">   96 </span>
+<span class="lineno">   97 </span>-- | A warning pragma attached to the module
+<span class="lineno">   98 </span>mkModuleWarningPragma :: [String] -&gt; ModulePragma
+<span class="lineno">   99 </span><span class="decl"><span class="nottickedoff">mkModuleWarningPragma msg</span>
+<span class="lineno">  100 </span><span class="spaces">  </span><span class="nottickedoff">= mkAnn (&quot;{-# WARNING &quot; &lt;&gt; child &lt;&gt; &quot; #-}&quot;) $ UModuleWarningPragma</span>
+<span class="lineno">  101 </span><span class="spaces">      </span><span class="nottickedoff">$ mkAnnList (separatedBy &quot; &quot; list) $ map mkStringNode msg</span></span>
+<span class="lineno">  102 </span>
+<span class="lineno">  103 </span>-- | A deprecated pragma attached to the module
+<span class="lineno">  104 </span>mkModuleDeprecatedPragma :: [String] -&gt; ModulePragma
+<span class="lineno">  105 </span><span class="decl"><span class="nottickedoff">mkModuleDeprecatedPragma msg</span>
+<span class="lineno">  106 </span><span class="spaces">  </span><span class="nottickedoff">= mkAnn (&quot;{-# DEPRECATED &quot; &lt;&gt; child &lt;&gt; &quot; #-}&quot;) $ UModuleDeprecatedPragma</span>
+<span class="lineno">  107 </span><span class="spaces">      </span><span class="nottickedoff">$ mkAnnList (separatedBy &quot; &quot; list) $ map mkStringNode msg</span></span>
 
 </pre>
 </body>
