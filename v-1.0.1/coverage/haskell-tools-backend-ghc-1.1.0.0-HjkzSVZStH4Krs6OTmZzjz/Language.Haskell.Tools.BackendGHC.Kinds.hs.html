@@ -1,0 +1,87 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE GADTs #-}
+<span class="lineno">    2 </span>{-# LANGUAGE RankNTypes #-}
+<span class="lineno">    3 </span>{-# LANGUAGE TypeApplications #-}
+<span class="lineno">    4 </span>{-# LANGUAGE ScopedTypeVariables #-}
+<span class="lineno">    5 </span>{-# LANGUAGE ViewPatterns #-}
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>-- | Functions that convert the kind-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
+<span class="lineno">    8 </span>module Language.Haskell.Tools.BackendGHC.Kinds where
+<span class="lineno">    9 </span>
+<span class="lineno">   10 </span>import ApiAnnotation as GHC (AnnKeywordId(..))
+<span class="lineno">   11 </span>import FastString as GHC (unpackFS)
+<span class="lineno">   12 </span>import HsTypes as GHC
+<span class="lineno">   13 </span>import Name as GHC (occNameString, nameOccName, isWiredInName)
+<span class="lineno">   14 </span>import RdrName as GHC (RdrName(..))
+<span class="lineno">   15 </span>import SrcLoc as GHC
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>import Language.Haskell.Tools.AST (Ann, AnnMaybeG, Dom, RangeStage, HasNoSemanticInfo)
+<span class="lineno">   18 </span>import qualified Language.Haskell.Tools.AST as AST
+<span class="lineno">   19 </span>import Language.Haskell.Tools.BackendGHC.GHCUtils (GHCName(..), cleanHsType)
+<span class="lineno">   20 </span>import Language.Haskell.Tools.BackendGHC.Monad (Trf, transformingPossibleVar)
+<span class="lineno">   21 </span>import Language.Haskell.Tools.BackendGHC.Names (TransformName, trfOperator, trfName)
+<span class="lineno">   22 </span>import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.Types (trfType')
+<span class="lineno">   23 </span>import Language.Haskell.Tools.BackendGHC.Utils
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>trfKindSig :: TransformName n r =&gt; Maybe (LHsKind n) -&gt; Trf (AnnMaybeG AST.UKindConstraint (Dom r) RangeStage)
+<span class="lineno">   27 </span><span class="decl"><span class="istickedoff">trfKindSig = trfMaybe <span class="nottickedoff">&quot;&quot;</span> <span class="nottickedoff">&quot;&quot;</span> trfKindSig'</span></span>
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>trfKindSig' :: TransformName n r =&gt; Located (HsKind n) -&gt; Trf (Ann AST.UKindConstraint (Dom r) RangeStage)
+<span class="lineno">   30 </span><span class="decl"><span class="istickedoff">trfKindSig' k = annLocNoSema (combineSrcSpans (getLoc k) &lt;$&gt; (tokenBefore (srcSpanStart (getLoc k)) AnnDcolon))</span>
+<span class="lineno">   31 </span><span class="spaces">                             </span><span class="istickedoff">(AST.UKindConstraint &lt;$&gt; trfLocNoSema trfKind' k)</span></span>
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>trfKind :: TransformName n r =&gt; Located (HsKind n) -&gt; Trf (Ann AST.UKind (Dom r) RangeStage)
+<span class="lineno">   34 </span><span class="decl"><span class="istickedoff">trfKind = trfLocNoSema (trfKind' . cleanHsType)</span></span>
+<span class="lineno">   35 </span>
+<span class="lineno">   36 </span>trfKind' :: forall n r . TransformName n r =&gt; HsKind n -&gt; Trf (AST.UKind (Dom r) RangeStage)
+<span class="lineno">   37 </span><span class="decl"><span class="istickedoff">trfKind' = trfKind'' . cleanHsType where</span>
+<span class="lineno">   38 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsTyVar _ (rdrName @n . unLoc -&gt; Exact n))</span>
+<span class="lineno">   39 </span><span class="spaces">    </span><span class="istickedoff">| isWiredInName n &amp;&amp; occNameString (nameOccName n) == &quot;*&quot;</span>
+<span class="lineno">   40 </span><span class="spaces">    </span><span class="istickedoff">= pure AST.UStarKind</span>
+<span class="lineno">   41 </span><span class="spaces">    </span><span class="istickedoff">| <span class="tickonlyfalse">isWiredInName n &amp;&amp; occNameString (nameOccName n) == &quot;#&quot;</span></span>
+<span class="lineno">   42 </span><span class="spaces">    </span><span class="istickedoff">= <span class="nottickedoff">pure AST.UUnboxKind</span></span>
+<span class="lineno">   43 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsParTy kind) = <span class="nottickedoff">AST.UParenKind &lt;$&gt; trfKind kind</span></span>
+<span class="lineno">   44 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsFunTy k1 k2) = AST.UFunKind &lt;$&gt; trfKind k1 &lt;*&gt; trfKind k2</span>
+<span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsAppTy k1 k2) = <span class="nottickedoff">AST.UAppKind &lt;$&gt; trfKind k1 &lt;*&gt; trfKind k2</span></span>
+<span class="lineno">   46 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsOpTy k1 op k2) = <span class="nottickedoff">AST.UInfixAppKind &lt;$&gt; trfKind k1 &lt;*&gt; trfOperator @n op &lt;*&gt; trfKind k2</span></span>
+<span class="lineno">   47 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsTyVar _ kv) = transformingPossibleVar kv (AST.UVarKind &lt;$&gt; trfName @n kv)</span>
+<span class="lineno">   48 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsListTy kind) = <span class="nottickedoff">AST.UListKind &lt;$&gt; trfKind kind</span></span>
+<span class="lineno">   49 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsTupleTy _ kinds) = <span class="nottickedoff">AST.UTupleKind &lt;$&gt; makeList &quot;, &quot; atTheStart (mapM trfKind kinds)</span></span>
+<span class="lineno">   50 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsAppsTy [unLoc -&gt; HsAppPrefix t]) = <span class="nottickedoff">trfKind' (unLoc t)</span></span>
+<span class="lineno">   51 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsAppsTy [unLoc -&gt; HsAppInfix n]) = <span class="nottickedoff">AST.UVarKind &lt;$&gt; trfName @n n</span></span>
+<span class="lineno">   52 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' pt@(HsExplicitListTy {}) = <span class="nottickedoff">AST.UPromotedKind &lt;$&gt; annContNoSema (trfPromoted' trfKind' pt)</span></span>
+<span class="lineno">   53 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' pt@(HsExplicitTupleTy {}) = <span class="nottickedoff">AST.UPromotedKind &lt;$&gt; annContNoSema (trfPromoted' trfKind' pt)</span></span>
+<span class="lineno">   54 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' pt@(HsTyLit {}) = <span class="nottickedoff">AST.UPromotedKind &lt;$&gt; annContNoSema (trfPromoted' trfKind' pt)</span></span>
+<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' t = <span class="nottickedoff">AST.UTypeKind &lt;$&gt; annContNoSema (trfType' t)</span></span></span>
+<span class="lineno">   56 </span>
+<span class="lineno">   57 </span>trfPromoted' :: forall n r a . (TransformName n r, HasNoSemanticInfo (Dom r) a)
+<span class="lineno">   58 </span>                  =&gt; (HsType n -&gt; Trf (a (Dom r) RangeStage)) -&gt; HsType n -&gt; Trf (AST.UPromoted a (Dom r) RangeStage)
+<span class="lineno">   59 </span><span class="decl"><span class="istickedoff">trfPromoted' _ (HsTyLit (HsNumTy _ int)) = <span class="nottickedoff">pure $ AST.UPromotedInt int</span></span>
+<span class="lineno">   60 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ (HsTyLit (HsStrTy _ str)) = <span class="nottickedoff">pure $ AST.UPromotedString (unpackFS str)</span></span>
+<span class="lineno">   61 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ (HsTyVar _ name) = <span class="nottickedoff">AST.UPromotedCon &lt;$&gt; trfName @n name</span></span>
+<span class="lineno">   62 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' f (HsExplicitListTy _ _ elems) = AST.UPromotedList &lt;$&gt; between AnnOpenS AnnCloseS (trfAnnList <span class="nottickedoff">&quot;, &quot;</span> <span class="nottickedoff">f</span> elems)</span>
+<span class="lineno">   63 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' f (HsExplicitTupleTy _ elems) = <span class="nottickedoff">AST.UPromotedTuple &lt;$&gt; between AnnOpenP AnnCloseP (trfAnnList &quot;, &quot; f elems)</span></span>
+<span class="lineno">   64 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ t = <span class="nottickedoff">unhandledElement &quot;promoted type/kind&quot; t</span></span></span>
+
+</pre>
+</body>
+</html>

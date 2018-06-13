@@ -1,0 +1,146 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE DeriveAnyClass #-}
+<span class="lineno">    2 </span>{-# LANGUAGE DeriveFunctor #-}
+<span class="lineno">    3 </span>{-# LANGUAGE DeriveGeneric #-}
+<span class="lineno">    4 </span>{-# LANGUAGE StandaloneDeriving #-}
+<span class="lineno">    5 </span>
+<span class="lineno">    6 </span>module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
+<span class="lineno">    7 </span>  ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
+<span class="lineno">    8 </span>  , module Language.Haskell.TH.LanguageExtensions
+<span class="lineno">    9 </span>  , Formula(..)
+<span class="lineno">   10 </span>  ) where
+<span class="lineno">   11 </span>
+<span class="lineno">   12 </span>import GHC.Generics
+<span class="lineno">   13 </span>import Control.DeepSeq
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>import SrcLoc (SrcSpan)
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>import Data.List
+<span class="lineno">   18 </span>import Data.Monoid hiding (All)
+<span class="lineno">   19 </span>import Data.Function (on)
+<span class="lineno">   20 </span>import qualified Data.Map.Lazy   as LMap
+<span class="lineno">   21 </span>import qualified Data.Map.Strict as SMap (Map)
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>import SAT.MiniSat
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>import Language.Haskell.TH.LanguageExtensions (Extension(..))
+<span class="lineno">   26 </span>import Language.Haskell.Tools.Refactor.Utils.Extensions (expandExtension)
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>{-# ANN module &quot;HLint: ignore Redundant lambda&quot; #-}
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span><span class="decl"><span class="istickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff">deriving instance Ord  Extension</span></span></span></span></span></span></span></span></span></span>
+<span class="lineno">   32 </span><span class="decl"><span class="nottickedoff"><span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">deriving instance Read Extension</span></span></span></span></span></span>
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>instance NFData Extension where
+<span class="lineno">   35 </span>  <span class="decl"><span class="nottickedoff">rnf x = seq x ()</span></span>
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>deriving instance Generic a =&gt; Generic (Formula a)
+<span class="lineno">   38 </span>deriving instance (Generic a, NFData a) =&gt; NFData (Formula a)
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>type LogicalRelation a = Formula a
+<span class="lineno">   41 </span>
+<span class="lineno">   42 </span>prettyPrintFormula :: Show a =&gt; LogicalRelation a -&gt; String
+<span class="lineno">   43 </span><span class="decl"><span class="nottickedoff">prettyPrintFormula (Var x) = show x</span>
+<span class="lineno">   44 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula (x :||: y) = prettyPrintFormula x ++ &quot; OR &quot; ++ prettyPrintFormula y</span>
+<span class="lineno">   45 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula (x :&amp;&amp;: y) = prettyPrintFormula x ++ &quot; AND &quot; ++ prettyPrintFormula y</span>
+<span class="lineno">   46 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula (x :++: y) = prettyPrintFormula x ++ &quot; XOR &quot; ++ prettyPrintFormula y</span>
+<span class="lineno">   47 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula (x :-&gt;: y) = prettyPrintFormula x ++ &quot; =&gt; &quot; ++ prettyPrintFormula y</span>
+<span class="lineno">   48 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula (x :&lt;-&gt;: y) = prettyPrintFormula x ++ &quot; &lt;=&gt; &quot; ++ prettyPrintFormula y</span>
+<span class="lineno">   49 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula (All xs) = &quot;All [&quot; ++ (intercalate &quot;, &quot; . map prettyPrintFormula $ xs) ++ &quot;]&quot;</span>
+<span class="lineno">   50 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula (Some xs) = &quot;Some [&quot; ++ (intercalate &quot;, &quot; . map prettyPrintFormula $ xs) ++ &quot;]&quot;</span>
+<span class="lineno">   51 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula (None xs) = &quot;None [&quot; ++ (intercalate &quot;, &quot; . map prettyPrintFormula $ xs) ++ &quot;]&quot;</span>
+<span class="lineno">   52 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula (ExactlyOne xs) = &quot;ExactlyOne [&quot; ++ (intercalate &quot;, &quot; . map prettyPrintFormula $ xs) ++ &quot;]&quot;</span>
+<span class="lineno">   53 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula (AtMostOne xs) = &quot;AtMostOne [&quot; ++ (intercalate &quot;, &quot; . map prettyPrintFormula $ xs) ++ &quot;]&quot;</span>
+<span class="lineno">   54 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula (Not x) = &quot;Not &quot; ++ prettyPrintFormula x</span>
+<span class="lineno">   55 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula Yes = &quot;True&quot;</span>
+<span class="lineno">   56 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula No = &quot;False&quot;</span>
+<span class="lineno">   57 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula Let{} = &quot;Let ...&quot;</span>
+<span class="lineno">   58 </span><span class="spaces"></span><span class="nottickedoff">prettyPrintFormula Bound{} = error &quot;Bound is for internal use only&quot;</span></span>
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>data Occurence a = Hint               { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">unOcc</span></span></span> :: a }
+<span class="lineno">   61 </span>                 | Evidence           { unOcc :: a }
+<span class="lineno">   62 </span>                 | MissingInformation { unOcc :: a }
+<span class="lineno">   63 </span>  deriving (<span class="decl"><span class="nottickedoff">Show</span></span>, <span class="decl"><span class="istickedoff">Eq</span></span>, <span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Ord</span></span></span></span></span></span></span></span></span></span>, <span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">Functor</span></span></span></span>)
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>type ExtMap = SMap.Map (LogicalRelation Extension) [Occurence SrcSpan]
+<span class="lineno">   66 </span>
+<span class="lineno">   67 </span>lVar :: a -&gt; LogicalRelation a
+<span class="lineno">   68 </span><span class="decl"><span class="istickedoff">lVar = Var</span></span>
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>lNot :: a -&gt; LogicalRelation a
+<span class="lineno">   71 </span><span class="decl"><span class="nottickedoff">lNot = Not . Var</span></span>
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>lAnd :: a -&gt; a -&gt; LogicalRelation a
+<span class="lineno">   74 </span><span class="decl"><span class="nottickedoff">lAnd x y = Var x :&amp;&amp;: Var y</span></span>
+<span class="lineno">   75 </span>
+<span class="lineno">   76 </span>lOr :: a -&gt; a -&gt; LogicalRelation a
+<span class="lineno">   77 </span><span class="decl"><span class="istickedoff">lOr x y = Var x :||: Var y</span></span>
+<span class="lineno">   78 </span>
+<span class="lineno">   79 </span>lImplies :: a -&gt; a -&gt; LogicalRelation a
+<span class="lineno">   80 </span><span class="decl"><span class="nottickedoff">lImplies x y = Var x :-&gt;: Var y</span></span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>lAll :: [LogicalRelation a] -&gt; LogicalRelation a
+<span class="lineno">   83 </span><span class="decl"><span class="nottickedoff">lAll = All</span></span>
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>complexity :: Extension -&gt; Int
+<span class="lineno">   86 </span><span class="decl"><span class="istickedoff">complexity = length . expandExtension'</span></span>
+<span class="lineno">   87 </span>
+<span class="lineno">   88 </span>-- | Completely expand extension
+<span class="lineno">   89 </span>expandExtension' :: Extension -&gt; [Extension]
+<span class="lineno">   90 </span><span class="decl"><span class="istickedoff">expandExtension' e = findFixedPoint (nub . expand) [e]</span>
+<span class="lineno">   91 </span><span class="spaces">  </span><span class="istickedoff">where expand = concatMap expandExtension</span></span>
+<span class="lineno">   92 </span>
+<span class="lineno">   93 </span>-- | Terminating variant of Control.Monad.Fix.fix
+<span class="lineno">   94 </span>-- It tries to find the fixpoint of a function with a given starting value.
+<span class="lineno">   95 </span>-- It terminates if a value repeats itself.
+<span class="lineno">   96 </span>findFixedPoint :: Eq a =&gt; (a -&gt; a) -&gt; a -&gt; a
+<span class="lineno">   97 </span><span class="decl"><span class="istickedoff">findFixedPoint f x = findFix' f (f x) x</span>
+<span class="lineno">   98 </span><span class="spaces">  </span><span class="istickedoff">where findFix' f cur prev = if cur == prev then cur else findFix' <span class="nottickedoff">f</span> (f cur) cur</span></span>
+<span class="lineno">   99 </span>
+<span class="lineno">  100 </span>determineExtensions :: SMap.Map (LogicalRelation Extension) v -&gt; [Extension]
+<span class="lineno">  101 </span>{- NOTE:
+<span class="lineno">  102 </span> We calculate all possible extension sets that satisfy the logical relation,
+<span class="lineno">  103 </span> then for each extension we remove all the extensions implied by it, (mergeImplied)
+<span class="lineno">  104 </span> finally we select the minimal extension set.
+<span class="lineno">  105 </span>
+<span class="lineno">  106 </span> An extension set is minimal if:
+<span class="lineno">  107 </span>  - it contains the least amount of extensions
+<span class="lineno">  108 </span>  - it contains extension with minimal complexity
+<span class="lineno">  109 </span>  - it is lexicographically the first one (based on the Ord instance of Extension)
+<span class="lineno">  110 </span>
+<span class="lineno">  111 </span>  TODO: Comparing on length might be unnecessary
+<span class="lineno">  112 </span>-}
+<span class="lineno">  113 </span><span class="decl"><span class="istickedoff">determineExtensions x = minimal . map toExts $ solution</span>
+<span class="lineno">  114 </span><span class="spaces">  </span><span class="istickedoff">where solution = solve_all . All . LMap.keys $ x</span>
+<span class="lineno">  115 </span><span class="spaces">        </span><span class="istickedoff">toExts   = mergeImplied . map fst . filter snd . LMap.toList</span>
+<span class="lineno">  116 </span><span class="spaces">        </span><span class="istickedoff">minimal  = minimumBy ((compare `on` length) &lt;&gt; (compare `on` (sum . map complexity)) &lt;&gt; <span class="nottickedoff">(compare `on` sort)</span>)</span></span>
+<span class="lineno">  117 </span>
+<span class="lineno">  118 </span>rmImplied :: Extension -&gt; [Extension] -&gt; [Extension]
+<span class="lineno">  119 </span><span class="decl"><span class="istickedoff">rmImplied e = flip (\\) implied</span>
+<span class="lineno">  120 </span><span class="spaces">  </span><span class="istickedoff">where implied = delete e . expandExtension' $ e</span></span>
+<span class="lineno">  121 </span>
+<span class="lineno">  122 </span>mergeImplied :: [Extension] -&gt; [Extension]
+<span class="lineno">  123 </span><span class="decl"><span class="istickedoff">mergeImplied exts = foldl (flip rmImplied) exts exts</span></span>
+
+</pre>
+</body>
+</html>

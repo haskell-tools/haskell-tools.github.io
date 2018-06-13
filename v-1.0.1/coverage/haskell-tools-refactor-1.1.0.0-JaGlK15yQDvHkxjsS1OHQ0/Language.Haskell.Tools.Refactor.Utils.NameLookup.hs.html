@@ -1,0 +1,102 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleInstances #-}
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>module Language.Haskell.Tools.Refactor.Utils.NameLookup where
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>import qualified GHC
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>import Data.Maybe (maybeToList)
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>import Control.Reference ((^.))
+<span class="lineno">   10 </span>
+<span class="lineno">   11 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   12 </span>import Language.Haskell.Tools.Rewrite
+<span class="lineno">   13 </span>import Language.Haskell.Tools.Refactor.Utils.Maybe()
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>
+<span class="lineno">   16 </span>instance HasNameInfo' GHC.Name where
+<span class="lineno">   17 </span>  <span class="decl"><span class="istickedoff">semanticsName = Just &lt;$&gt; id</span></span>
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>instance HasNameInfo' Operator where
+<span class="lineno">   20 </span>  <span class="decl"><span class="istickedoff">semanticsName = opSemName</span></span>
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>instance HasNameInfo' DeclHead where
+<span class="lineno">   23 </span>  <span class="decl"><span class="istickedoff">semanticsName = declHeadSemName</span></span>
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>instance HasNameInfo' InstanceHead where
+<span class="lineno">   26 </span>  <span class="decl"><span class="nottickedoff">semanticsName = instHeadSemName</span></span>
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>opSemName :: Operator -&gt; Maybe GHC.Name
+<span class="lineno">   30 </span><span class="decl"><span class="istickedoff">opSemName = semanticsName . (^. operatorName)</span></span>
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>declHeadQName :: DeclHead -&gt; QualifiedName
+<span class="lineno">   33 </span><span class="decl"><span class="istickedoff">declHeadQName (NameDeclHead n)       = n ^. simpleName</span>
+<span class="lineno">   34 </span><span class="spaces"></span><span class="istickedoff">declHeadQName (ParenDeclHead dh)     = <span class="nottickedoff">declHeadQName dh</span></span>
+<span class="lineno">   35 </span><span class="spaces"></span><span class="istickedoff">declHeadQName (DeclHeadApp dh _)     = declHeadQName dh</span>
+<span class="lineno">   36 </span><span class="spaces"></span><span class="istickedoff">declHeadQName (InfixDeclHead _ op _) = <span class="nottickedoff">op ^. operatorName</span></span></span>
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>declHeadSemName :: DeclHead -&gt; Maybe GHC.Name
+<span class="lineno">   39 </span><span class="decl"><span class="istickedoff">declHeadSemName (NameDeclHead n)       = semanticsName n</span>
+<span class="lineno">   40 </span><span class="spaces"></span><span class="istickedoff">declHeadSemName (ParenDeclHead dh)     = <span class="nottickedoff">declHeadSemName dh</span></span>
+<span class="lineno">   41 </span><span class="spaces"></span><span class="istickedoff">declHeadSemName (DeclHeadApp dh _)     = declHeadSemName dh</span>
+<span class="lineno">   42 </span><span class="spaces"></span><span class="istickedoff">declHeadSemName (InfixDeclHead _ op _) = opSemName op</span></span>
+<span class="lineno">   43 </span>
+<span class="lineno">   44 </span>instHeadSemName :: InstanceHead -&gt; Maybe GHC.Name
+<span class="lineno">   45 </span><span class="decl"><span class="istickedoff">instHeadSemName (InstanceHead n)         = semanticsName n</span>
+<span class="lineno">   46 </span><span class="spaces"></span><span class="istickedoff">instHeadSemName (InfixInstanceHead _ op) = opSemName op</span>
+<span class="lineno">   47 </span><span class="spaces"></span><span class="istickedoff">instHeadSemName (ParenInstanceHead ih)   = instHeadSemName ih</span>
+<span class="lineno">   48 </span><span class="spaces"></span><span class="istickedoff">instHeadSemName (AppInstanceHead ih _)   = instHeadSemName ih</span></span>
+<span class="lineno">   49 </span>
+<span class="lineno">   50 </span>-- | Collects the qualified names of the class heads in an assertion.
+<span class="lineno">   51 </span>assertionQNames :: Assertion -&gt; [QualifiedName]
+<span class="lineno">   52 </span><span class="decl"><span class="istickedoff">assertionQNames (ClassAssert n _)    = [n ^. simpleName]</span>
+<span class="lineno">   53 </span><span class="spaces"></span><span class="istickedoff">assertionQNames (InfixAssert _ op _) = <span class="nottickedoff">[op ^. operatorName]</span></span>
+<span class="lineno">   54 </span><span class="spaces"></span><span class="istickedoff">assertionQNames (ImplicitAssert n _) = <span class="nottickedoff">[n ^. simpleName]</span></span>
+<span class="lineno">   55 </span><span class="spaces"></span><span class="istickedoff">assertionQNames (TupleAssert xs)     = <span class="nottickedoff">concatMap assertionQNames xs</span></span>
+<span class="lineno">   56 </span><span class="spaces"></span><span class="istickedoff">assertionQNames _                    = <span class="nottickedoff">[]</span></span></span>
+<span class="lineno">   57 </span>
+<span class="lineno">   58 </span>-- | Collects the semantic names of the class heads in an assertion.
+<span class="lineno">   59 </span>assertionSemNames :: Assertion -&gt; [GHC.Name]
+<span class="lineno">   60 </span><span class="decl"><span class="nottickedoff">assertionSemNames (ClassAssert n _)    = maybeToList . semanticsName $ n</span>
+<span class="lineno">   61 </span><span class="spaces"></span><span class="nottickedoff">assertionSemNames (InfixAssert _ op _) = maybeToList . opSemName $ op</span>
+<span class="lineno">   62 </span><span class="spaces"></span><span class="nottickedoff">assertionSemNames (ImplicitAssert n _) = maybeToList . semanticsName $ n</span>
+<span class="lineno">   63 </span><span class="spaces"></span><span class="nottickedoff">assertionSemNames (TupleAssert xs)     = concatMap assertionSemNames xs</span>
+<span class="lineno">   64 </span><span class="spaces"></span><span class="nottickedoff">assertionSemNames _ = []</span></span>
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>-- | Extracts the name of a type.
+<span class="lineno">   67 </span>-- In case of a type application, it finds the type being applied.
+<span class="lineno">   68 </span>-- It works only for unambiguous types, so it won't work for tuples.
+<span class="lineno">   69 </span>nameFromType :: Type -&gt; Maybe Name
+<span class="lineno">   70 </span><span class="decl"><span class="istickedoff">nameFromType (TypeApp f _)    = nameFromType f</span>
+<span class="lineno">   71 </span><span class="spaces"></span><span class="istickedoff">nameFromType (ParenType x)    = nameFromType x</span>
+<span class="lineno">   72 </span><span class="spaces"></span><span class="istickedoff">nameFromType (ListType t)     = nameFromType t</span>
+<span class="lineno">   73 </span><span class="spaces"></span><span class="istickedoff">nameFromType (KindedType t _) = nameFromType t</span>
+<span class="lineno">   74 </span><span class="spaces"></span><span class="istickedoff">nameFromType (BangType t)     = <span class="nottickedoff">nameFromType t</span></span>
+<span class="lineno">   75 </span><span class="spaces"></span><span class="istickedoff">nameFromType (LazyType t)     = <span class="nottickedoff">nameFromType t</span></span>
+<span class="lineno">   76 </span><span class="spaces"></span><span class="istickedoff">nameFromType (UnpackType t)   = <span class="nottickedoff">nameFromType t</span></span>
+<span class="lineno">   77 </span><span class="spaces"></span><span class="istickedoff">nameFromType (NoUnpackType t) = <span class="nottickedoff">nameFromType t</span></span>
+<span class="lineno">   78 </span><span class="spaces"></span><span class="istickedoff">nameFromType (VarType x)      = Just x</span>
+<span class="lineno">   79 </span><span class="spaces"></span><span class="istickedoff">nameFromType _                = Nothing</span></span>
+
+</pre>
+</body>
+</html>
