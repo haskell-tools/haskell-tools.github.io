@@ -72,7 +72,7 @@ span.spaces    { background: white }
 <span class="lineno">   53 </span><span class="spaces"></span><span class="istickedoff">nameValid SynonymOperator name | <span class="nottickedoff">all isOperatorChar name</span> = <span class="nottickedoff">Nothing</span></span>
 <span class="lineno">   54 </span><span class="spaces"></span><span class="istickedoff">nameValid SynonymOperator _ = <span class="nottickedoff">Just &quot;An operator must only contain operator characters.&quot;</span></span>
 <span class="lineno">   55 </span><span class="spaces"></span><span class="istickedoff">-- Normal value operators (cannot start with ':')</span>
-<span class="lineno">   56 </span><span class="spaces"></span><span class="istickedoff">nameValid ValueOperator (c : nameRest) | <span class="tickonlyfalse">isOperatorChar c &amp;&amp; c /= ':' &amp;&amp; <span class="nottickedoff">all isOperatorChar nameRest</span></span> = <span class="nottickedoff">Nothing</span></span>
+<span class="lineno">   56 </span><span class="spaces"></span><span class="istickedoff">nameValid ValueOperator (c : nameRest) | isOperatorChar c &amp;&amp; c /= ':' &amp;&amp; all isOperatorChar nameRest = Nothing</span>
 <span class="lineno">   57 </span><span class="spaces"></span><span class="istickedoff">nameValid ValueOperator _ = Just <span class="nottickedoff">&quot;An operator that is a value must only contain operator characters and cannot start with ':'&quot;</span></span>
 <span class="lineno">   58 </span><span class="spaces"></span><span class="istickedoff">-- Data and type constructors (start with uppercase)</span>
 <span class="lineno">   59 </span><span class="spaces"></span><span class="istickedoff">nameValid Ctor (c : nameRest) | isUpper c &amp;&amp; isLetter c &amp;&amp; all isIdChar nameRest = Nothing</span>
@@ -85,7 +85,7 @@ span.spaces    { background: white }
 <span class="lineno">   66 </span><span class="decl"><span class="istickedoff">isIdChar c = isLetter c || isDigit c || c == '\'' || <span class="nottickedoff">c == '_'</span></span></span>
 <span class="lineno">   67 </span>
 <span class="lineno">   68 </span>isOperatorChar :: Char -&gt; Bool
-<span class="lineno">   69 </span><span class="decl"><span class="istickedoff">isOperatorChar c = isPunctuation c || <span class="nottickedoff">isSymbol c</span></span></span>
+<span class="lineno">   69 </span><span class="decl"><span class="istickedoff">isOperatorChar c = isPunctuation c || isSymbol c</span></span>
 
 </pre>
 </body>
