@@ -1,0 +1,94 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE ScopedTypeVariables, TypeApplications #-}
+<span class="lineno">    2 </span>-- | Functions that convert the Template-Haskell-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
+<span class="lineno">    3 </span>module Language.Haskell.Tools.BackendGHC.TH where
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>import Control.Monad.Reader (asks)
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>import ApiAnnotation as GHC (AnnKeywordId(..))
+<span class="lineno">    8 </span>import FastString as GHC (unpackFS)
+<span class="lineno">    9 </span>import HsExpr as GHC (HsSplice(..), HsExpr(..), HsBracket(..))
+<span class="lineno">   10 </span>import SrcLoc as GHC
+<span class="lineno">   11 </span>
+<span class="lineno">   12 </span>import Language.Haskell.Tools.BackendGHC.Decls (trfDecls, trfDeclsGroup)
+<span class="lineno">   13 </span>import Language.Haskell.Tools.BackendGHC.Exprs (trfExpr, createScopeInfo)
+<span class="lineno">   14 </span>import Language.Haskell.Tools.BackendGHC.Monad (TrfInput(..), Trf)
+<span class="lineno">   15 </span>import Language.Haskell.Tools.BackendGHC.Names
+<span class="lineno">   16 </span>import Language.Haskell.Tools.BackendGHC.Patterns (trfPattern)
+<span class="lineno">   17 </span>import Language.Haskell.Tools.BackendGHC.Types (trfType)
+<span class="lineno">   18 </span>import Language.Haskell.Tools.BackendGHC.Utils
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>import Language.Haskell.Tools.AST (Ann, Dom, RangeStage)
+<span class="lineno">   21 </span>import qualified Language.Haskell.Tools.AST as AST
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>trfQuasiQuotation' :: forall n r . TransformName n r =&gt; HsSplice n -&gt; Trf (AST.UQuasiQuote (Dom r) RangeStage)
+<span class="lineno">   24 </span> -- the lexer does not provide us with tokens '[', '|' and '|]'
+<span class="lineno">   25 </span><span class="decl"><span class="nottickedoff">trfQuasiQuotation' (HsQuasiQuote _ id l str)</span>
+<span class="lineno">   26 </span><span class="spaces">  </span><span class="nottickedoff">= AST.UQuasiQuote &lt;$&gt; annLocNoSema quoterLoc (trfName' @n id)</span>
+<span class="lineno">   27 </span><span class="spaces">                    </span><span class="nottickedoff">&lt;*&gt; annLocNoSema (pure strLoc) (pure $ AST.QQString (unpackFS str))</span>
+<span class="lineno">   28 </span><span class="spaces">  </span><span class="nottickedoff">where -- assume that there are no white spaces ain the head and the end of the quasi quote</span>
+<span class="lineno">   29 </span><span class="spaces">        </span><span class="nottickedoff">quoterLoc = do rng &lt;- asks contRange</span>
+<span class="lineno">   30 </span><span class="spaces">                       </span><span class="nottickedoff">return $ mkSrcSpan (updateCol (+1) (srcSpanStart rng)) (updateCol (subtract 1) (srcSpanStart l))</span>
+<span class="lineno">   31 </span><span class="spaces">        </span><span class="nottickedoff">strLoc = mkSrcSpan (srcSpanStart l) (updateCol (subtract 2) (srcSpanEnd l))</span>
+<span class="lineno">   32 </span><span class="spaces"></span><span class="nottickedoff">trfQuasiQuotation' qq = unhandledElement &quot;quasi quotation&quot; qq</span></span>
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>trfSplice :: TransformName n r =&gt; HsSplice n -&gt; Trf (Ann AST.USplice (Dom r) RangeStage)
+<span class="lineno">   35 </span><span class="decl"><span class="istickedoff">trfSplice spls = do rng &lt;- asks <span class="nottickedoff">contRange</span></span>
+<span class="lineno">   36 </span><span class="spaces">                    </span><span class="istickedoff">annLocNoSema (pure $ getSpliceLoc spls `mappend` <span class="nottickedoff">rng</span>) (trfSplice' spls)</span></span>
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>getSpliceLoc :: HsSplice a -&gt; SrcSpan
+<span class="lineno">   39 </span><span class="decl"><span class="istickedoff">getSpliceLoc (HsTypedSplice _ _ e) = <span class="nottickedoff">getLoc e</span></span>
+<span class="lineno">   40 </span><span class="spaces"></span><span class="istickedoff">getSpliceLoc (HsUntypedSplice _ _ e) = getLoc e</span>
+<span class="lineno">   41 </span><span class="spaces"></span><span class="istickedoff">getSpliceLoc (HsQuasiQuote _ _ sp _) = <span class="nottickedoff">sp</span></span>
+<span class="lineno">   42 </span><span class="spaces"></span><span class="istickedoff">getSpliceLoc (HsSpliced _ _) = <span class="nottickedoff">noSrcSpan</span></span></span>
+<span class="lineno">   43 </span>
+<span class="lineno">   44 </span>trfSplice' :: TransformName n r =&gt; HsSplice n -&gt; Trf (AST.USplice (Dom r) RangeStage)
+<span class="lineno">   45 </span><span class="decl"><span class="istickedoff">trfSplice' (HsTypedSplice _ _ expr) = <span class="nottickedoff">trfSpliceExpr expr</span></span>
+<span class="lineno">   46 </span><span class="spaces"></span><span class="istickedoff">trfSplice' (HsUntypedSplice _ _ expr) = trfSpliceExpr expr</span>
+<span class="lineno">   47 </span><span class="spaces"></span><span class="istickedoff">trfSplice' s = <span class="nottickedoff">unhandledElement &quot;splice&quot; s</span></span></span>
+<span class="lineno">   48 </span>
+<span class="lineno">   49 </span>-- | TODO: easier with splice decoration
+<span class="lineno">   50 </span>trfSpliceExpr :: forall n r . TransformName n r =&gt; Located (HsExpr n) -&gt; Trf (AST.USplice (Dom r) RangeStage)
+<span class="lineno">   51 </span><span class="decl"><span class="istickedoff">trfSpliceExpr expr =</span>
+<span class="lineno">   52 </span><span class="spaces">  </span><span class="istickedoff">do hasDollar &lt;- allTokenLoc AnnThIdSplice</span>
+<span class="lineno">   53 </span><span class="spaces">     </span><span class="istickedoff">hasDoubleDollar &lt;- allTokenLoc AnnThIdTySplice</span>
+<span class="lineno">   54 </span><span class="spaces">     </span><span class="istickedoff">let newSp = case (hasDollar, hasDoubleDollar) of</span>
+<span class="lineno">   55 </span><span class="spaces">                   </span><span class="istickedoff">([], []) -&gt; getLoc expr</span>
+<span class="lineno">   56 </span><span class="spaces">                   </span><span class="istickedoff">(_, []) -&gt; updateStart (updateCol (+1)) (getLoc expr)</span>
+<span class="lineno">   57 </span><span class="spaces">                   </span><span class="istickedoff">([], _) -&gt; <span class="nottickedoff">updateStart (updateCol (+2)) (getLoc expr)</span></span>
+<span class="lineno">   58 </span><span class="spaces">     </span><span class="istickedoff">case expr of L _ (HsVar (L _ varName)) -&gt; AST.UIdSplice &lt;$&gt; trfName @n (L newSp varName)</span>
+<span class="lineno">   59 </span><span class="spaces">                  </span><span class="istickedoff">L _ (HsRecFld fldName) -&gt; <span class="nottickedoff">AST.UIdSplice &lt;$&gt; trfAmbiguousFieldName' newSp fldName</span></span>
+<span class="lineno">   60 </span><span class="spaces">                  </span><span class="istickedoff">expr -&gt; AST.UParenSplice &lt;$&gt; trfExpr expr</span></span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>trfBracket' :: forall n r . TransformName n r =&gt; HsBracket n -&gt; Trf (AST.UBracket (Dom r) RangeStage)
+<span class="lineno">   63 </span><span class="decl"><span class="istickedoff">trfBracket' (ExpBr expr) = AST.UExprBracket &lt;$&gt; trfExpr expr</span>
+<span class="lineno">   64 </span><span class="spaces"></span><span class="istickedoff">trfBracket' (TExpBr expr) = <span class="nottickedoff">AST.UExprBracket &lt;$&gt; trfExpr expr</span></span>
+<span class="lineno">   65 </span><span class="spaces"></span><span class="istickedoff">trfBracket' (VarBr isSingle expr)</span>
+<span class="lineno">   66 </span><span class="spaces">  </span><span class="istickedoff">= AST.UExprBracket &lt;$&gt; annLoc createScopeInfo (updateStart (updateCol (if isSingle then (+1) else (+2))) &lt;$&gt; asks contRange)</span>
+<span class="lineno">   67 </span><span class="spaces">      </span><span class="istickedoff">(AST.UVar &lt;$&gt; (annContNoSema (trfName' @n expr)))</span>
+<span class="lineno">   68 </span><span class="spaces"></span><span class="istickedoff">trfBracket' (PatBr pat) = <span class="nottickedoff">AST.UPatternBracket &lt;$&gt; trfPattern pat</span></span>
+<span class="lineno">   69 </span><span class="spaces"></span><span class="istickedoff">trfBracket' (DecBrL decls) = AST.UDeclsBracket &lt;$&gt; trfDecls decls</span>
+<span class="lineno">   70 </span><span class="spaces"></span><span class="istickedoff">trfBracket' (DecBrG decls) = AST.UDeclsBracket &lt;$&gt; trfDeclsGroup decls</span>
+<span class="lineno">   71 </span><span class="spaces"></span><span class="istickedoff">trfBracket' (TypBr typ) = <span class="nottickedoff">AST.UTypeBracket &lt;$&gt; trfType typ</span></span></span>
+
+</pre>
+</body>
+</html>

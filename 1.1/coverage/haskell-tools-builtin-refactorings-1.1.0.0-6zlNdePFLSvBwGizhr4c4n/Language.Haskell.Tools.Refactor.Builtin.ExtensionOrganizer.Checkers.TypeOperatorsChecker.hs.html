@@ -1,0 +1,91 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeOperatorsChecker where
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>import PrelNames (eqTyConName)
+<span class="lineno">    4 </span>import qualified Name    as GHC (nameOccName)
+<span class="lineno">    5 </span>import qualified OccName as GHC (isTcOcc, isSymOcc)
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>import Data.Generics.Uniplate.Data()
+<span class="lineno">    8 </span>import Data.Generics.Uniplate.Operations
+<span class="lineno">    9 </span>
+<span class="lineno">   10 </span>import Language.Haskell.Tools.Refactor
+<span class="lineno">   11 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>-- | Checks a Type whether it contains any DeclHeads that amy need TypeOperators
+<span class="lineno">   14 </span>chkTypeOperatorsType :: CheckNode Type
+<span class="lineno">   15 </span><span class="decl"><span class="istickedoff">chkTypeOperatorsType = conditional chkTypeOperatorsType' TypeOperators</span></span>
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>-- | Checks an Assertion whether it contains any DeclHeads that amy need TypeOperators
+<span class="lineno">   18 </span>chkTypeOperatorsAssertion :: CheckNode Assertion
+<span class="lineno">   19 </span><span class="decl"><span class="istickedoff">chkTypeOperatorsAssertion = conditional chkTypeOperatorsAssertion' TypeOperators</span></span>
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>-- | Checks an InstanceHEad whether it contains any DeclHeads that amy need TypeOperators
+<span class="lineno">   22 </span>chkTypeOperatorsInstHead :: CheckNode InstanceHead
+<span class="lineno">   23 </span><span class="decl"><span class="istickedoff">chkTypeOperatorsInstHead = conditional chkTypeOperatorsInstHead' TypeOperators</span></span>
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>-- | Checks a Decl whether it contains any DeclHeads that amy need TypeOperators
+<span class="lineno">   26 </span>-- We check Decls to avoid getting multiple occurences of the same DeclHead
+<span class="lineno">   27 </span>-- (e.g. we would check it with and without parentheses)
+<span class="lineno">   28 </span>chkTypeOperatorsDecl :: CheckNode Decl
+<span class="lineno">   29 </span><span class="decl"><span class="istickedoff">chkTypeOperatorsDecl = conditional chkTypeOperatorsDecl' TypeOperators</span></span>
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>chkTypeOperatorsType' :: CheckNode Type
+<span class="lineno">   34 </span><span class="decl"><span class="istickedoff">chkTypeOperatorsType' t@(InfixTypeApp _ op _)</span>
+<span class="lineno">   35 </span><span class="spaces">  </span><span class="istickedoff">| Just name &lt;- semanticsName op</span>
+<span class="lineno">   36 </span><span class="spaces">  </span><span class="istickedoff">, name == eqTyConName</span>
+<span class="lineno">   37 </span><span class="spaces">  </span><span class="istickedoff">= return t</span>
+<span class="lineno">   38 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = addEvidence TypeOperators t</span>
+<span class="lineno">   39 </span><span class="spaces"></span><span class="istickedoff">chkTypeOperatorsType' t = return t</span></span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>chkTypeOperatorsAssertion' :: CheckNode Assertion
+<span class="lineno">   42 </span><span class="decl"><span class="istickedoff">chkTypeOperatorsAssertion' a@InfixAssert{} = addEvidence TypeOperators a</span>
+<span class="lineno">   43 </span><span class="spaces"></span><span class="istickedoff">chkTypeOperatorsAssertion' a = return a</span></span>
+<span class="lineno">   44 </span>
+<span class="lineno">   45 </span>chkTypeOperatorsInstHead' :: CheckNode InstanceHead
+<span class="lineno">   46 </span><span class="decl"><span class="istickedoff">chkTypeOperatorsInstHead' ih@InfixInstanceHead{} = addEvidence TypeOperators ih</span>
+<span class="lineno">   47 </span><span class="spaces"></span><span class="istickedoff">chkTypeOperatorsInstHead' ih = return ih</span></span>
+<span class="lineno">   48 </span>
+<span class="lineno">   49 </span>chkTypeOperatorsDecl' :: CheckNode Decl
+<span class="lineno">   50 </span><span class="decl"><span class="istickedoff">chkTypeOperatorsDecl' d = do</span>
+<span class="lineno">   51 </span><span class="spaces">  </span><span class="istickedoff">let dhs = universeBi d :: [DeclHead]</span>
+<span class="lineno">   52 </span><span class="spaces">  </span><span class="istickedoff">anyNeedsTO &lt;- liftM or $ mapM isOperatorM dhs</span>
+<span class="lineno">   53 </span><span class="spaces">  </span><span class="istickedoff">if anyNeedsTO then addEvidence TypeOperators d</span>
+<span class="lineno">   54 </span><span class="spaces">                </span><span class="istickedoff">else return d</span></span>
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>-- OccName: [Type and class operator definitions]
+<span class="lineno">   57 </span>  -- We are not just looking for a *syntactically-infix* declaration,
+<span class="lineno">   58 </span>  -- but one that uses an operator OccName.
+<span class="lineno">   59 </span>isOperatorM :: DeclHead -&gt; ExtMonad Bool
+<span class="lineno">   60 </span><span class="decl"><span class="istickedoff">isOperatorM dh = do</span>
+<span class="lineno">   61 </span><span class="spaces">  </span><span class="istickedoff">let mSemName = declHeadSemName dh</span>
+<span class="lineno">   62 </span><span class="spaces">  </span><span class="istickedoff">case mSemName of</span>
+<span class="lineno">   63 </span><span class="spaces">    </span><span class="istickedoff">Just semName</span>
+<span class="lineno">   64 </span><span class="spaces">      </span><span class="istickedoff">| occ &lt;- GHC.nameOccName semName</span>
+<span class="lineno">   65 </span><span class="spaces">      </span><span class="istickedoff">, GHC.isTcOcc occ &amp;&amp; GHC.isSymOcc occ</span>
+<span class="lineno">   66 </span><span class="spaces">      </span><span class="istickedoff">-&gt; return True</span>
+<span class="lineno">   67 </span><span class="spaces">      </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> -&gt; return False</span>
+<span class="lineno">   68 </span><span class="spaces">    </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">return True</span></span></span>
+
+</pre>
+</body>
+</html>
