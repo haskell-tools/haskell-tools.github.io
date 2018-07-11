@@ -104,7 +104,7 @@
 <a name="line-95"></a>        <span class='hs-comment'>-- * Calls for GHC runtime</span>
 <a name="line-96"></a>        <span class='hs-varid'>recSelError</span><span class='hs-layout'>,</span> <span class='hs-varid'>recConError</span><span class='hs-layout'>,</span> <span class='hs-varid'>irrefutPatError</span><span class='hs-layout'>,</span> <span class='hs-varid'>runtimeError</span><span class='hs-layout'>,</span>
 <a name="line-97"></a>        <span class='hs-varid'>nonExhaustiveGuardsError</span><span class='hs-layout'>,</span> <span class='hs-varid'>patError</span><span class='hs-layout'>,</span> <span class='hs-varid'>noMethodBindingError</span><span class='hs-layout'>,</span>
-<a name="line-98"></a>        <span class='hs-varid'>absentError</span><span class='hs-layout'>,</span> <span class='hs-varid'>typeError</span><span class='hs-layout'>,</span>
+<a name="line-98"></a>        <span class='hs-varid'>absentError</span><span class='hs-layout'>,</span> <span class='hs-varid'>absentSumFieldError</span><span class='hs-layout'>,</span> <span class='hs-varid'>typeError</span><span class='hs-layout'>,</span>
 <a name="line-99"></a>        <span class='hs-varid'>nonTermination</span><span class='hs-layout'>,</span> <span class='hs-varid'>nestedAtomically</span><span class='hs-layout'>,</span>
 <a name="line-100"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-101"></a>
@@ -408,5 +408,9 @@
 <a name="line-399"></a><a name="nestedAtomically"></a><span class='hs-comment'>-- GHC's RTS calls this</span>
 <a name="line-400"></a><span class='hs-definition'>nestedAtomically</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>SomeException</span>
 <a name="line-401"></a><span class='hs-definition'>nestedAtomically</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>toException</span> <span class='hs-conid'>NestedAtomically</span>
+<a name="line-402"></a>
+<a name="line-403"></a><a name="absentSumFieldError"></a><span class='hs-comment'>-- Introduced by unarise for unused unboxed sum fields</span>
+<a name="line-404"></a><span class='hs-definition'>absentSumFieldError</span> <span class='hs-keyglyph'>::</span> <span class='hs-varid'>a</span>
+<a name="line-405"></a><span class='hs-definition'>absentSumFieldError</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>absentError</span> <span class='hs-str'>" in unboxed sum."</span><span class='hs-cpp'>#</span>
 </pre></body>
 </html>

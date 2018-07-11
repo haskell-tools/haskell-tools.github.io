@@ -9999,6 +9999,7 @@ nonExhaustiveGuardsError :: Addr# -> a
 patError :: Addr# -> a
 noMethodBindingError :: Addr# -> a
 absentError :: Addr# -> a
+absentSumFieldError :: a
 typeError :: Addr# -> a
 nonTermination :: SomeException
 nestedAtomically :: SomeException
