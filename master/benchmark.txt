@@ -1,19 +1,47 @@
 
 
-Still running (1 of 20): stack bench haskell-tools-cli
+Still running (1 of 20): stack bench haskell-tools-cliStill running (2 of 20): stack bench haskell-tools-cli
 [32;1mThe command stack bench haskell-tools-cli exited with 0.[0m
 
 [32;1mLog:[0m
 
-haskell-tools-cli-1.0.1.2: benchmarks
+haskell-tools-cli-1.1.0.2: benchmarks
 Running 1 benchmarks...
 Benchmark cli-benchmark: RUNNING...
-[{"dt":{"day":12,"year":2018,"month":6},"bm":{"bmId":"full-1","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 182:8-182:36 parseResult","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 181:1 gDefined","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 47:46-47:64 linesFixed","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 46:1 cppIfDef","OrganizeImports Language.Preprocessor.Cpphs.CppIfdef","Exit"]},"ms":[2.6262079930020263,2.577573886,7353497732,1,null,null,null,null,null,null,null]},{"dt":{"day":12,"year":2018,"month":6},"bm":{"bmId":"full-2","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.MacroPass 96:29-96:47 tokenizeTT","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 90:11-90:67 fun","OrganizeImports Language.Preprocessor.Cpphs.MacroPass","Exit"]},"ms":[0.6597580970010313,0.6396272199999999,1847328130,1,null,null,null,null,null,null,null]},{"dt":{"day":12,"year":2018,"month":6},"bm":{"bmId":"full-3","workingDir":"examples/CppHs","refactors":["ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 182:8-182:36 parseResult","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 181:1 gDefined","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 96:29-96:47 tokenizeTT","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","ExtractBinding Language.Preprocessor.Cpphs.MacroPass 90:11-90:67 fun","ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 47:46-47:64 linesFixed","RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 46:1 cppIfDef","OrganizeImports Language.Preprocessor.Cpphs.CppIfdef","Exit"]},"ms":[0.5708154040003137,0.5507202980000003,1598369230,1,null,null,null,null,null,null,null]},{"dt":{"day":12,"year":2018,"month":6},"bm":{"bmId":"3xGenerateTypeSignature","workingDir":"examples/CppHs","refactors":["GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5","GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5","Exit"]},"ms":[0.5765352929993242,0.5564499889999999,1614289476,1,null,null,null,null,null,null,null]},{"dt":{"day":12,"year":2018,"month":6},"bm":{"bmId":"empty","workingDir":"examples/CppHs","refactors":["Exit"]},"ms":[0.5857224100000167,0.5646359609999996,1640016037,1,null,null,null,null,null,null,null]}]
-Execution times (cycles):
-# full-1: 7 353 497 732
-# full-2: 1 847 328 130
-# full-3: 1 598 369 230
-# 3xGenerateTypeSignature: 1 614 289 476
-# empty: 1 640 016 037
+benchmarking full-1
+time                 998.5 ms   (514.2 ms .. 1.408 s)
+                     0.973 R²   (0.902 R² .. 1.000 R²)
+mean                 1.223 s    (1.092 s .. 1.345 s)
+std dev              142.8 ms   (117.8 ms .. 164.0 ms)
+variance introduced by outliers: 23% (moderately inflated)
+
+benchmarking full-2
+time                 1.110 s    (892.8 ms .. 1.294 s)
+                     0.996 R²   (NaN R² .. 1.000 R²)
+mean                 1.112 s    (1.055 s .. 1.150 s)
+std dev              58.79 ms   (30.44 ms .. 82.56 ms)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking full-3
+time                 1.017 s    (916.8 ms .. 1.150 s)
+                     0.998 R²   (0.994 R² .. 1.000 R²)
+mean                 1.103 s    (1.056 s .. 1.172 s)
+std dev              65.98 ms   (18.08 ms .. 87.41 ms)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking 3xGenerateTypeSignature
+time                 1.057 s    (918.0 ms .. 1.207 s)
+                     0.998 R²   (0.991 R² .. 1.000 R²)
+mean                 1.105 s    (1.065 s .. 1.166 s)
+std dev              58.44 ms   (14.37 ms .. 77.66 ms)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking empty
+time                 1.036 s    (838.8 ms .. 1.190 s)
+                     0.996 R²   (NaN R² .. 1.000 R²)
+mean                 1.071 s    (1.017 s .. 1.136 s)
+std dev              67.62 ms   (28.83 ms .. 93.70 ms)
+variance introduced by outliers: 19% (moderately inflated)
+
 Benchmark cli-benchmark: FINISH
-/home/travis/.travis/job_stages: line 169:  6639 Terminated              travis_jigger $! $timeout $cmd
+/home/travis/.travis/job_stages: line 190: 33885 Terminated              travis_jigger $! $timeout $cmd
