@@ -37,45 +37,53 @@ span.spaces    { background: white }
 <span class="lineno">   18 </span>  = NamingRefactoring { <span class="istickedoff"><span class="decl"><span class="istickedoff">refactoringName</span></span></span> :: String
 <span class="lineno">   19 </span>                      , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">namingRefactoring</span></span></span> :: RealSrcSpan -&gt; String -&gt; Refactoring
 <span class="lineno">   20 </span>                      }
-<span class="lineno">   21 </span>  | SelectionRefactoring { refactoringName :: String
-<span class="lineno">   22 </span>                         , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">selectionRefactoring</span></span></span> :: RealSrcSpan -&gt; Refactoring
-<span class="lineno">   23 </span>                         }
-<span class="lineno">   24 </span>  | ModuleRefactoring { refactoringName :: String
-<span class="lineno">   25 </span>                      , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">moduleRefactoring</span></span></span> :: Refactoring
-<span class="lineno">   26 </span>                      }
-<span class="lineno">   27 </span>  | ProjectRefactoring { refactoringName :: String
-<span class="lineno">   28 </span>                       , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">projectRefactoring</span></span></span> :: ProjectRefactoring
-<span class="lineno">   29 </span>                       }
-<span class="lineno">   30 </span>
-<span class="lineno">   31 </span>-- | Executes a given command (choosen from the set of available refactorings) on the selected
-<span class="lineno">   32 </span>-- module and given other modules.
-<span class="lineno">   33 </span>performCommand :: [RefactoringChoice] -- ^ The set of available refactorings
-<span class="lineno">   34 </span>                    -&gt; [String] -- ^ The refactoring command
-<span class="lineno">   35 </span>                    -&gt; Either FilePath ModuleDom -- ^ The module in which the refactoring is performed
-<span class="lineno">   36 </span>                    -&gt; [ModuleDom] -- ^ Other modules
-<span class="lineno">   37 </span>                    -&gt; Ghc (Either String [RefactorChange])
-<span class="lineno">   38 </span><span class="decl"><span class="istickedoff">performCommand refactorings (name:args) mod mods =</span>
-<span class="lineno">   39 </span><span class="spaces">    </span><span class="istickedoff">case (refactoring, mod, args) of</span>
-<span class="lineno">   40 </span><span class="spaces">      </span><span class="istickedoff">(Just (NamingRefactoring _ trf), Right mod, (sp:newName:_))</span>
-<span class="lineno">   41 </span><span class="spaces">        </span><span class="istickedoff">-&gt; runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) newName mod mods</span>
-<span class="lineno">   42 </span><span class="spaces">      </span><span class="istickedoff">(Just (NamingRefactoring _ _), Right _, _)</span>
-<span class="lineno">   43 </span><span class="spaces">        </span><span class="istickedoff">-&gt; <span class="nottickedoff">return $ Left $ &quot;The refactoring '&quot; ++ name</span></span>
-<span class="lineno">   44 </span><span class="spaces">                             </span><span class="istickedoff"><span class="nottickedoff">++ &quot;' needs two argument: a source range and a name&quot;</span></span>
-<span class="lineno">   45 </span><span class="spaces">      </span><span class="istickedoff">(Just (SelectionRefactoring _ trf), Right mod, (sp:_))</span>
-<span class="lineno">   46 </span><span class="spaces">        </span><span class="istickedoff">-&gt; runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) mod mods</span>
-<span class="lineno">   47 </span><span class="spaces">      </span><span class="istickedoff">(Just (SelectionRefactoring _ _), Right _, _)</span>
-<span class="lineno">   48 </span><span class="spaces">        </span><span class="istickedoff">-&gt; <span class="nottickedoff">return $ Left $ &quot;The refactoring '&quot; ++ name ++ &quot;' needs one argument: a source range&quot;</span></span>
-<span class="lineno">   49 </span><span class="spaces">      </span><span class="istickedoff">(Just (ModuleRefactoring _ trf), Right mod, _) -&gt; runExceptT $ trf mod <span class="nottickedoff">mods</span></span>
-<span class="lineno">   50 </span><span class="spaces">      </span><span class="istickedoff">(Just (ProjectRefactoring _ trf), _, _) -&gt; <span class="nottickedoff">runExceptT $ trf mods</span></span>
-<span class="lineno">   51 </span><span class="spaces">      </span><span class="istickedoff">(Just _, Left modPath, _)</span>
-<span class="lineno">   52 </span><span class="spaces">        </span><span class="istickedoff">-&gt; return $ Left $ &quot;The following file is not loaded to Haskell-tools: &quot; ++ modPath</span>
-<span class="lineno">   53 </span><span class="spaces">                             </span><span class="istickedoff">++ &quot;. Please add the containing package.&quot;</span>
-<span class="lineno">   54 </span><span class="spaces">      </span><span class="istickedoff">(Nothing, _, _) -&gt; <span class="nottickedoff">return $ Left $ &quot;Unknown command: &quot; ++ name</span></span>
-<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">where refactoring = find ((== name) . refactoringName) refactorings</span></span>
-<span class="lineno">   56 </span>
-<span class="lineno">   57 </span>-- | Gets the name of possible refactorings.
-<span class="lineno">   58 </span>refactorCommands :: [RefactoringChoice] -&gt; [String]
-<span class="lineno">   59 </span><span class="decl"><span class="istickedoff">refactorCommands = map refactoringName</span></span>
+<span class="lineno">   21 </span>  | NamingRefactoringIndent { refactoringName :: String
+<span class="lineno">   22 </span>                             , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">namingRefactoringIndent</span></span></span> :: RealSrcSpan -&gt; String -&gt; Maybe String -&gt; Refactoring
+<span class="lineno">   23 </span>                             }
+<span class="lineno">   24 </span>  | SelectionRefactoring { refactoringName :: String
+<span class="lineno">   25 </span>                         , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">selectionRefactoring</span></span></span> :: RealSrcSpan -&gt; Refactoring
+<span class="lineno">   26 </span>                         }
+<span class="lineno">   27 </span>  | ModuleRefactoring { refactoringName :: String
+<span class="lineno">   28 </span>                      , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">moduleRefactoring</span></span></span> :: Refactoring
+<span class="lineno">   29 </span>                      }
+<span class="lineno">   30 </span>  | ProjectRefactoring { refactoringName :: String
+<span class="lineno">   31 </span>                       , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">projectRefactoring</span></span></span> :: ProjectRefactoring
+<span class="lineno">   32 </span>                       }
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>-- | Executes a given command (choosen from the set of available refactorings) on the selected
+<span class="lineno">   35 </span>-- module and given other modules.
+<span class="lineno">   36 </span>performCommand :: [RefactoringChoice] -- ^ The set of available refactorings
+<span class="lineno">   37 </span>                    -&gt; [String] -- ^ The refactoring command
+<span class="lineno">   38 </span>                    -&gt; Either FilePath ModuleDom -- ^ The module in which the refactoring is performed
+<span class="lineno">   39 </span>                    -&gt; [ModuleDom] -- ^ Other modules
+<span class="lineno">   40 </span>                    -&gt; Ghc (Either String [RefactorChange])
+<span class="lineno">   41 </span><span class="decl"><span class="istickedoff">performCommand refactorings (name:args) mod mods =</span>
+<span class="lineno">   42 </span><span class="spaces">    </span><span class="istickedoff">case (refactoring, mod, args) of</span>
+<span class="lineno">   43 </span><span class="spaces">      </span><span class="istickedoff">(Just (NamingRefactoring _ trf), Right mod, sp:newName:_)</span>
+<span class="lineno">   44 </span><span class="spaces">        </span><span class="istickedoff">-&gt; runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) newName mod mods</span>
+<span class="lineno">   45 </span><span class="spaces">      </span><span class="istickedoff">(Just (NamingRefactoring _ _), Right _, _)</span>
+<span class="lineno">   46 </span><span class="spaces">        </span><span class="istickedoff">-&gt; <span class="nottickedoff">return $ Left $ &quot;The refactoring '&quot; ++ name ++ &quot;' needs two arguments: a source range and a name&quot;</span></span>
+<span class="lineno">   47 </span><span class="spaces">      </span><span class="istickedoff">(Just (NamingRefactoringIndent _ trf), Right mod, sp:newName:indent:_)</span>
+<span class="lineno">   48 </span><span class="spaces">        </span><span class="istickedoff">-&gt; runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) newName (Just indent) mod <span class="nottickedoff">mods</span></span>
+<span class="lineno">   49 </span><span class="spaces">      </span><span class="istickedoff">(Just (NamingRefactoringIndent _ trf), Right mod, sp:newName:_)</span>
+<span class="lineno">   50 </span><span class="spaces">        </span><span class="istickedoff">-&gt; runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) newName Nothing mod <span class="nottickedoff">mods</span></span>
+<span class="lineno">   51 </span><span class="spaces">      </span><span class="istickedoff">(Just (NamingRefactoringIndent _ _), Right _, _)</span>
+<span class="lineno">   52 </span><span class="spaces">        </span><span class="istickedoff">-&gt; <span class="nottickedoff">return $ Left $ &quot;The refactoring '&quot; ++ name ++ &quot;' needs two or three arguments: a source range and a name, and optionally an indentation&quot;</span></span>
+<span class="lineno">   53 </span><span class="spaces">      </span><span class="istickedoff">(Just (SelectionRefactoring _ trf), Right mod, sp:_)</span>
+<span class="lineno">   54 </span><span class="spaces">        </span><span class="istickedoff">-&gt; runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) mod mods</span>
+<span class="lineno">   55 </span><span class="spaces">      </span><span class="istickedoff">(Just (SelectionRefactoring _ _), Right _, _)</span>
+<span class="lineno">   56 </span><span class="spaces">        </span><span class="istickedoff">-&gt; <span class="nottickedoff">return $ Left $ &quot;The refactoring '&quot; ++ name ++ &quot;' needs one argument: a source range&quot;</span></span>
+<span class="lineno">   57 </span><span class="spaces">      </span><span class="istickedoff">(Just (ModuleRefactoring _ trf), Right mod, _) -&gt; runExceptT $ trf mod <span class="nottickedoff">mods</span></span>
+<span class="lineno">   58 </span><span class="spaces">      </span><span class="istickedoff">(Just (ProjectRefactoring _ trf), _, _) -&gt; <span class="nottickedoff">runExceptT $ trf mods</span></span>
+<span class="lineno">   59 </span><span class="spaces">      </span><span class="istickedoff">(Just _, Left modPath, _)</span>
+<span class="lineno">   60 </span><span class="spaces">        </span><span class="istickedoff">-&gt; return $ Left $ &quot;The following file is not loaded to Haskell-tools: &quot; ++ modPath</span>
+<span class="lineno">   61 </span><span class="spaces">                             </span><span class="istickedoff">++ &quot;. Please add the containing package.&quot;</span>
+<span class="lineno">   62 </span><span class="spaces">      </span><span class="istickedoff">(Nothing, _, _) -&gt; <span class="nottickedoff">return $ Left $ &quot;Unknown command: &quot; ++ name</span></span>
+<span class="lineno">   63 </span><span class="spaces">  </span><span class="istickedoff">where refactoring = find ((== name) . refactoringName) refactorings</span></span>
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>-- | Gets the name of possible refactorings.
+<span class="lineno">   66 </span>refactorCommands :: [RefactoringChoice] -&gt; [String]
+<span class="lineno">   67 </span><span class="decl"><span class="istickedoff">refactorCommands = map refactoringName</span></span>
 
 </pre>
 </body>

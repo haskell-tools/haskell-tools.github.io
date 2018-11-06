@@ -26,7 +26,7 @@ span.spaces    { background: white }
 <span class="lineno">    7 </span>{-# LANGUAGE ViewPatterns #-}
 <span class="lineno">    8 </span>
 <span class="lineno">    9 </span>module Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
-<span class="lineno">   10 </span>  (extractBinding', tryItOut, extractBindingRefactoring) where
+<span class="lineno">   10 </span>  (extractBinding', extractBindingRefactoring) where
 <span class="lineno">   11 </span>
 <span class="lineno">   12 </span>import qualified GHC
 <span class="lineno">   13 </span>import Name (nameModule_maybe)
@@ -46,23 +46,23 @@ span.spaces    { background: white }
 <span class="lineno">   27 </span>
 <span class="lineno">   28 </span>
 <span class="lineno">   29 </span>extractBindingRefactoring :: RefactoringChoice
-<span class="lineno">   30 </span><span class="decl"><span class="istickedoff">extractBindingRefactoring = NamingRefactoring &quot;ExtractBinding&quot; (\loc s -&gt; localRefactoring (extractBinding' loc s))</span></span>
+<span class="lineno">   30 </span><span class="decl"><span class="istickedoff">extractBindingRefactoring = NamingRefactoringIndent &quot;ExtractBinding&quot; (\loc s i -&gt; localRefactoring (extractBinding' s i loc ))</span></span>
 <span class="lineno">   31 </span>
-<span class="lineno">   32 </span>tryItOut :: String -&gt; String -&gt; String -&gt; IO ()
-<span class="lineno">   33 </span><span class="decl"><span class="nottickedoff">tryItOut mod sp name = tryRefactor (localRefactoring . flip extractBinding' name) mod sp</span></span>
+<span class="lineno">   32 </span>tryItOut :: String -&gt; String -&gt; Maybe String -&gt; String -&gt; IO ()
+<span class="lineno">   33 </span><span class="decl"><span class="nottickedoff">tryItOut mod sp indent name = tryRefactor (localRefactoring . extractBinding' name indent) sp mod</span></span>
 <span class="lineno">   34 </span>
-<span class="lineno">   35 </span>extractBinding' :: RealSrcSpan -&gt; String -&gt; LocalRefactoring
-<span class="lineno">   36 </span><span class="decl"><span class="istickedoff">extractBinding' sp name mod</span>
+<span class="lineno">   35 </span>extractBinding' :: String -&gt; Maybe String -&gt; RealSrcSpan -&gt; LocalRefactoring
+<span class="lineno">   36 </span><span class="decl"><span class="istickedoff">extractBinding' name indent sp mod</span>
 <span class="lineno">   37 </span><span class="spaces">  </span><span class="istickedoff">= if <span class="tickonlytrue">isNothing (isValidBindingName name)</span></span>
-<span class="lineno">   38 </span><span class="spaces">      </span><span class="istickedoff">then extractBinding sp (nodesContaining sp) (nodesContaining sp) name mod</span>
+<span class="lineno">   38 </span><span class="spaces">      </span><span class="istickedoff">then extractBinding sp (read $ fromMaybe &quot;4&quot; indent) (nodesContaining sp) (nodesContaining sp) name mod</span>
 <span class="lineno">   39 </span><span class="spaces">      </span><span class="istickedoff">else <span class="nottickedoff">refactError $ &quot;The given name is not a valid for the extracted binding: &quot; ++ fromJust (isValidBindingName name)</span></span></span>
 <span class="lineno">   40 </span>
 <span class="lineno">   41 </span>-- | Safely performs the transformation to introduce the local binding and replace the expression with the call.
 <span class="lineno">   42 </span>-- Checks if the introduction of the name causes a name conflict.
-<span class="lineno">   43 </span>extractBinding :: RealSrcSpan -&gt; Simple Traversal Module ValueBind
+<span class="lineno">   43 </span>extractBinding :: RealSrcSpan -&gt; Int -&gt; Simple Traversal Module ValueBind
 <span class="lineno">   44 </span>                   -&gt; Simple Traversal ValueBind Expr
 <span class="lineno">   45 </span>                   -&gt; String -&gt; LocalRefactoring
-<span class="lineno">   46 </span><span class="decl"><span class="istickedoff">extractBinding sp selectDecl selectExpr name mod</span>
+<span class="lineno">   46 </span><span class="decl"><span class="istickedoff">extractBinding sp indent selectDecl selectExpr name mod</span>
 <span class="lineno">   47 </span><span class="spaces">  </span><span class="istickedoff">= let conflicting = filter (isConflicting name) ((take 1 $ reverse $ mod ^? selectDecl) ^? biplateRef :: [QualifiedName])</span>
 <span class="lineno">   48 </span><span class="spaces">        </span><span class="istickedoff">exprRanges = map getRange (mod ^? selectDecl &amp; selectExpr)</span>
 <span class="lineno">   49 </span><span class="spaces">        </span><span class="istickedoff">decl = last (mod ^? selectDecl)</span>
@@ -77,7 +77,7 @@ span.spaces    { background: white }
 <span class="lineno">   58 </span><span class="spaces">               </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span></span>
 <span class="lineno">   59 </span><span class="spaces">               </span><span class="istickedoff">-&gt; case decl ^? actualContainingExpr exprRange of</span>
 <span class="lineno">   60 </span><span class="spaces">                    </span><span class="istickedoff">expr:_ -&gt; do (res, st) &lt;- runStateT (selectDecl&amp;selectExpr !~ extractThatBind sp name expr $ mod) Nothing</span>
-<span class="lineno">   61 </span><span class="spaces">                                 </span><span class="istickedoff">case st of Just def -&gt; return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False</span>
+<span class="lineno">   61 </span><span class="spaces">                                 </span><span class="istickedoff">case st of Just def -&gt; return $ evalState (selectDecl !~ addLocalBinding exprRange indent def $ res) False</span>
 <span class="lineno">   62 </span><span class="spaces">                                            </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">refactError &quot;There is no applicable expression to extract.&quot;</span></span>
 <span class="lineno">   63 </span><span class="spaces">                    </span><span class="istickedoff">[] -&gt; <span class="nottickedoff">refactError $ &quot;There is no applicable expression to extract.&quot;</span></span>
 <span class="lineno">   64 </span><span class="spaces">          </span><span class="istickedoff">[] -&gt; <span class="nottickedoff">refactError &quot;There is no applicable expression to extract.&quot;</span></span>
@@ -147,9 +147,9 @@ span.spaces    { background: white }
 <span class="lineno">  128 </span><span class="spaces">          </span><span class="istickedoff">where ops = [plus_RDR, times_RDR, append_RDR, and_RDR, {- or_RDR, -} compose_RDR]</span></span> -- somehow or is missing... WHY?
 <span class="lineno">  129 </span>
 <span class="lineno">  130 </span>-- | Adds a local binding to the where clause of the enclosing binding
-<span class="lineno">  131 </span>addLocalBinding :: SrcSpan -&gt; ValueBind -&gt; ValueBind -&gt; State Bool ValueBind
+<span class="lineno">  131 </span>addLocalBinding :: SrcSpan -&gt; Int -&gt; ValueBind -&gt; ValueBind -&gt; State Bool ValueBind
 <span class="lineno">  132 </span>-- this uses the state monad to only add the local binding to the first selected element
-<span class="lineno">  133 </span><span class="decl"><span class="istickedoff">addLocalBinding exprRange local bind</span>
+<span class="lineno">  133 </span><span class="decl"><span class="istickedoff">addLocalBinding exprRange indent local bind</span>
 <span class="lineno">  134 </span><span class="spaces">  </span><span class="istickedoff">= do done &lt;- get</span>
 <span class="lineno">  135 </span><span class="spaces">       </span><span class="istickedoff">if not done then do put True</span>
 <span class="lineno">  136 </span><span class="spaces">                           </span><span class="istickedoff">return $ indentBody $ doAddBinding exprRange local bind</span>
@@ -164,7 +164,7 @@ span.spaces    { background: white }
 <span class="lineno">  145 </span><span class="spaces">    </span><span class="istickedoff">indentBody = (valBindRhs .- updIndent) . (funBindMatches &amp; annList &amp; matchLhs .- updIndent) . (funBindMatches &amp; annList &amp; matchRhs .- updIndent)</span>
 <span class="lineno">  146 </span><span class="spaces"></span><span class="istickedoff"></span>
 <span class="lineno">  147 </span><span class="spaces">    </span><span class="istickedoff">updIndent :: SourceInfoTraversal elem =&gt; elem dom SrcTemplateStage -&gt; elem dom SrcTemplateStage</span>
-<span class="lineno">  148 </span><span class="spaces">    </span><span class="istickedoff">updIndent = setMinimalIndent 4</span></span>
+<span class="lineno">  148 </span><span class="spaces">    </span><span class="istickedoff">updIndent = setMinimalIndent indent</span></span>
 <span class="lineno">  149 </span>
 <span class="lineno">  150 </span>-- | Puts a value definition into a list of local binds
 <span class="lineno">  151 </span>insertLocalBind :: ValueBind -&gt; MaybeLocalBinds -&gt; MaybeLocalBinds
@@ -231,7 +231,7 @@ span.spaces    { background: white }
 <span class="lineno">  212 </span><span class="spaces">  </span><span class="istickedoff">where accessRhs :: Simple Traversal ValueBind Rhs</span>
 <span class="lineno">  213 </span><span class="spaces">        </span><span class="istickedoff">accessRhs = valBindRhs &amp;+&amp; funBindMatches &amp; annList &amp; filtered (rng `isInside`) &amp; matchRhs</span>
 <span class="lineno">  214 </span><span class="spaces">        </span><span class="istickedoff">accessExpr :: Simple Traversal Rhs Expr</span>
-<span class="lineno">  215 </span><span class="spaces">        </span><span class="istickedoff">accessExpr = rhsExpr &amp;+&amp; <span class="nottickedoff">rhsGuards &amp; annList &amp; filtered (rng `isInside`) &amp; guardExpr</span></span>
+<span class="lineno">  215 </span><span class="spaces">        </span><span class="istickedoff">accessExpr = rhsExpr &amp;+&amp; rhsGuards &amp; annList &amp; filtered (rng `isInside`) &amp; guardExpr</span>
 <span class="lineno">  216 </span><span class="spaces"></span><span class="istickedoff">actualContainingExpr _ = <span class="nottickedoff">error &quot;actualContainingExpr: not a real range&quot;</span></span></span>
 <span class="lineno">  217 </span>
 <span class="lineno">  218 </span>-- | Generates the expression that calls the local binding

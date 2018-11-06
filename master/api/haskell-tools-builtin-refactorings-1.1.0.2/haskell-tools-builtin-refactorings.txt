@@ -557,8 +557,7 @@ module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
 traverseModule :: CheckNode Module
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
-extractBinding' :: RealSrcSpan -> String -> LocalRefactoring
-tryItOut :: String -> String -> String -> IO ()
+extractBinding' :: String -> Maybe String -> RealSrcSpan -> LocalRefactoring
 extractBindingRefactoring :: RefactoringChoice
 
 module Language.Haskell.Tools.Refactor.Builtin.FloatOut

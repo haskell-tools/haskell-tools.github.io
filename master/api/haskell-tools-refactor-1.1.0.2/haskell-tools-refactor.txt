@@ -580,6 +580,9 @@ data RefactoringChoice
 NamingRefactoring :: String -> RealSrcSpan -> String -> Refactoring -> RefactoringChoice
 [refactoringName] :: RefactoringChoice -> String
 [namingRefactoring] :: RefactoringChoice -> RealSrcSpan -> String -> Refactoring
+NamingRefactoringIndent :: String -> RealSrcSpan -> String -> Maybe String -> Refactoring -> RefactoringChoice
+[refactoringName] :: RefactoringChoice -> String
+[namingRefactoringIndent] :: RefactoringChoice -> RealSrcSpan -> String -> Maybe String -> Refactoring
 SelectionRefactoring :: String -> RealSrcSpan -> Refactoring -> RefactoringChoice
 [refactoringName] :: RefactoringChoice -> String
 [selectionRefactoring] :: RefactoringChoice -> RealSrcSpan -> Refactoring
@@ -4264,6 +4267,9 @@ data RefactoringChoice
 NamingRefactoring :: String -> RealSrcSpan -> String -> Refactoring -> RefactoringChoice
 [refactoringName] :: RefactoringChoice -> String
 [namingRefactoring] :: RefactoringChoice -> RealSrcSpan -> String -> Refactoring
+NamingRefactoringIndent :: String -> RealSrcSpan -> String -> Maybe String -> Refactoring -> RefactoringChoice
+[refactoringName] :: RefactoringChoice -> String
+[namingRefactoringIndent] :: RefactoringChoice -> RealSrcSpan -> String -> Maybe String -> Refactoring
 SelectionRefactoring :: String -> RealSrcSpan -> Refactoring -> RefactoringChoice
 [refactoringName] :: RefactoringChoice -> String
 [selectionRefactoring] :: RefactoringChoice -> RealSrcSpan -> Refactoring
