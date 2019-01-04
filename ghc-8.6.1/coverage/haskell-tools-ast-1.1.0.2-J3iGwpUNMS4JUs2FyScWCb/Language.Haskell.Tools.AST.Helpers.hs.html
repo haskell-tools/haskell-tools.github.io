@@ -1,0 +1,161 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts #-}
+<span class="lineno">    2 </span>{-# LANGUAGE MonoLocalBinds #-}
+<span class="lineno">    3 </span>{-# LANGUAGE PatternSynonyms #-}
+<span class="lineno">    4 </span>{-# LANGUAGE RankNTypes #-}
+<span class="lineno">    5 </span>{-# LANGUAGE ScopedTypeVariables #-}
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>-- | Helper functions for using the AST.
+<span class="lineno">    9 </span>module Language.Haskell.Tools.AST.Helpers where
+<span class="lineno">   10 </span>
+<span class="lineno">   11 </span>import qualified Name as GHC (Name)
+<span class="lineno">   12 </span>import SrcLoc
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>import Control.Reference
+<span class="lineno">   15 </span>import Data.Function (($), (.), on)
+<span class="lineno">   16 </span>import Data.Generics.Uniplate.Operations (Biplate(..))
+<span class="lineno">   17 </span>import Data.List (elem, any, minimumBy)
+<span class="lineno">   18 </span>import Data.Maybe (Maybe(..), isJust)
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>import Language.Haskell.Tools.AST.Ann
+<span class="lineno">   21 </span>import Language.Haskell.Tools.AST.References
+<span class="lineno">   22 </span>import Language.Haskell.Tools.AST.Representation.Binds (ULocalBind, UValueBind)
+<span class="lineno">   23 </span>import Language.Haskell.Tools.AST.Representation.Decls (UDeclHead, UDecl)
+<span class="lineno">   24 </span>import Language.Haskell.Tools.AST.Representation.Modules (UImportDecl)
+<span class="lineno">   25 </span>import Language.Haskell.Tools.AST.Representation.Names (UQualifiedName)
+<span class="lineno">   26 </span>import Language.Haskell.Tools.AST.Representation.Patterns (UPattern)
+<span class="lineno">   27 </span>import Language.Haskell.Tools.AST.Representation.Types (UType(..))
+<span class="lineno">   28 </span>import Language.Haskell.Tools.AST.SemaInfoTypes (Scope)
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>-- | Does the import declaration import only the explicitly listed elements?
+<span class="lineno">   31 </span>importIsExact :: Ann UImportDecl dom stage -&gt; Bool
+<span class="lineno">   32 </span><span class="decl"><span class="istickedoff">importIsExact = isJust . (^? importSpec&amp;annJust&amp;importSpecList)</span></span>
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>-- | Does the import declaration import all elements that are not excluded explicitly?
+<span class="lineno">   35 </span>importIsHiding :: Ann UImportDecl dom stage -&gt; Bool
+<span class="lineno">   36 </span><span class="decl"><span class="istickedoff">importIsHiding = isJust . (^? importSpec&amp;annJust&amp;importSpecHiding)</span></span>
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>-- | Accesses the name of a function or value binding
+<span class="lineno">   39 </span>bindingName :: Simple Traversal (Ann UValueBind dom stage) (Ann UQualifiedName dom stage)
+<span class="lineno">   40 </span><span class="decl"><span class="istickedoff">bindingName = (valBindPat&amp;patternName&amp;simpleName</span>
+<span class="lineno">   41 </span><span class="spaces">                        </span><span class="istickedoff">&amp;+&amp; funBindMatches&amp;annList&amp;matchLhs</span>
+<span class="lineno">   42 </span><span class="spaces">                              </span><span class="istickedoff">&amp;(matchLhsName&amp;simpleName &amp;+&amp; matchLhsOperator&amp;operatorName))</span></span>
+<span class="lineno">   43 </span>
+<span class="lineno">   44 </span>-- | Accesses that name of a declaration through the declaration head.
+<span class="lineno">   45 </span>declHeadNames :: Simple Traversal (Ann UDeclHead dom stage) (Ann UQualifiedName dom stage)
+<span class="lineno">   46 </span><span class="decl"><span class="istickedoff">declHeadNames = (dhName&amp;simpleName &amp;+&amp; dhBody&amp;<span class="nottickedoff">declHeadNames</span> &amp;+&amp; dhAppFun&amp;declHeadNames &amp;+&amp; dhOperator&amp;operatorName)</span></span>
+<span class="lineno">   47 </span>
+<span class="lineno">   48 </span>-- | A reference to access type arguments to a type constructor call that may be universally qualified
+<span class="lineno">   49 </span>-- or parenthesized.
+<span class="lineno">   50 </span>typeParams :: Simple Traversal (Ann UType dom stage) (Ann UType dom stage)
+<span class="lineno">   51 </span><span class="decl"><span class="istickedoff">typeParams = fromTraversal typeParamsTrav</span>
+<span class="lineno">   52 </span><span class="spaces">  </span><span class="istickedoff">where typeParamsTrav f (Ann a (UTyFun p r)) = Ann a &lt;$&gt; (UTyFun &lt;$&gt; f p &lt;*&gt; typeParamsTrav f r)</span>
+<span class="lineno">   53 </span><span class="spaces">        </span><span class="istickedoff">typeParamsTrav f (Ann a (UTyForall vs t)) = Ann a &lt;$&gt; (UTyForall vs &lt;$&gt; typeParamsTrav f t)</span>
+<span class="lineno">   54 </span><span class="spaces">        </span><span class="istickedoff">typeParamsTrav f (Ann a (UTyCtx ctx t)) = Ann a &lt;$&gt; (UTyCtx ctx &lt;$&gt; typeParamsTrav f t)</span>
+<span class="lineno">   55 </span><span class="spaces">        </span><span class="istickedoff">typeParamsTrav f (Ann a (UTyParen t)) = <span class="nottickedoff">Ann a &lt;$&gt; (UTyParen &lt;$&gt; typeParamsTrav f t)</span></span>
+<span class="lineno">   56 </span><span class="spaces">        </span><span class="istickedoff">typeParamsTrav f t = f t</span></span>
+<span class="lineno">   57 </span>
+<span class="lineno">   58 </span>valBindPats :: Simple Traversal (Ann UValueBind dom stage) (Ann UPattern dom stage)
+<span class="lineno">   59 </span><span class="decl"><span class="istickedoff">valBindPats = valBindPat &amp;+&amp; funBindMatches &amp; annList &amp; matchLhs &amp; (matchLhsArgs &amp; annList &amp;+&amp; <span class="nottickedoff">matchLhsLhs</span> &amp;+&amp; <span class="nottickedoff">matchLhsRhs</span>)</span></span>
+<span class="lineno">   60 </span>
+<span class="lineno">   61 </span>-- | Access the semantic information of an AST node.
+<span class="lineno">   62 </span>semantics :: Simple Lens (Ann elem dom stage) (SemanticInfo dom elem)
+<span class="lineno">   63 </span><span class="decl"><span class="istickedoff">semantics = annotation&amp;semanticInfo</span></span>
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>-- | Get all nodes that contain a given source range
+<span class="lineno">   66 </span>nodesContaining :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage))
+<span class="lineno">   67 </span>                =&gt; RealSrcSpan -&gt; Simple Traversal (node dom stage) (inner dom stage)
+<span class="lineno">   68 </span><span class="decl"><span class="istickedoff">nodesContaining rng = biplateRef &amp; filtered (isInside rng)</span></span>
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>-- | Return true if the node contains a given range
+<span class="lineno">   71 </span>isInside :: HasRange (inner dom stage) =&gt; RealSrcSpan -&gt; inner dom stage -&gt; Bool
+<span class="lineno">   72 </span><span class="decl"><span class="istickedoff">isInside rng nd = case getRange nd of RealSrcSpan sp -&gt; sp `containsSpan` rng</span>
+<span class="lineno">   73 </span><span class="spaces">                                      </span><span class="istickedoff">_              -&gt; False</span></span>
+<span class="lineno">   74 </span>
+<span class="lineno">   75 </span>-- | Get all nodes that are contained in a given source range
+<span class="lineno">   76 </span>nodesContained :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage))
+<span class="lineno">   77 </span>                    =&gt; RealSrcSpan -&gt; Simple Traversal (node dom stage) (inner dom stage)
+<span class="lineno">   78 </span><span class="decl"><span class="istickedoff">nodesContained rng = biplateRef &amp; filtered (isContained rng)</span></span>
+<span class="lineno">   79 </span>
+<span class="lineno">   80 </span>-- | Return true if the node contains a given range
+<span class="lineno">   81 </span>isContained :: HasRange (inner dom stage) =&gt; RealSrcSpan -&gt; inner dom stage -&gt; Bool
+<span class="lineno">   82 </span><span class="decl"><span class="istickedoff">isContained rng nd = case getRange nd of RealSrcSpan sp -&gt; rng `containsSpan` sp</span>
+<span class="lineno">   83 </span><span class="spaces">                                         </span><span class="istickedoff">_              -&gt; <span class="nottickedoff">False</span></span></span>
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>-- | Get the nodes that have exactly the given range
+<span class="lineno">   86 </span>nodesWithRange :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage)
+<span class="lineno">   87 </span>               =&gt; RealSrcSpan -&gt; Simple Traversal (Ann node dom stage) (Ann inner dom stage)
+<span class="lineno">   88 </span><span class="decl"><span class="nottickedoff">nodesWithRange rng = biplateRef &amp; filtered (hasRange rng)</span>
+<span class="lineno">   89 </span><span class="spaces">  </span><span class="nottickedoff">where -- True, if the node has the given range</span>
+<span class="lineno">   90 </span><span class="spaces">        </span><span class="nottickedoff">hasRange :: SourceInfo stage =&gt; RealSrcSpan -&gt; Ann inner dom stage -&gt; Bool</span>
+<span class="lineno">   91 </span><span class="spaces">        </span><span class="nottickedoff">hasRange rng node = case getRange node of RealSrcSpan sp -&gt; sp == rng</span>
+<span class="lineno">   92 </span><span class="spaces">                                                  </span><span class="nottickedoff">_              -&gt; False</span></span>
+<span class="lineno">   93 </span>
+<span class="lineno">   94 </span>-- | Get the shortest source range that contains the given
+<span class="lineno">   95 </span>getNodeContaining :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage, HasRange (Ann inner dom stage))
+<span class="lineno">   96 </span>                  =&gt; RealSrcSpan -&gt; Ann node dom stage -&gt; Maybe (Ann inner dom stage)
+<span class="lineno">   97 </span><span class="decl"><span class="istickedoff">getNodeContaining sp node = case node ^? nodesContaining sp of</span>
+<span class="lineno">   98 </span><span class="spaces">  </span><span class="istickedoff">[] -&gt; Nothing</span>
+<span class="lineno">   99 </span><span class="spaces">  </span><span class="istickedoff">results -&gt; Just $ minimumBy <span class="nottickedoff">(compareRangeLength `on` getRange)</span> results</span></span>
+<span class="lineno">  100 </span>
+<span class="lineno">  101 </span>-- | Compares two source spans based on their lengths. Can only used for NESTED spans.
+<span class="lineno">  102 </span>compareRangeLength :: SrcSpan -&gt; SrcSpan -&gt; Ordering
+<span class="lineno">  103 </span><span class="decl"><span class="nottickedoff">compareRangeLength (RealSrcSpan sp1) (RealSrcSpan sp2)</span>
+<span class="lineno">  104 </span><span class="spaces">  </span><span class="nottickedoff">= (lineDiff sp1 `compare` lineDiff sp2) `mappend` (colDiff sp1 `compare` colDiff sp2)</span>
+<span class="lineno">  105 </span><span class="spaces">  </span><span class="nottickedoff">where lineDiff sp = srcLocLine (realSrcSpanStart sp) - srcLocLine (realSrcSpanEnd sp)</span>
+<span class="lineno">  106 </span><span class="spaces">        </span><span class="nottickedoff">colDiff sp = srcLocCol (realSrcSpanStart sp) - srcLocCol (realSrcSpanEnd sp)</span></span>
+<span class="lineno">  107 </span>
+<span class="lineno">  108 </span>-- | A class to access the names of named elements. Have to locate where does the AST element store its name.
+<span class="lineno">  109 </span>-- The returned name will be the one that was marked isDefining.
+<span class="lineno">  110 </span>class NamedElement elem where
+<span class="lineno">  111 </span>  elementName :: Simple Traversal (Ann elem dom st) (Ann UQualifiedName dom st)
+<span class="lineno">  112 </span>
+<span class="lineno">  113 </span>instance NamedElement UDecl where
+<span class="lineno">  114 </span>  <span class="decl"><span class="istickedoff">elementName = (declHead &amp; declHeadNames)</span>
+<span class="lineno">  115 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; (declTypeFamily &amp; tfHead &amp; declHeadNames)</span>
+<span class="lineno">  116 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; (declValBind &amp; bindingName)</span>
+<span class="lineno">  117 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; (declName &amp; simpleName)</span>
+<span class="lineno">  118 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; (declTypeSig &amp; tsName &amp; annList &amp; simpleName)</span>
+<span class="lineno">  119 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; (declPatSyn &amp; <span class="nottickedoff">patLhs</span> &amp; <span class="nottickedoff">(patName &amp; simpleName &amp;+&amp; patSynOp &amp; operatorName)</span>)</span></span>
+<span class="lineno">  120 </span>
+<span class="lineno">  121 </span>instance NamedElement ULocalBind where
+<span class="lineno">  122 </span>  <span class="decl"><span class="istickedoff">elementName = localVal&amp;bindingName</span>
+<span class="lineno">  123 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; localSig&amp;tsName&amp;annList&amp;simpleName</span>
+<span class="lineno">  124 </span><span class="spaces">                  </span><span class="istickedoff">&amp;+&amp; localFixity&amp;fixityOperators&amp;annList&amp;operatorName</span></span>
+<span class="lineno">  125 </span>
+<span class="lineno">  126 </span>inScope :: GHC.Name -&gt; Scope -&gt; Bool
+<span class="lineno">  127 </span><span class="decl"><span class="istickedoff">inScope n sc = any ((n `elem`) . map (^. _1)) sc</span></span>
+<span class="lineno">  128 </span>
+<span class="lineno">  129 </span>-- * Pattern synonyms for annotated lists and maybes
+<span class="lineno">  130 </span>
+<span class="lineno">  131 </span>pattern AnnList :: [Ann elem dom stage] -&gt; AnnListG elem dom stage
+<span class="lineno">  132 </span>pattern AnnList elems &lt;- <span class="istickedoff">AnnListG _ elems</span>
+<span class="lineno">  133 </span>
+<span class="lineno">  134 </span>pattern AnnNothing :: AnnMaybeG elem dom stage
+<span class="lineno">  135 </span>pattern AnnNothing &lt;- <span class="nottickedoff">AnnMaybeG _ Nothing</span>
+<span class="lineno">  136 </span>
+<span class="lineno">  137 </span>pattern AnnJust :: Ann elem dom stage -&gt; AnnMaybeG elem dom stage
+<span class="lineno">  138 </span>pattern AnnJust elem &lt;- <span class="istickedoff">AnnMaybeG _ (Just elem)</span>
+
+</pre>
+</body>
+</html>

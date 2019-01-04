@@ -1,0 +1,92 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE LambdaCase #-}
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>-- | Defines utility operations on Haskell names such as checking if a given identifier is a
+<span class="lineno">    4 </span>-- correct name for a certain kind of Haskell construct.
+<span class="lineno">    5 </span>module Language.Haskell.Tools.Refactor.Utils.Name where
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>import Data.Char
+<span class="lineno">    8 </span>import Data.List.Split (splitOn)
+<span class="lineno">    9 </span>
+<span class="lineno">   10 </span>import GHC hiding (mkModuleName, moduleNameString)
+<span class="lineno">   11 </span>import Name as GHC (NamedThing(..), Name, isSymOcc)
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>import Language.Haskell.Tools.Refactor.Monad (RefactorMonad(..))
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>-- | Different classes of definitions that have different kind of names.
+<span class="lineno">   16 </span>data NameClass = Variable         -- ^ Normal value definitions: functions, variables
+<span class="lineno">   17 </span>               | Ctor             -- ^ Data constructors
+<span class="lineno">   18 </span>               | ValueOperator    -- ^ Functions with operator-like names
+<span class="lineno">   19 </span>               | DataCtorOperator -- ^ Constructors with operator-like names
+<span class="lineno">   20 </span>               | SynonymOperator  -- ^ UType definitions with operator-like names
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>-- | Get which category does a given name belong to
+<span class="lineno">   23 </span>classifyName :: RefactorMonad m =&gt; GHC.Name -&gt; m NameClass
+<span class="lineno">   24 </span><span class="decl"><span class="istickedoff">classifyName n = liftGhc (lookupName n) &gt;&gt;= return . \case</span>
+<span class="lineno">   25 </span><span class="spaces">    </span><span class="istickedoff">Just (AnId {}) | isop     -&gt; ValueOperator</span>
+<span class="lineno">   26 </span><span class="spaces">    </span><span class="istickedoff">Just (AnId {})            -&gt; Variable</span>
+<span class="lineno">   27 </span><span class="spaces">    </span><span class="istickedoff">Just (AConLike {}) | isop -&gt; DataCtorOperator</span>
+<span class="lineno">   28 </span><span class="spaces">    </span><span class="istickedoff">Just (AConLike {})        -&gt; Ctor</span>
+<span class="lineno">   29 </span><span class="spaces">    </span><span class="istickedoff">Just (ATyCon {}) | <span class="tickonlyfalse">isop</span>   -&gt; <span class="nottickedoff">SynonymOperator</span></span>
+<span class="lineno">   30 </span><span class="spaces">    </span><span class="istickedoff">Just (ATyCon {})          -&gt; Ctor</span>
+<span class="lineno">   31 </span><span class="spaces">    </span><span class="istickedoff">Just (ACoAxiom {})        -&gt; <span class="nottickedoff">error &quot;classifyName: ACoAxiom&quot;</span></span>
+<span class="lineno">   32 </span><span class="spaces">    </span><span class="istickedoff">Nothing | <span class="tickonlyfalse">isop</span>            -&gt; <span class="nottickedoff">ValueOperator</span></span>
+<span class="lineno">   33 </span><span class="spaces">    </span><span class="istickedoff">Nothing                   -&gt; Variable</span>
+<span class="lineno">   34 </span><span class="spaces">  </span><span class="istickedoff">where isop = GHC.isSymOcc (GHC.getOccName n)</span></span>
+<span class="lineno">   35 </span>
+<span class="lineno">   36 </span>-- | Checks if a given name is a valid module name
+<span class="lineno">   37 </span>validModuleName :: String -&gt; Maybe String
+<span class="lineno">   38 </span><span class="decl"><span class="istickedoff">validModuleName s = foldl mappend mempty $ map (nameValid Ctor) (splitOn &quot;.&quot; s)</span></span>
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>-- | Check if a given name is valid for a given kind of definition
+<span class="lineno">   41 </span>nameValid :: NameClass -&gt; String -&gt; Maybe String
+<span class="lineno">   42 </span><span class="decl"><span class="istickedoff">nameValid _ &quot;&quot; = <span class="nottickedoff">Just &quot;An empty name is not valid&quot;</span></span>
+<span class="lineno">   43 </span><span class="spaces"></span><span class="istickedoff">nameValid _ str | <span class="tickonlyfalse">str `elem` reservedNames</span> = <span class="nottickedoff">Just $ &quot;'&quot; ++ str ++ &quot;' is a reserved name&quot;</span></span>
+<span class="lineno">   44 </span><span class="spaces">  </span><span class="istickedoff">where -- TODO: names reserved by extensions</span>
+<span class="lineno">   45 </span><span class="spaces">        </span><span class="istickedoff">reservedNames = [ &quot;case&quot;, &quot;class&quot;, &quot;data&quot;, &quot;default&quot;, &quot;deriving&quot;, &quot;do&quot;, &quot;else&quot;, &quot;if&quot;, &quot;import&quot;, &quot;in&quot;, &quot;infix&quot;</span>
+<span class="lineno">   46 </span><span class="spaces">                        </span><span class="istickedoff">, &quot;infixl&quot;, &quot;infixr&quot;, &quot;instance&quot;, &quot;let&quot;, &quot;module&quot;, &quot;newtype&quot;, &quot;of&quot;, &quot;then&quot;, &quot;type&quot;, &quot;where&quot;, &quot;_&quot;</span>
+<span class="lineno">   47 </span><span class="spaces">                        </span><span class="istickedoff">, &quot;..&quot;, &quot;:&quot;, &quot;::&quot;, &quot;=&quot;, &quot;\\&quot;, &quot;|&quot;, &quot;&lt;-&quot;, &quot;-&gt;&quot;, &quot;@&quot;, &quot;~&quot;, &quot;=&gt;&quot;, &quot;[]&quot;</span>
+<span class="lineno">   48 </span><span class="spaces">                        </span><span class="istickedoff">]</span>
+<span class="lineno">   49 </span><span class="spaces"></span><span class="istickedoff">-- Operators that are data constructors (must start with ':')</span>
+<span class="lineno">   50 </span><span class="spaces"></span><span class="istickedoff">nameValid DataCtorOperator (':' : nameRest) | <span class="nottickedoff">all isOperatorChar nameRest</span> = <span class="nottickedoff">Nothing</span></span>
+<span class="lineno">   51 </span><span class="spaces"></span><span class="istickedoff">nameValid DataCtorOperator _ = Just <span class="nottickedoff">&quot;A constructor operator must start with ':' and only contain operator characters.&quot;</span></span>
+<span class="lineno">   52 </span><span class="spaces"></span><span class="istickedoff">-- Type families and synonyms that are operators (can start with ':')</span>
+<span class="lineno">   53 </span><span class="spaces"></span><span class="istickedoff">nameValid SynonymOperator name | <span class="nottickedoff">all isOperatorChar name</span> = <span class="nottickedoff">Nothing</span></span>
+<span class="lineno">   54 </span><span class="spaces"></span><span class="istickedoff">nameValid SynonymOperator _ = <span class="nottickedoff">Just &quot;An operator must only contain operator characters.&quot;</span></span>
+<span class="lineno">   55 </span><span class="spaces"></span><span class="istickedoff">-- Normal value operators (cannot start with ':')</span>
+<span class="lineno">   56 </span><span class="spaces"></span><span class="istickedoff">nameValid ValueOperator (c : nameRest) | isOperatorChar c &amp;&amp; c /= ':' &amp;&amp; all isOperatorChar nameRest = Nothing</span>
+<span class="lineno">   57 </span><span class="spaces"></span><span class="istickedoff">nameValid ValueOperator _ = Just <span class="nottickedoff">&quot;An operator that is a value must only contain operator characters and cannot start with ':'&quot;</span></span>
+<span class="lineno">   58 </span><span class="spaces"></span><span class="istickedoff">-- Data and type constructors (start with uppercase)</span>
+<span class="lineno">   59 </span><span class="spaces"></span><span class="istickedoff">nameValid Ctor (c : nameRest) | isUpper c &amp;&amp; isLetter c &amp;&amp; all isIdChar nameRest = Nothing</span>
+<span class="lineno">   60 </span><span class="spaces"></span><span class="istickedoff">nameValid Ctor _ = Just <span class="nottickedoff">&quot;A constructor or module name must start with an uppercase letter, and only contain letters, digits, apostrhophe or underscore&quot;</span></span>
+<span class="lineno">   61 </span><span class="spaces"></span><span class="istickedoff">-- Variables and type variables (start with lowercase)</span>
+<span class="lineno">   62 </span><span class="spaces"></span><span class="istickedoff">nameValid Variable (c : nameRest) | ((isLower c  &amp;&amp; isLetter c) || c == '\'' || c == '_') &amp;&amp; all isIdChar nameRest = Nothing</span>
+<span class="lineno">   63 </span><span class="spaces"></span><span class="istickedoff">nameValid Variable _ = Just <span class="nottickedoff">&quot;The name of a value must start with lowercase, and only contain letters, digits, apostrhophe or underscore&quot;</span></span></span>
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>isIdChar :: Char -&gt; Bool
+<span class="lineno">   66 </span><span class="decl"><span class="istickedoff">isIdChar c = isLetter c || isDigit c || c == '\'' || <span class="nottickedoff">c == '_'</span></span></span>
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>isOperatorChar :: Char -&gt; Bool
+<span class="lineno">   69 </span><span class="decl"><span class="istickedoff">isOperatorChar c = isPunctuation c || isSymbol c</span></span>
+
+</pre>
+</body>
+</html>

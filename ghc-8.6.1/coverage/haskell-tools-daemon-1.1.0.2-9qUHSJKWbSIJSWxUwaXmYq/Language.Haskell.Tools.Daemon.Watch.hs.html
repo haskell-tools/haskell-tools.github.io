@@ -1,0 +1,102 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE RecordWildCards #-}
+<span class="lineno">    2 </span>{-# LANGUAGE ScopedTypeVariables #-}
+<span class="lineno">    3 </span>
+<span class="lineno">    4 </span>-- | Controls the file system watching in the daemon. The file system watching must run in a
+<span class="lineno">    5 </span>-- separate process to prevent blocking because of file operations interfering with watch.
+<span class="lineno">    6 </span>module Language.Haskell.Tools.Daemon.Watch where
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>import Control.Concurrent
+<span class="lineno">    9 </span>import Control.Exception (catches)
+<span class="lineno">   10 </span>import Control.Monad
+<span class="lineno">   11 </span>import Control.Monad.State.Strict
+<span class="lineno">   12 </span>import qualified Data.Aeson as A ()
+<span class="lineno">   13 </span>import Data.Maybe (Maybe(..), catMaybes, isNothing)
+<span class="lineno">   14 </span>import Data.Tuple (swap)
+<span class="lineno">   15 </span>import GhcMonad (Session(..), reflectGhc)
+<span class="lineno">   16 </span>import System.Environment (getExecutablePath)
+<span class="lineno">   17 </span>import System.FSWatch.Repr (WatchProcess(..), PE(..))
+<span class="lineno">   18 </span>import System.FSWatch.Slave (waitNotifies, createWatchProcess)
+<span class="lineno">   19 </span>import System.FilePath
+<span class="lineno">   20 </span>import System.IO (IO, FilePath)
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>import Language.Haskell.Tools.Daemon.ErrorHandling (userExceptionHandlers, exceptionHandlers)
+<span class="lineno">   23 </span>import Language.Haskell.Tools.Daemon.Protocol
+<span class="lineno">   24 </span>import Language.Haskell.Tools.Daemon.State (DaemonSessionState)
+<span class="lineno">   25 </span>import Language.Haskell.Tools.Daemon.Update (updateForFileChanges)
+<span class="lineno">   26 </span>
+<span class="lineno">   27 </span>-- | Starts the watch process and a thread that receives notifications from it. The notification
+<span class="lineno">   28 </span>-- thread will invoke updates on the daemon state to re-load files.
+<span class="lineno">   29 </span>createWatchProcess' :: Maybe FilePath -&gt; Session -&gt; MVar DaemonSessionState -&gt; MVar [Marker] -&gt; (ResponseMsg -&gt; IO ())
+<span class="lineno">   30 </span>                        -&gt; IO (Maybe WatchProcess, [ThreadId])
+<span class="lineno">   31 </span><span class="decl"><span class="nottickedoff">createWatchProcess' watchExePath ghcSess daemonSess warnMVars upClient = do</span>
+<span class="lineno">   32 </span><span class="spaces">    </span><span class="nottickedoff">exePath &lt;- case watchExePath of Just exe -&gt; return exe</span>
+<span class="lineno">   33 </span><span class="spaces">                                    </span><span class="nottickedoff">Nothing -&gt; guessExePath</span>
+<span class="lineno">   34 </span><span class="spaces">    </span><span class="nottickedoff">process &lt;- createWatchProcess exePath 500</span>
+<span class="lineno">   35 </span><span class="spaces">    </span><span class="nottickedoff">initProcess process</span>
+<span class="lineno">   36 </span><span class="spaces">  </span><span class="nottickedoff">where</span>
+<span class="lineno">   37 </span><span class="spaces">    </span><span class="nottickedoff">initProcess process = do</span>
+<span class="lineno">   38 </span><span class="spaces">      </span><span class="nottickedoff">reloaderThread &lt;- forkIO $ forever $ void $ do</span>
+<span class="lineno">   39 </span><span class="spaces">        </span><span class="nottickedoff">changes &lt;- waitForChanges process</span>
+<span class="lineno">   40 </span><span class="spaces">        </span><span class="nottickedoff">putStrLn $ &quot;changes: &quot; ++ show changes</span>
+<span class="lineno">   41 </span><span class="spaces">        </span><span class="nottickedoff">let changedFiles = catMaybes $ map getModifiedFile changes</span>
+<span class="lineno">   42 </span><span class="spaces">            </span><span class="nottickedoff">addedFiles = catMaybes $ map getAddedFile changes</span>
+<span class="lineno">   43 </span><span class="spaces">            </span><span class="nottickedoff">removedFiles = catMaybes $ map getRemovedFile changes</span>
+<span class="lineno">   44 </span><span class="spaces">            </span><span class="nottickedoff">reloadAction = updateForFileChanges upClient warnMVars addedFiles changedFiles removedFiles</span>
+<span class="lineno">   45 </span><span class="spaces">            </span><span class="nottickedoff">handlers = userExceptionHandlers</span>
+<span class="lineno">   46 </span><span class="spaces">                           </span><span class="nottickedoff">(upClient . ErrorMessage)</span>
+<span class="lineno">   47 </span><span class="spaces">                           </span><span class="nottickedoff">(\err hint -&gt; upClient (CompilationProblem err hint))</span>
+<span class="lineno">   48 </span><span class="spaces">                         </span><span class="nottickedoff">++ exceptionHandlers (return ()) (upClient . ErrorMessage)</span>
+<span class="lineno">   49 </span><span class="spaces">        </span><span class="nottickedoff">when (length changedFiles + length addedFiles + length removedFiles &gt; 0)</span>
+<span class="lineno">   50 </span><span class="spaces">          </span><span class="nottickedoff">(void (modifyMVar daemonSess (\st -&gt; swap &lt;$&gt; reflectGhc (runStateT reloadAction st) ghcSess))</span>
+<span class="lineno">   51 </span><span class="spaces">             </span><span class="nottickedoff">`catches` handlers)</span>
+<span class="lineno">   52 </span><span class="spaces">      </span><span class="nottickedoff">return $ (Just process, [reloaderThread])</span>
+<span class="lineno">   53 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   54 </span><span class="spaces">    </span><span class="nottickedoff">waitForChanges process = do</span>
+<span class="lineno">   55 </span><span class="spaces">      </span><span class="nottickedoff">changes &lt;- waitNotifies process</span>
+<span class="lineno">   56 </span><span class="spaces">      </span><span class="nottickedoff">refactoring &lt;- isNothing &lt;$&gt; tryReadMVar daemonSess</span>
+<span class="lineno">   57 </span><span class="spaces">      </span><span class="nottickedoff">-- if a refactoring is in progress, we should wait for all the changes to appear</span>
+<span class="lineno">   58 </span><span class="spaces">      </span><span class="nottickedoff">if refactoring then (changes ++) &lt;$&gt; waitForChanges process</span>
+<span class="lineno">   59 </span><span class="spaces">                     </span><span class="nottickedoff">else return changes</span>
+<span class="lineno">   60 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   61 </span><span class="spaces">    </span><span class="nottickedoff">getModifiedFile (Mod file) | takeExtension file `elem` sourceExtensions = Just file</span>
+<span class="lineno">   62 </span><span class="spaces">    </span><span class="nottickedoff">getModifiedFile _ = Nothing</span>
+<span class="lineno">   63 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   64 </span><span class="spaces">    </span><span class="nottickedoff">getAddedFile (Add file) | takeExtension file `elem` sourceExtensions = Just file</span>
+<span class="lineno">   65 </span><span class="spaces">    </span><span class="nottickedoff">getAddedFile _ = Nothing</span>
+<span class="lineno">   66 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   67 </span><span class="spaces">    </span><span class="nottickedoff">getRemovedFile (Rem file) | takeExtension file `elem` sourceExtensions = Just file</span>
+<span class="lineno">   68 </span><span class="spaces">    </span><span class="nottickedoff">getRemovedFile _ = Nothing</span>
+<span class="lineno">   69 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   70 </span><span class="spaces">    </span><span class="nottickedoff">sourceExtensions = [ &quot;.hs&quot;, &quot;.hs-boot&quot;, &quot;.cabal&quot; ]</span>
+<span class="lineno">   71 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">   72 </span><span class="spaces">    </span><span class="nottickedoff">guessExePath = do exePath &lt;- getExecutablePath</span>
+<span class="lineno">   73 </span><span class="spaces">                      </span><span class="nottickedoff">return $ takeDirectory exePath &lt;/&gt; &quot;hfswatch&quot;</span></span>
+<span class="lineno">   74 </span>
+<span class="lineno">   75 </span>-- | Stops the watch process and all threads associated with it.
+<span class="lineno">   76 </span>stopWatch :: WatchProcess -&gt; [ThreadId] -&gt; IO ()
+<span class="lineno">   77 </span><span class="decl"><span class="nottickedoff">stopWatch WatchProcess{..} threads</span>
+<span class="lineno">   78 </span><span class="spaces">  </span><span class="nottickedoff">= do forM threads killThread</span>
+<span class="lineno">   79 </span><span class="spaces">       </span><span class="nottickedoff">wShutdown</span></span>
+
+</pre>
+</body>
+</html>

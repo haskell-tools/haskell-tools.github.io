@@ -1,0 +1,70 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | UPattern matching on literals for refactorings.
+<span class="lineno">    2 </span>{-# LANGUAGE PatternSynonyms #-}
+<span class="lineno">    3 </span>
+<span class="lineno">    4 </span>module Language.Haskell.Tools.Rewrite.Match.Literals where
+<span class="lineno">    5 </span>
+<span class="lineno">    6 </span>import Language.Haskell.Tools.AST (ULiteral(..), Ann(..))
+<span class="lineno">    7 </span>import Language.Haskell.Tools.Rewrite.ElementTypes (Literal)
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>-- | Character literal: @'c'@
+<span class="lineno">   10 </span>pattern CharLit :: Char -&gt; Literal
+<span class="lineno">   11 </span>pattern CharLit c &lt;- <span class="istickedoff">Ann _ (UCharLit c)</span>
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>-- | String literal: @&quot;abc&quot;@
+<span class="lineno">   14 </span>pattern StringLit :: String -&gt; Literal
+<span class="lineno">   15 </span>pattern StringLit s &lt;- <span class="istickedoff">Ann _ (UStringLit s)</span>
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>-- | Integer literal: @12@
+<span class="lineno">   18 </span>pattern IntLit :: Integer -&gt; Literal
+<span class="lineno">   19 </span>pattern IntLit i &lt;- <span class="istickedoff">Ann _ (UIntLit i)</span>
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>-- | Fractional literal: @3.14@
+<span class="lineno">   22 </span>pattern FracLit :: Rational -&gt; Literal
+<span class="lineno">   23 </span>pattern FracLit f &lt;- <span class="nottickedoff">Ann _ (UFracLit f)</span>
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>-- | Primitive integer literal (of type @Int#@): @32#@
+<span class="lineno">   26 </span>pattern PrimIntLit :: Integer -&gt; Literal
+<span class="lineno">   27 </span>pattern PrimIntLit i &lt;- <span class="istickedoff">Ann _ (UPrimIntLit i)</span>
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>-- | Primitive word literal (of type @Word#@): @32##@
+<span class="lineno">   30 </span>pattern PrimWordLit :: Integer -&gt; Literal
+<span class="lineno">   31 </span>pattern PrimWordLit i &lt;- <span class="istickedoff">Ann _ (UPrimWordLit i)</span>
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>-- | Primitive float literal (of type @Float#@): @3.14#@
+<span class="lineno">   34 </span>pattern PrimFloatLit :: Rational -&gt; Literal
+<span class="lineno">   35 </span>pattern PrimFloatLit i &lt;- <span class="istickedoff">Ann _ (UPrimFloatLit i)</span>
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>-- | Primitive double literal (of type @Double#@): @3.14##@
+<span class="lineno">   38 </span>pattern PrimDoubleLit :: Rational -&gt; Literal
+<span class="lineno">   39 </span>pattern PrimDoubleLit i &lt;- <span class="istickedoff">Ann _ (UPrimDoubleLit i)</span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>-- | Primitive character literal (of type @Char#@): @'c'#@
+<span class="lineno">   42 </span>pattern PrimCharLit :: Char -&gt; Literal
+<span class="lineno">   43 </span>pattern PrimCharLit i &lt;- <span class="istickedoff">Ann _ (UPrimCharLit i)</span>
+<span class="lineno">   44 </span>
+<span class="lineno">   45 </span>-- | Primitive string literal (of type @Addr#@): @&quot;xxx&quot;#@
+<span class="lineno">   46 </span>pattern PrimStringLit :: String -&gt; Literal
+<span class="lineno">   47 </span>pattern PrimStringLit s &lt;- <span class="istickedoff">Ann _ (UPrimStringLit s)</span>
+
+</pre>
+</body>
+</html>

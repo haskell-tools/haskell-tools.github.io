@@ -1,0 +1,184 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleContextsChecker where
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>import TcType (tcSplitNestedSigmaTys, checkValidClsArgs)
+<span class="lineno">    4 </span>import Type hiding (Type(..))
+<span class="lineno">    5 </span>import PrelNames (eqTyConName, eqTyConKey)
+<span class="lineno">    6 </span>import Unique (hasKey)
+<span class="lineno">    7 </span>import qualified Name as GHC
+<span class="lineno">    8 </span>import qualified GHC
+<span class="lineno">    9 </span>
+<span class="lineno">   10 </span>import Data.List
+<span class="lineno">   11 </span>import Data.Generics.Uniplate.Data()
+<span class="lineno">   12 </span>import Data.Generics.Uniplate.Operations
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>import Control.Reference ((^.))
+<span class="lineno">   15 </span>
+<span class="lineno">   16 </span>import Language.Haskell.Tools.AST
+<span class="lineno">   17 </span>import Language.Haskell.Tools.Refactor
+<span class="lineno">   18 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>gblChkQNamesForFC :: CheckNode Module
+<span class="lineno">   21 </span><span class="decl"><span class="istickedoff">gblChkQNamesForFC = conditional gblChkQNamesForFC' FlexibleContexts</span></span>
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>chkFlexibleContexts :: CheckNode Context
+<span class="lineno">   24 </span><span class="decl"><span class="istickedoff">chkFlexibleContexts = conditional chkFlexibleContexts' FlexibleContexts</span></span>
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>chkFlexibleContexts' :: CheckNode Context
+<span class="lineno">   27 </span><span class="decl"><span class="istickedoff">chkFlexibleContexts' ctx@(Context a) = chkAssertion a &gt;&gt; return ctx</span></span>
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>chkAssertion :: CheckNode Assertion
+<span class="lineno">   30 </span><span class="decl"><span class="istickedoff">chkAssertion a@(ClassAssert con annTys) = do</span>
+<span class="lineno">   31 </span><span class="spaces">  </span><span class="istickedoff">-- If a lookup fails, add MissingInformation FlexibleContexts</span>
+<span class="lineno">   32 </span><span class="spaces">  </span><span class="istickedoff">let <span class="nottickedoff">errDefault = addMI FlexibleContexts a &gt;&gt; return False</span></span>
+<span class="lineno">   33 </span><span class="spaces">  </span><span class="istickedoff">isClass &lt;- fromMaybeTM <span class="nottickedoff">errDefault</span> (isClassTyConNameM con)</span>
+<span class="lineno">   34 </span><span class="spaces">  </span><span class="istickedoff">if not isClass || all hasTyVarHead (annTys ^. annListElems)</span>
+<span class="lineno">   35 </span><span class="spaces">    </span><span class="istickedoff">then return <span class="nottickedoff">a</span></span>
+<span class="lineno">   36 </span><span class="spaces">    </span><span class="istickedoff">else addEvidence FlexibleContexts a</span>
+<span class="lineno">   37 </span><span class="spaces"></span><span class="istickedoff">chkAssertion a@(InfixAssert lhs op rhs)</span>
+<span class="lineno">   38 </span><span class="spaces">  </span><span class="istickedoff">-- If the constraint is of form a ~ b, then we dont need to check</span>
+<span class="lineno">   39 </span><span class="spaces">  </span><span class="istickedoff">| Just name &lt;- semanticsName op</span>
+<span class="lineno">   40 </span><span class="spaces">  </span><span class="istickedoff">, name == eqTyConName</span>
+<span class="lineno">   41 </span><span class="spaces">  </span><span class="istickedoff">= return <span class="nottickedoff">a</span></span>
+<span class="lineno">   42 </span><span class="spaces">  </span><span class="istickedoff">-- If the constraint has only type variable heads, it doesn't need FlexibleContexts</span>
+<span class="lineno">   43 </span><span class="spaces">  </span><span class="istickedoff">| hasTyVarHead lhs &amp;&amp; hasTyVarHead rhs = return <span class="nottickedoff">a</span></span>
+<span class="lineno">   44 </span><span class="spaces">  </span><span class="istickedoff">-- In any other case, we keep FlexibleContexts</span>
+<span class="lineno">   45 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = addEvidence FlexibleContexts a</span>
+<span class="lineno">   46 </span><span class="spaces"></span><span class="istickedoff">chkAssertion a@(TupleAssert xs) = do</span>
+<span class="lineno">   47 </span><span class="spaces">  </span><span class="istickedoff">mapM_ chkAssertion xs</span>
+<span class="lineno">   48 </span><span class="spaces">  </span><span class="istickedoff">return <span class="nottickedoff">a</span></span>
+<span class="lineno">   49 </span><span class="spaces"></span><span class="istickedoff">chkAssertion a@ImplicitAssert{} = <span class="nottickedoff">return a</span></span></span>
+<span class="lineno">   50 </span>
+<span class="lineno">   51 </span>chkFlexibleContextsDecl :: CheckNode Decl
+<span class="lineno">   52 </span><span class="decl"><span class="istickedoff">chkFlexibleContextsDecl = conditional chkFlexibleContextsDecl' FlexibleContexts</span></span>
+<span class="lineno">   53 </span>
+<span class="lineno">   54 </span>chkFlexibleContextsDecl' :: CheckNode Decl
+<span class="lineno">   55 </span><span class="decl"><span class="istickedoff">chkFlexibleContextsDecl' d@(TypeDecl dh rhs) = do</span>
+<span class="lineno">   56 </span><span class="spaces">  </span><span class="istickedoff">let ty = typeOrKindFromId . declHeadQName $ dh</span>
+<span class="lineno">   57 </span><span class="spaces">  </span><span class="istickedoff">when (hasConstraintKind ty || tcReturnsConstraintKind ty)</span>
+<span class="lineno">   58 </span><span class="spaces">       </span><span class="istickedoff">(chkClassesInside rhs)</span>
+<span class="lineno">   59 </span><span class="spaces">  </span><span class="istickedoff">return d</span>
+<span class="lineno">   60 </span><span class="spaces"></span><span class="istickedoff">chkFlexibleContextsDecl' d = return d</span></span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>-- | Checks whether all type class applications in a type synonym rhs
+<span class="lineno">   63 </span>-- (that has kind Constraint) have only type variable heads.
+<span class="lineno">   64 </span>-- Returns False if a lookup inside is not succesful.
+<span class="lineno">   65 </span>-- If it isn't applied to a type that has kind Constraint, it may give
+<span class="lineno">   66 </span>-- false positive results.
+<span class="lineno">   67 </span>chkClassesInside :: Type -&gt; ExtMonad ()
+<span class="lineno">   68 </span><span class="decl"><span class="istickedoff">chkClassesInside (TupleType annTys) =</span>
+<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">mapM_ chkClassesInside (annTys ^. annListElems)</span>
+<span class="lineno">   70 </span><span class="spaces"></span><span class="istickedoff">chkClassesInside t = maybe <span class="nottickedoff">(addFC t)</span> f (splitTypeAppMaybe t)</span>
+<span class="lineno">   71 </span><span class="spaces">  </span><span class="istickedoff">where</span>
+<span class="lineno">   72 </span><span class="spaces">    </span><span class="istickedoff">addFC :: Type -&gt; ExtMonad ()</span>
+<span class="lineno">   73 </span><span class="spaces">    </span><span class="istickedoff">addFC = addEvidence_ FlexibleContexts</span>
+<span class="lineno">   74 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   75 </span><span class="spaces">    </span><span class="istickedoff">f :: (GHC.Name, [Type]) -&gt; ExtMonad ()</span>
+<span class="lineno">   76 </span><span class="spaces">    </span><span class="istickedoff">f (n,args) = do</span>
+<span class="lineno">   77 </span><span class="spaces">       </span><span class="istickedoff">isClass &lt;- isJustT . lookupClass $ n</span>
+<span class="lineno">   78 </span><span class="spaces">       </span><span class="istickedoff">when (n /= eqTyConName &amp;&amp; isClass &amp;&amp; any (not . hasTyVarHead) args)</span>
+<span class="lineno">   79 </span><span class="spaces">            </span><span class="istickedoff">(addFC t)</span>
+<span class="lineno">   80 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   81 </span><span class="spaces">    </span><span class="istickedoff">-- Separates the type into its head and its arguments.</span>
+<span class="lineno">   82 </span><span class="spaces">    </span><span class="istickedoff">-- This functions should only be applied to types that have kind Constraint.</span>
+<span class="lineno">   83 </span><span class="spaces">    </span><span class="istickedoff">splitTypeAppMaybe :: Type -&gt; Maybe (GHC.Name, [Type])</span>
+<span class="lineno">   84 </span><span class="spaces">    </span><span class="istickedoff">splitTypeAppMaybe (TypeApp f arg) = do</span>
+<span class="lineno">   85 </span><span class="spaces">      </span><span class="istickedoff">(f', args) &lt;- splitTypeAppMaybe f</span>
+<span class="lineno">   86 </span><span class="spaces">      </span><span class="istickedoff">return (f', args ++ [arg])</span>
+<span class="lineno">   87 </span><span class="spaces">    </span><span class="istickedoff">splitTypeAppMaybe (InfixTypeApp lhs op rhs) = do</span>
+<span class="lineno">   88 </span><span class="spaces">      </span><span class="istickedoff">opName &lt;- semanticsName op</span>
+<span class="lineno">   89 </span><span class="spaces">      </span><span class="istickedoff">return (opName, [lhs,rhs])</span>
+<span class="lineno">   90 </span><span class="spaces">    </span><span class="istickedoff">splitTypeAppMaybe (VarType n) = do</span>
+<span class="lineno">   91 </span><span class="spaces">      </span><span class="istickedoff">sname &lt;- semanticsName n</span>
+<span class="lineno">   92 </span><span class="spaces">      </span><span class="istickedoff">return (sname, [])</span>
+<span class="lineno">   93 </span><span class="spaces">    </span><span class="istickedoff">splitTypeAppMaybe (ParenType t) = splitTypeAppMaybe t</span>
+<span class="lineno">   94 </span><span class="spaces">    </span><span class="istickedoff">splitTypeAppMaybe (KindedType t _) = <span class="nottickedoff">splitTypeAppMaybe t</span></span>
+<span class="lineno">   95 </span><span class="spaces">    </span><span class="istickedoff">splitTypeAppMaybe _ = <span class="nottickedoff">Nothing</span></span></span>
+<span class="lineno">   96 </span>
+<span class="lineno">   97 </span>
+<span class="lineno">   98 </span>chkQNameForFC :: QualifiedName -&gt; ExtMonad Bool
+<span class="lineno">   99 </span><span class="decl"><span class="istickedoff">chkQNameForFC name = do</span>
+<span class="lineno">  100 </span><span class="spaces">  </span><span class="istickedoff">mty &lt;- runMaybeT . lookupTypeFromId $ name</span>
+<span class="lineno">  101 </span><span class="spaces">  </span><span class="istickedoff">case mty of</span>
+<span class="lineno">  102 </span><span class="spaces">    </span><span class="istickedoff">Just ty -&gt; do</span>
+<span class="lineno">  103 </span><span class="spaces">      </span><span class="istickedoff">-- First we get all subtypes of the given type, while expanding all type synonyms,</span>
+<span class="lineno">  104 </span><span class="spaces">      </span><span class="istickedoff">-- then we remove all implicit predicates,</span>
+<span class="lineno">  105 </span><span class="spaces">      </span><span class="istickedoff">-- and partition the types into predicate types and theta types.</span>
+<span class="lineno">  106 </span><span class="spaces">      </span><span class="istickedoff">let expanded = expandTypeSynonyms ty</span>
+<span class="lineno">  107 </span><span class="spaces">          </span><span class="istickedoff">subTys = universeBi expanded :: [GHC.Type]</span>
+<span class="lineno">  108 </span><span class="spaces">          </span><span class="istickedoff">(preds, tys) = partition isPredTy . filter (not . isIPPred) $ subTys</span>
+<span class="lineno">  109 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  110 </span><span class="spaces">          </span><span class="istickedoff">-- We don't need type equalities, so we get rid of them and their children.</span>
+<span class="lineno">  111 </span><span class="spaces">          </span><span class="istickedoff">-- Then we extract the constraints from the types.</span>
+<span class="lineno">  112 </span><span class="spaces">          </span><span class="istickedoff">nomEqs = universeBi (filter isNominalEqPred preds) :: [GHC.Type]</span>
+<span class="lineno">  113 </span><span class="spaces">          </span><span class="istickedoff">preds' = preds \\ nomEqs</span>
+<span class="lineno">  114 </span><span class="spaces">          </span><span class="istickedoff">thetas = concatMap (snd' . tcSplitNestedSigmaTys) tys</span>
+<span class="lineno">  115 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  116 </span><span class="spaces">          </span><span class="istickedoff">-- We split each theta type into its class tycon and its arguments.</span>
+<span class="lineno">  117 </span><span class="spaces">          </span><span class="istickedoff">-- We also filter out tuple constraints</span>
+<span class="lineno">  118 </span><span class="spaces">          </span><span class="istickedoff">-- (we already have the constraints in it).</span>
+<span class="lineno">  119 </span><span class="spaces">          </span><span class="istickedoff">xs = mapMaybe getClassPredTys_maybe (thetas ++ preds')</span>
+<span class="lineno">  120 </span><span class="spaces">          </span><span class="istickedoff">xs' = filter (not . isCTupleClass . fst) xs</span>
+<span class="lineno">  121 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  122 </span><span class="spaces">      </span><span class="istickedoff">if all (uncurry hasValidClsArgs) xs' then return False</span>
+<span class="lineno">  123 </span><span class="spaces">                                           </span><span class="istickedoff">else return True</span>
+<span class="lineno">  124 </span><span class="spaces">    </span><span class="istickedoff">Nothing -&gt; return False</span>
+<span class="lineno">  125 </span><span class="spaces">  </span><span class="istickedoff">where</span>
+<span class="lineno">  126 </span><span class="spaces">    </span><span class="istickedoff">hasValidClsArgs :: GHC.Class -&gt; [GHC.Type] -&gt; Bool</span>
+<span class="lineno">  127 </span><span class="spaces">    </span><span class="istickedoff">hasValidClsArgs cls args = cls `hasKey` eqTyConKey</span>
+<span class="lineno">  128 </span><span class="spaces">                            </span><span class="istickedoff">|| isIPClass cls</span>
+<span class="lineno">  129 </span><span class="spaces">                            </span><span class="istickedoff">|| checkValidClsArgs False cls args</span>
+<span class="lineno">  130 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  131 </span><span class="spaces">    </span><span class="istickedoff">snd' :: (a,b,c) -&gt; b</span>
+<span class="lineno">  132 </span><span class="spaces">    </span><span class="istickedoff">snd' (_,x,_) = x</span>
+<span class="lineno">  133 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  134 </span><span class="spaces">    </span><span class="istickedoff">isNominalEqPred :: GHC.Type -&gt; Bool</span>
+<span class="lineno">  135 </span><span class="spaces">    </span><span class="istickedoff">isNominalEqPred ty</span>
+<span class="lineno">  136 </span><span class="spaces">      </span><span class="istickedoff">| Just (tc,_) &lt;- splitTyConApp_maybe ty = tc `hasKey` eqTyConKey</span>
+<span class="lineno">  137 </span><span class="spaces">      </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = False</span></span>
+<span class="lineno">  138 </span>
+<span class="lineno">  139 </span>gblChkQNamesForFC' :: CheckNode Module
+<span class="lineno">  140 </span><span class="decl"><span class="istickedoff">gblChkQNamesForFC' m = do</span>
+<span class="lineno">  141 </span><span class="spaces">  </span><span class="istickedoff">-- Names appearing on the rhs of bindings are just hints,</span>
+<span class="lineno">  142 </span><span class="spaces">  </span><span class="istickedoff">-- they don't necessarily require FlexibleContexts.</span>
+<span class="lineno">  143 </span><span class="spaces">  </span><span class="istickedoff">let allNames   = universeBi (m ^. modDecl) :: [QualifiedName]</span>
+<span class="lineno">  144 </span><span class="spaces">      </span><span class="istickedoff">rhs        = universeBi (m ^. modDecl) :: [Rhs]</span>
+<span class="lineno">  145 </span><span class="spaces">      </span><span class="istickedoff">hints      = universeBi rhs            :: [QualifiedName]</span>
+<span class="lineno">  146 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  147 </span><span class="spaces">      </span><span class="istickedoff">-- Separating hints from evidence,</span>
+<span class="lineno">  148 </span><span class="spaces">      </span><span class="istickedoff">-- and grouping them together based on their GHC.Name</span>
+<span class="lineno">  149 </span><span class="spaces">      </span><span class="istickedoff">evidence  = filter (isJust . semanticsName) (allNames \\ hints)</span>
+<span class="lineno">  150 </span><span class="spaces">      </span><span class="istickedoff">hints'    = filter (isJust . semanticsName) hints</span>
+<span class="lineno">  151 </span><span class="spaces">      </span><span class="istickedoff">groupedEs = equivalenceGroupsBy semanticsName evidence</span>
+<span class="lineno">  152 </span><span class="spaces">      </span><span class="istickedoff">groupedHs = equivalenceGroupsBy semanticsName hints'</span>
+<span class="lineno">  153 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  154 </span><span class="spaces">  </span><span class="istickedoff">-- Checking the representative elements, whether they need FC,</span>
+<span class="lineno">  155 </span><span class="spaces">  </span><span class="istickedoff">-- if they do, add occurences for every node in their group.</span>
+<span class="lineno">  156 </span><span class="spaces">  </span><span class="istickedoff">es &lt;- filterM (chkQNameForFC . fst) groupedEs</span>
+<span class="lineno">  157 </span><span class="spaces">  </span><span class="istickedoff">hs &lt;- filterM (chkQNameForFC . fst) groupedHs</span>
+<span class="lineno">  158 </span><span class="spaces">  </span><span class="istickedoff">mapM_ (addEvidence FlexibleContexts) (concatMap snd es)</span>
+<span class="lineno">  159 </span><span class="spaces">  </span><span class="istickedoff">mapM_ (addHint     FlexibleContexts) (concatMap snd hs)</span>
+<span class="lineno">  160 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  161 </span><span class="spaces">  </span><span class="istickedoff">return m</span></span>
+
+</pre>
+</body>
+</html>

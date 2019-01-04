@@ -1,0 +1,110 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>-- | Representation of Haskell types
+<span class="lineno">    2 </span>module Language.Haskell.Tools.AST.Representation.Types where
+<span class="lineno">    3 </span>
+<span class="lineno">    4 </span>import Language.Haskell.Tools.AST.Ann (Ann, AnnListG, AnnMaybeG)
+<span class="lineno">    5 </span>import Language.Haskell.Tools.AST.Representation.Kinds (UPromoted, UKind, UKindConstraint)
+<span class="lineno">    6 </span>import Language.Haskell.Tools.AST.Representation.Names (UName, UOperator)
+<span class="lineno">    7 </span>import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (UQuasiQuote, USplice)
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>-- | Type variable declaration
+<span class="lineno">   10 </span>data UTyVar dom stage
+<span class="lineno">   11 </span>  = UTyVarDecl { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_tyVarName</span></span></span> :: Ann UName dom stage
+<span class="lineno">   12 </span>               , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_tyVarKind</span></span></span> :: AnnMaybeG UKindConstraint dom stage
+<span class="lineno">   13 </span>               }
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>-- | Haskell types
+<span class="lineno">   16 </span>data UType dom stage
+<span class="lineno">   17 </span>  = UTyForall     { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeBounded</span></span></span> :: AnnListG UTyVar dom stage
+<span class="lineno">   18 </span>                  , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeType</span></span></span> :: Ann UType dom stage
+<span class="lineno">   19 </span>                  } -- ^ Forall types (@ forall x y . type @)
+<span class="lineno">   20 </span>  | UTyCtx        { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeCtx</span></span></span> :: Ann UContext dom stage
+<span class="lineno">   21 </span>                  , _typeType :: Ann UType dom stage
+<span class="lineno">   22 </span>                  } -- ^ Type with a context (@ forall x y . type @)
+<span class="lineno">   23 </span>  | UTyFun        { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeParam</span></span></span> :: Ann UType dom stage
+<span class="lineno">   24 </span>                  , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeResult</span></span></span> :: Ann UType dom stage
+<span class="lineno">   25 </span>                  } -- ^ Function types (@ a -&gt; b @)
+<span class="lineno">   26 </span>  | UTyTuple      { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeElements</span></span></span> :: AnnListG UType dom stage
+<span class="lineno">   27 </span>                  } -- ^ Tuple types (@ (a,b) @)
+<span class="lineno">   28 </span>  | UTyUnbTuple   { _typeElements :: AnnListG UType dom stage
+<span class="lineno">   29 </span>                  } -- ^ Unboxed tuple types (@ (#a,b#) @)
+<span class="lineno">   30 </span>  | UTyList       { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeElement</span></span></span> :: Ann UType dom stage
+<span class="lineno">   31 </span>                  } -- ^ List type with special syntax (@ [a] @)
+<span class="lineno">   32 </span>  | UTyParArray   { _typeElement :: Ann UType dom stage
+<span class="lineno">   33 </span>                  } -- ^ Parallel array type (@ [:a:] @)
+<span class="lineno">   34 </span>  | UTyApp        { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeCon</span></span></span> :: Ann UType dom stage
+<span class="lineno">   35 </span>                  , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeArg</span></span></span> :: Ann UType dom stage
+<span class="lineno">   36 </span>                  } -- ^ Type application (@ F a @)
+<span class="lineno">   37 </span>  | UTyVar        { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeName</span></span></span> :: Ann UName dom stage
+<span class="lineno">   38 </span>                  } -- ^ Type variable or constructor (@ a @)
+<span class="lineno">   39 </span>  | UTyParen      { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeInner</span></span></span> :: Ann UType dom stage
+<span class="lineno">   40 </span>                  } -- ^ Type surrounded by parentheses (@ (T a) @)
+<span class="lineno">   41 </span>  | UTyInfix      { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeLeft</span></span></span> :: Ann UType dom stage
+<span class="lineno">   42 </span>                  , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeOperator</span></span></span> :: Ann UOperator dom stage
+<span class="lineno">   43 </span>                  , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeRight</span></span></span> :: Ann UType dom stage
+<span class="lineno">   44 </span>                  } -- ^ Infix type constructor (@ (a &lt;: b) @)
+<span class="lineno">   45 </span>  | UTyKinded     { _typeInner :: Ann UType dom stage
+<span class="lineno">   46 </span>                  , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeKind</span></span></span> :: Ann UKind dom stage
+<span class="lineno">   47 </span>                  } -- ^ Type with explicit kind signature (@ a :: * @)
+<span class="lineno">   48 </span>  | UTyPromoted   { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_tpPromoted</span></span></span> :: Ann (UPromoted UType) dom stage
+<span class="lineno">   49 </span>                  } -- A promoted data type with @-XDataKinds@ (@ 3 @, @ Left @, @ 'Left @).
+<span class="lineno">   50 </span>  | UTySplice     { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_tsSplice</span></span></span> :: Ann USplice dom stage
+<span class="lineno">   51 </span>                  } -- ^ A Template Haskell splice type (@ $(genType) @).
+<span class="lineno">   52 </span>  | UTyQuasiQuote { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeQQ</span></span></span> :: Ann UQuasiQuote dom stage
+<span class="lineno">   53 </span>                  } -- ^ A Template Haskell quasi-quote type (@ [quoter| ... ] @).
+<span class="lineno">   54 </span>  | UTyBang       { _typeInner :: Ann UType dom stage
+<span class="lineno">   55 </span>                  } -- ^ Strict type marked with @!@.
+<span class="lineno">   56 </span>  | UTyLazy       { _typeInner :: Ann UType dom stage
+<span class="lineno">   57 </span>                  } -- ^ Lazy type marked with @~@. (Should only be used if @Strict@ or @StrictData@ language extension is used)
+<span class="lineno">   58 </span>  | UTyUnpack     { _typeInner :: Ann UType dom stage
+<span class="lineno">   59 </span>                  } -- ^ Strict type marked with UNPACK pragma. (Usually contains the bang mark.)
+<span class="lineno">   60 </span>  | UTyNoUnpack   { _typeInner :: Ann UType dom stage
+<span class="lineno">   61 </span>                  } -- ^ Strict type marked with NOUNPACK pragma. (Usually contains the bang mark.)
+<span class="lineno">   62 </span>  | UTyWildcard   -- ^ A wildcard type (@ _ @) with @-XPartialTypeSignatures@
+<span class="lineno">   63 </span>  | UTyNamedWildc { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_typeWildcardName</span></span></span> :: Ann UName dom stage
+<span class="lineno">   64 </span>                  } -- ^ A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
+<span class="lineno">   65 </span>  | UUnbSumType   { _typeElements :: AnnListG UType dom stage
+<span class="lineno">   66 </span>                  } -- ^ An unboxed sum type (@ (# Bool | Int | String #) @)
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>-- One or more assertions
+<span class="lineno">   69 </span>data UContext dom stage
+<span class="lineno">   70 </span>  = UContext { <span class="istickedoff"><span class="decl"><span class="istickedoff">_contextAssertion</span></span></span> :: Ann UAssertion dom stage
+<span class="lineno">   71 </span>             } -- ^ Assertions with the fat arrow (@ C a =&gt; ... @)
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>-- | A single assertion in the context
+<span class="lineno">   74 </span>data UAssertion dom stage
+<span class="lineno">   75 </span>  = UClassAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertClsName</span></span></span> :: Ann UName dom stage
+<span class="lineno">   76 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertTypes</span></span></span> :: AnnListG UType dom stage
+<span class="lineno">   77 </span>                 } -- ^ Class assertion (@Cls x@)
+<span class="lineno">   78 </span>  | UInfixAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertLhs</span></span></span> :: Ann UType dom stage
+<span class="lineno">   79 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertOp</span></span></span> :: Ann UOperator dom stage
+<span class="lineno">   80 </span>                 , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertRhs</span></span></span> :: Ann UType dom stage
+<span class="lineno">   81 </span>                 } -- ^ Infix class assertion, also contains type equations (@ a ~ X y @)
+<span class="lineno">   82 </span>  | UImplicitAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertImplVar</span></span></span> :: Ann UName dom stage
+<span class="lineno">   83 </span>                    , <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_assertImplType</span></span></span> :: Ann UType dom stage
+<span class="lineno">   84 </span>                    } -- ^ Assertion for implicit parameter binding (@ ?cmp :: a -&gt; a -&gt; Bool @)
+<span class="lineno">   85 </span>  | UTupleAssert { <span class="nottickedoff"><span class="decl"><span class="nottickedoff">_innerAsserts</span></span></span> :: AnnListG UAssertion dom stage
+<span class="lineno">   86 </span>                 } -- ^ Multiple assertions in one (@ (Ord a, Show a) @)
+<span class="lineno">   87 </span>  | UWildcardAssert -- ^ Wildcard assertion (@ _ @), enabled by @PartialTypeSignatures@
+
+</pre>
+</body>
+</html>
