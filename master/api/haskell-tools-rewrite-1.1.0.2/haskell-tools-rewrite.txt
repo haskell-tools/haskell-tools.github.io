@@ -944,10 +944,10 @@ mkRecCon :: Name -> [FieldUpdate] -> Expr
 mkRecUpdate :: Expr -> [FieldUpdate] -> Expr
 
 -- | Create a enumeration expression (<tt> [1,3..10] </tt>)
-mkEnum :: Expr -> Maybe (Expr) -> Maybe (Expr) -> Expr
+mkEnum :: Expr -> Maybe Expr -> Maybe Expr -> Expr
 
 -- | Create a parallel array enumeration (<tt> [: 1,3 .. 10 :] </tt>)
-mkParArrayEnum :: Expr -> Maybe (Expr) -> Expr -> Expr
+mkParArrayEnum :: Expr -> Maybe Expr -> Expr -> Expr
 
 -- | Create a list comprehension (<tt> [ (x, y) | x &lt;- xs | y &lt;- ys ]
 --   </tt>)
@@ -1118,7 +1118,7 @@ mkSpliceDecl :: Splice -> Decl
 mkDataDecl :: DataOrNewtypeKeyword -> Maybe Context -> DeclHead -> [ConDecl] -> [Deriving] -> Decl
 
 -- | Creates a GADT-style data or newtype declaration.
-mkGADTDataDecl :: DataOrNewtypeKeyword -> Maybe Context -> DeclHead -> Maybe (KindConstraint) -> [GadtConDecl] -> [Deriving] -> Decl
+mkGADTDataDecl :: DataOrNewtypeKeyword -> Maybe Context -> DeclHead -> Maybe KindConstraint -> [GadtConDecl] -> [Deriving] -> Decl
 
 -- | Creates a GADT constructor declaration (<tt> D1 :: Int -&gt; T String
 --   </tt>)
@@ -1390,7 +1390,7 @@ mkAnnPragma :: AnnotationSubject -> Expr -> TopLevelPragma
 
 -- | A pragma that marks a function for inlining to the compiler (<tt> {-#
 --   INLINE thenUs #-} </tt>)
-mkInlinePragma :: Maybe (ConlikeAnnot) -> Maybe (PhaseControl) -> Name -> TopLevelPragma
+mkInlinePragma :: Maybe ConlikeAnnot -> Maybe PhaseControl -> Name -> TopLevelPragma
 
 -- | A pragma that forbids a function from being inlined by the compiler
 --   (<tt> {-# NOINLINE f #-} </tt>)
@@ -1398,11 +1398,11 @@ mkNoInlinePragma :: Name -> TopLevelPragma
 
 -- | A pragma that marks a function that it may be inlined by the compiler
 --   (<tt> {-# INLINABLE thenUs #-} </tt>)
-mkInlinablePragma :: Maybe (PhaseControl) -> Name -> TopLevelPragma
+mkInlinablePragma :: Maybe PhaseControl -> Name -> TopLevelPragma
 
 -- | A pragma for maintaining line numbers in generated sources (<tt> {-#
 --   LINE 123 "somefile" #-} </tt>)
-mkLinePragma :: Int -> Maybe (StringNode) -> TopLevelPragma
+mkLinePragma :: Int -> Maybe StringNode -> TopLevelPragma
 
 -- | A pragma that tells the compiler that a polymorph function should be
 --   optimized for a given type (<tt> {-# SPECIALISE f :: Int -&gt; b -&gt;
@@ -1525,342 +1525,489 @@ module Language.Haskell.Tools.Rewrite.Create
 module Language.Haskell.Tools.Rewrite.Match.Binds
 
 -- | Non-function binding (<tt> v = "12" </tt>)
+pattern SimpleBind :: Pattern -> Rhs -> MaybeLocalBinds -> ValueBind
 
 -- | Function binding (<tt> f 0 = 1; f x = x </tt>). All matches must have
 --   the same name.
+pattern FunctionBind :: MatchList -> ValueBind
 
 -- | Clause of function binding
+pattern Match :: MatchLhs -> Rhs -> MaybeLocalBinds -> Match
 
 -- | A match lhs with the function name and parameter names (<tt> f a b
 --   </tt>)
+pattern MatchLhs :: Name -> PatternList -> MatchLhs
 
 -- | An infix match lhs for an operator (<tt> a + b </tt>)
+pattern InfixLhs :: Pattern -> Operator -> Pattern -> PatternList -> MatchLhs
 
 -- | Local bindings attached to a declaration (<tt> where x = 42 </tt>)
+pattern LocalBinds :: LocalBindList -> LocalBinds
 
 -- | A local binding for a value
+pattern LocalValBind :: ValueBind -> LocalBind
 
 -- | A local type signature
+pattern LocalTypeSig :: TypeSignature -> LocalBind
 
 -- | A local fixity declaration
+pattern LocalFixity :: FixitySignature -> LocalBind
 
 -- | A type signature (<tt> f :: Int -&gt; Int </tt>)
+pattern TypeSignature :: NameList -> Type -> TypeSignature
 
 -- | A left-associative fixity declaration (<tt> infixl 5 +, - </tt>).
+pattern InfixL :: OperatorList -> FixitySignature
 
 -- | A right-associative fixity declaration (<tt> infixr 5 +, - </tt>).
+pattern InfixR :: OperatorList -> FixitySignature
 
 -- | A non-associative fixity declaration (<tt> infix 5 +, - </tt>).
+pattern Infix :: OperatorList -> FixitySignature
 
 -- | An unguarded right-hand-side (<tt> = 3 </tt>)
+pattern UnguardedRhs :: Expr -> Rhs
 
 -- | An unguarded right-hand-side (<tt> | x == 1 = 3; | otherwise = 4
 --   </tt>)
+pattern GuardedRhss :: GuardedRhsList -> Rhs
 
 -- | A guarded right-hand side of a value binding (<tt> | x &gt; 3 = 2
 --   </tt>)
+pattern GuardedRhs :: RhsGuardList -> Expr -> GuardedRhs
 
 -- | A bind statement in a pattern guard (<tt> Just v &lt;- x </tt>)
+pattern GuardBind :: Pattern -> Expr -> RhsGuard
 
 -- | A let statement in a pattern guard (<tt> let x = 3 </tt>)
+pattern GuardLet :: LocalBindList -> RhsGuard
 
 -- | An expression to check for a pattern guard
+pattern GuardCheck :: Expr -> RhsGuard
 
 
 -- | UPattern matching on declaration-level AST fragments for refactorings.
 module Language.Haskell.Tools.Rewrite.Match.Decls
 
 -- | A type synonym ( <tt>type String = [Char]</tt> )
+pattern TypeDecl :: DeclHead -> Type -> Decl
 
 -- | Standalone deriving declaration (<tt> deriving instance X T </tt>)
+pattern StandaloneDeriving :: Maybe DeriveStrategy -> Maybe OverlapPragma -> InstanceRule -> Decl
 
 -- | Fixity declaration (<tt> infixl 5 +, - </tt>)
+pattern FixityDecl :: FixitySignature -> Decl
 
 -- | Default types (<tt> default (T1, T2) </tt>)
+pattern DefaultDecl :: TypeList -> Decl
 
 -- | Type signature declaration (<tt> f :: Int -&gt; Int </tt>)
+pattern TypeSigDecl :: TypeSignature -> Decl
 
 -- | Function or value binding (<tt> f x = 12 </tt>)
+pattern ValueBinding :: ValueBind -> Decl
 
 -- | A Template Haskell splice declaration (<tt> $(generateDecls) </tt>)
+pattern SpliceDecl :: Splice -> Decl
 
 -- | A data or newtype declaration. Empty data type declarations without
 --   where keyword are always belong to DataDecl.
+pattern DataDecl :: DataOrNewtypeKeyword -> MaybeContext -> DeclHead -> ConDeclList -> DerivingList -> Decl
 
 -- | A GADT-style data or newtype declaration.
+pattern GADTDataDecl :: DataOrNewtypeKeyword -> MaybeContext -> DeclHead -> MaybeKindConstraint -> AnnList UGadtConDecl -> DerivingList -> Decl
 
 -- | GADT constructor declaration (<tt> D1 :: Int -&gt; T String </tt>)
+pattern GadtConDecl :: NameList -> Type -> GadtConDecl
 
 -- | GADT constructor declaration with record syntax (<tt> D1 :: { val ::
 --   Int } -&gt; T String </tt>)
+pattern GadtRecordConDecl :: NameList -> FieldDeclList -> Type -> GadtConDecl
 
 -- | Ordinary data constructor (<tt> C t1 t2 </tt>)
+pattern ConDecl :: Name -> TypeList -> ConDecl
 
 -- | Creates a record data constructor (<tt> Point { x :: Double, y ::
 --   Double } </tt>)
+pattern RecordConDecl :: Name -> FieldDeclList -> ConDecl
 
 -- | Infix data constructor (<tt> t1 :+: t2 </tt>)
+pattern InfixConDecl :: Type -> Operator -> Type -> ConDecl
 
 -- | Field declaration (<tt> fld :: Int </tt>)
+pattern FieldDecl :: NameList -> Type -> FieldDecl
 
 -- | A deriving clause without parentheses (<tt> deriving Show </tt>.
+pattern DerivingOne :: InstanceHead -> Deriving
 
 -- | A deriving clause without parentheses, with/witohut strategy (<tt>
 --   deriving stock Show </tt>.
+pattern DerivingOne' :: MaybeDeriveStrategy -> InstanceHead -> Deriving
 
 -- | A deriving clause with parentheses <tt> deriving (Show, Eq) </tt>)
+pattern DerivingMulti :: InstanceHeadList -> Deriving
 
 -- | A deriving clause with parentheses, with/witohut strategy (<tt>
 --   deriving stock (Show, Eq) </tt>.
+pattern DerivingMulti' :: MaybeDeriveStrategy -> InstanceHeadList -> Deriving
+pattern DataKeyword :: DataOrNewtypeKeyword
+pattern NewtypeKeyword :: DataOrNewtypeKeyword
 
 -- | A list of functional dependencies: <tt> | a -&gt; b, c -&gt; d </tt>
 --   separated by commas
+pattern FunDeps :: FunDepList -> FunDeps
 
 -- | A functional dependency, given on the form <tt>l1 ... ln -&gt; r1 ...
 --   rn</tt>
+pattern FunDep :: NameList -> NameList -> FunDep
 
 -- | Type class declaration (<tt> class X a [where f = ...] </tt>)
+pattern ClassDecl :: MaybeContext -> DeclHead -> MaybeFunDeps -> MaybeClassBody -> Decl
 
 -- | The list of declarations that can appear in a typeclass
+pattern ClassBody :: ClassElementList -> ClassBody
 
 -- | Type signature: <tt> f :: A -&gt; B </tt> as a class member
+pattern ClassElemSig :: TypeSignature -> ClassElement
 
 -- | Default binding: <tt> f x = "aaa" </tt> as a class member
+pattern ClassElemDef :: ValueBind -> ClassElement
 
 -- | Declaration of an associated type synonym: <tt> type T x :: * </tt> in
 --   a class
+pattern ClassElemTypeFam :: DeclHead -> MaybeTypeFamilySpec -> ClassElement
 
 -- | Declaration of an associated data synonym: <tt> data T x :: * </tt> in
 --   a class
+pattern ClassElemDataFam :: DeclHead -> MaybeKindConstraint -> ClassElement
 
 -- | Default choice for type synonym: <tt> type T x = TE </tt> or <tt> type
 --   instance T x = TE </tt> in a class
+pattern ClsDefaultType :: DeclHead -> Type -> ClassElement
 
 -- | Default signature (by using <tt>DefaultSignatures</tt>): <tt> default
 --   enum :: (Generic a, GEnum (Rep a)) =&gt; [a] </tt>
+pattern ClsDefaultSig :: Name -> Type -> ClassElement
 
 -- | Minimal pragma: <tt> {-# MINIMAL (==) | (/=) #-} </tt> in a class
+pattern ClsMinimal :: MinimalFormula -> ClassElement
+pattern MinimalName :: Name -> MinimalFormula
+pattern MinimalParen :: MinimalFormula -> MinimalFormula
 
 -- | One of the minimal formulas are needed (<tt> min1 | min2 </tt>)
+pattern MinimalOr :: MinimalFormulaList -> MinimalFormula
 
 -- | Both of the minimal formulas are needed (<tt> min1 , min2 </tt>)
+pattern MinimalAnd :: MinimalFormulaList -> MinimalFormula
 
 -- | Type or class name as a declaration head
+pattern NameDeclHead :: Name -> DeclHead
 
 -- | Parenthesized type as a declaration head
+pattern ParenDeclHead :: DeclHead -> DeclHead
 
 -- | Type application as a declaration head
+pattern DeclHeadApp :: DeclHead -> TyVar -> DeclHead
 
 -- | Infix type application as a declaration head
+pattern InfixDeclHead :: TyVar -> Operator -> TyVar -> DeclHead
 
 -- | Instance declaration (<tt> instance X T [where f = ...] </tt>)
+pattern InstanceDecl :: InstanceRule -> MaybeInstBody -> Decl
 
 -- | Instance body is the implementation of the class functions (<tt> where
 --   a x = 1; b x = 2 </tt>)
+pattern InstanceBody :: InstBodyDeclList -> InstBody
 
 -- | A normal value binding (<tt> f x = 12 </tt>) inside a class instance
+pattern InstanceBind :: ValueBind -> InstBodyDecl
 
 -- | Type signature in instance definition with <tt>InstanceSigs</tt>
+pattern InstanceTypeSig :: TypeSignature -> InstBodyDecl
 
 -- | An associated type definition (<tt> type A X = B </tt>) in a class
 --   instance
+pattern InstanceTypeFamilyDef :: TypeEqn -> InstBodyDecl
 
 -- | An associated data definition (<tt> data A X = B Int | C </tt>) in a
 --   class instance
+pattern InstanceDataFamilyDef :: DataOrNewtypeKeyword -> InstanceRule -> ConDeclList -> DerivingList -> InstBodyDecl
 
 -- | An associated data definition as a GADT (<tt> data A X where B :: Int
 --   -&gt; A X </tt>) in a class instance
+pattern InstanceDataFamilyGADTDef :: DataOrNewtypeKeyword -> InstanceRule -> MaybeKindConstraint -> AnnList UGadtConDecl -> DerivingList -> InstBodyDecl
 
 -- | Specialize instance pragma in a class instance (no phase selection is
 --   allowed)
+pattern InstanceSpecializePragma :: Type -> InstBodyDecl
 
 -- | Instance head as an instance rule (<tt> X a =&gt; Y a </tt>)
+pattern InstanceRule :: AnnMaybe (AnnListG UTyVar) -> MaybeContext -> InstanceHead -> InstanceRule
 
 -- | Type or class name as an instance head
+pattern InstanceHead :: Name -> InstanceHead
 
 -- | Infix application of the type/class name to the left operand as an
 --   instance head
+pattern InfixInstanceHead :: Type -> Operator -> InstanceHead
 
 -- | Parenthesized instance head
+pattern ParenInstanceHead :: InstanceHead -> InstanceHead
 
 -- | Type application as an instance head
+pattern AppInstanceHead :: InstanceHead -> Type -> InstanceHead
 
 -- | <tt>OVERLAP</tt> pragma
+pattern EnableOverlap :: OverlapPragma
 
 -- | <tt>NO_OVERLAP</tt> pragma
+pattern DisableOverlap :: OverlapPragma
 
 -- | <tt>OVERLAPPABLE</tt> pragma
+pattern Overlappable :: OverlapPragma
 
 -- | <tt>OVERLAPPING</tt> pragma
+pattern Overlapping :: OverlapPragma
 
 -- | <tt>OVERLAPS</tt> pragma
+pattern Overlaps :: OverlapPragma
 
 -- | <tt>INCOHERENT</tt> pragma
+pattern IncoherentOverlap :: OverlapPragma
 
 -- | Role annotations (<tt> type role Ptr representational </tt>)
+pattern RoleDecl :: QualifiedName -> RoleList -> Decl
+pattern NominalRole :: Role
+pattern RepresentationalRole :: Role
+pattern PhantomRole :: Role
 
 -- | Foreign import (<tt> foreign import foo :: Int -&gt; IO Int </tt>)
+pattern ForeignImport :: CallConv -> MaybeSafety -> Name -> Type -> Decl
 
 -- | Foreign export (<tt> foreign export ccall foo :: Int -&gt; IO Int
 --   </tt>)
+pattern ForeignExport :: CallConv -> Name -> Type -> Decl
 
 -- | Specifies <tt>stdcall</tt> calling convention for foreign
 --   import/export.
+pattern StdCall :: CallConv
 
 -- | Specifies <tt>ccall</tt> calling convention for foreign import/export.
+pattern CCall :: CallConv
 
 -- | Specifies <tt>capi</tt> calling convention for foreign import/export.
+pattern CApi :: CallConv
 
 -- | Specifies that the given foreign import is <tt>unsafe</tt>.
+pattern Unsafe :: Safety
 
 -- | Pattern synonyms (<tt> pattern Arrow t1 t2 = App "-&gt;" [t1, t2]
 --   </tt>)
+pattern PatternSynonym :: PatSynLhs -> PatSynRhs -> Decl
 
 -- | A left hand side with a constructor name and arguments (<tt> Arrow t1
 --   t2 </tt>)
+pattern ConPatSyn :: Name -> NameList -> PatSynLhs
 
 -- | An infix pattern synonym left-hand side (<tt> t1 :+: t2 </tt>)
+pattern InfixPatSyn :: Name -> Operator -> Name -> PatSynLhs
 
 -- | A record-style pattern synonym left-hand side (<tt> Arrow { arrowFrom,
 --   arrowTo } </tt>)
+pattern RecordPatSyn :: Name -> NameList -> PatSynLhs
 
 -- | An automatically two-way pattern synonym (<tt> = App "Int" [] </tt>)
+pattern SymmetricPatSyn :: Pattern -> PatSynRhs
 
 -- | A pattern synonym that can be only used for pattenr matching but not
 --   for combining (<tt> &lt;- App "Int" [] </tt>)
+pattern OneWayPatSyn :: Pattern -> PatSynRhs
 
 -- | A pattern synonym with the other direction explicitly specified (<tt>
 --   &lt;- App "Int" [] where Int = App "Int" [] </tt>)
+pattern TwoWayPatSyn :: Pattern -> MatchList -> PatSynRhs
 
 -- | Pattern type signature declaration (<tt> pattern Succ :: Int -&gt; Int
 --   </tt>)
+pattern PatternSignatureDecl :: PatternSignature -> Decl
+pattern PatternSignature :: NameList -> Type -> PatternSignature
 
 -- | Type family declaration (<tt> type family A a :: * -&gt; * </tt>)
+pattern TypeFamily :: DeclHead -> MaybeTypeFamilySpec -> Decl
 
 -- | Data family declaration (<tt> data family A a :: * -&gt; * </tt>)
+pattern DataFamily :: DeclHead -> MaybeKindConstraint -> Decl
 
 -- | Type family instance declaration (<tt> type instance Fam T = AssignedT
 --   </tt>)
+pattern TypeInstance :: InstanceRule -> Type -> Decl
 
 -- | Data instance declaration (<tt> data instance Fam T = Con1 | Con2
 --   </tt>)
+pattern DataInstance :: DataOrNewtypeKeyword -> InstanceRule -> ConDeclList -> DerivingList -> Decl
 
 -- | GADT-style data instance declaration (<tt> data instance Fam T where
 --   ... </tt>)
+pattern GadtDataInstance :: DataOrNewtypeKeyword -> InstanceRule -> MaybeKindConstraint -> GadtConDeclList -> Decl
 
 -- | A closed type family declaration
+pattern ClosedTypeFamily :: DeclHead -> MaybeTypeFamilySpec -> TypeEqnList -> Decl
 
 -- | Specifies the kind of a type family (<tt> :: * -&gt; * </tt>)
+pattern TypeFamilyKindSpec :: KindConstraint -> TypeFamilySpec
 
 -- | Specifies the injectivity of a type family (<tt> = r | r -&gt; a
 --   </tt>)
+pattern TypeFamilyInjectivitySpec :: TyVar -> NameList -> TypeFamilySpec
 
 -- | Type equations as found in closed type families (<tt> T A = S </tt>)
+pattern TypeEqn :: Type -> Type -> TypeEqn
 
 -- | Top-level pragmas
+pattern PragmaDecl :: TopLevelPragma -> Decl
 
 -- | A pragma that introduces source rewrite rules (<tt> {-# RULES
 --   "map/map" [2] forall f g xs. map f (map g xs) = map (f.g) xs #-}
 --   </tt>)
+pattern RulePragma :: RuleList -> TopLevelPragma
 
 -- | A pragma that marks definitions as deprecated (<tt> {-# DEPRECATED f
 --   "f will be replaced by g" #-} </tt>)
+pattern DeprPragma :: NameList -> String -> TopLevelPragma
 
 -- | A pragma that marks definitions as deprecated (<tt> {-# WARNING
 --   unsafePerformIO "you should know what you are doing" #-} </tt>)
+pattern WarningPragma :: NameList -> String -> TopLevelPragma
 
 -- | A pragma that annotates a definition with an arbitrary value (<tt> {-#
 --   ANN f 42 #-} </tt>)
+pattern AnnPragma :: AnnotationSubject -> Expr -> TopLevelPragma
 
 -- | A pragma that marks a function for inlining to the compiler (<tt> {-#
 --   INLINE thenUs #-} </tt>)
+pattern InlinePragma :: MaybeConlikeAnnot -> MaybePhaseControl -> Name -> TopLevelPragma
 
 -- | A pragma that forbids a function from being inlined by the compiler
 --   (<tt> {-# NOINLINE f #-} </tt>)
+pattern NoInlinePragma :: Name -> TopLevelPragma
 
 -- | A pragma that marks a function that it may be inlined by the compiler
 --   (<tt> {-# INLINABLE thenUs #-} </tt>)
+pattern InlinablePragma :: MaybePhaseControl -> Name -> TopLevelPragma
 
 -- | A pragma for maintaining line numbers in generated sources (<tt> {-#
 --   LINE 123 "somefile" #-} </tt>)
+pattern LinePragma :: Int -> MaybeStringNode -> TopLevelPragma
 
 -- | A pragma that tells the compiler that a polymorph function should be
 --   optimized for a given type (<tt> {-# SPECIALISE f :: Int -&gt; b -&gt;
 --   b #-} </tt>)
+pattern SpecializePragma :: MaybePhaseControl -> Name -> TypeList -> TopLevelPragma
 
 -- | Marks that the pragma should be applied from a given compile phase
 --   (<tt> [2] </tt>)
+pattern PhaseControlFrom :: Integer -> PhaseControl
 
 -- | Marks that the pragma should be applied until a given compile phase
 --   (<tt> [~2] </tt>)
+pattern PhaseControlUntil :: Integer -> PhaseControl
 
 -- | A rewrite rule (<tt> "map/map" forall f g xs. map f (map g xs) = map
 --   (f.g) xs </tt>)
+pattern RewriteRule :: String -> MaybePhaseControl -> RuleVarList -> Expr -> Expr -> Rule
 
 -- | The definition with the given name is annotated
+pattern NameAnnotation :: Name -> AnnotationSubject
 
 -- | A type with the given name is annotated
+pattern TypeAnnotation :: Name -> AnnotationSubject
 
 -- | The whole module is annotated
+pattern ModuleAnnotation :: AnnotationSubject
 
 -- | A <tt>CONLIKE</tt> modifier for an <tt>INLINE</tt> pragma.
+pattern ConlikeAnnotation :: ConlikeAnnot
 
 
 -- | UPattern matching on statement-level AST fragments for refactorings.
 module Language.Haskell.Tools.Rewrite.Match.Kinds
 
 -- | Kind constraint (<tt> :: * -&gt; * </tt>)
+pattern KindConstraint :: Kind -> KindConstraint
 
 -- | <tt>*</tt>, the kind of types
+pattern StarKind :: Kind
 
 -- | <tt>#</tt>, the kind of unboxed types
+pattern UnboxKind :: Kind
 
 -- | <tt>-&gt;</tt>, the kind of type constructor
+pattern FunKind :: Kind -> Kind -> Kind
 
 -- | A parenthesised kind
+pattern ParenKind :: Kind -> Kind
 
 -- | Kind variable (using <tt>PolyKinds</tt> extension)
+pattern VarKind :: Name -> Kind
 
 -- | Kind application (<tt> k1 k2 </tt>)
+pattern AppKind :: Kind -> Kind -> Kind
 
 -- | A list kind (<tt> [k] </tt>)
+pattern ListKind :: Kind -> Kind
 
 -- | Numeric value promoted to the kind level.
+pattern IntKind :: Integer -> Kind
 
 -- | String value promoted to the kind level.
+pattern StringKind :: String -> Kind
 
 -- | A data constructor value promoted to the kind level.
+pattern ConKind :: Name -> Kind
 
 -- | A list of elements as a kind.
+pattern ListKindPromoted :: KindList -> Kind
 
 -- | A tuple of elements as a kind.
+pattern TupleKind :: KindList -> Kind
 
 -- | Kind of the unit value <tt>()</tt>.
+pattern UnitKind :: Kind
 
 
 -- | UPattern matching on literals for refactorings.
 module Language.Haskell.Tools.Rewrite.Match.Literals
 
 -- | Character literal: <tt><tt>c</tt></tt>
+pattern CharLit :: Char -> Literal
 
 -- | String literal: <tt>"abc"</tt>
+pattern StringLit :: String -> Literal
 
 -- | Integer literal: <tt>12</tt>
+pattern IntLit :: Integer -> Literal
 
 -- | Fractional literal: <tt>3.14</tt>
+pattern FracLit :: Rational -> Literal
 
 -- | Primitive integer literal (of type <tt>Int#</tt>): <tt>32#</tt>
+pattern PrimIntLit :: Integer -> Literal
 
 -- | Primitive word literal (of type <tt>Word#</tt>): <tt>32##</tt>
+pattern PrimWordLit :: Integer -> Literal
 
 -- | Primitive float literal (of type <tt>Float#</tt>): <tt>3.14#</tt>
+pattern PrimFloatLit :: Rational -> Literal
 
 -- | Primitive double literal (of type <tt>Double#</tt>): <tt>3.14##</tt>
+pattern PrimDoubleLit :: Rational -> Literal
 
 -- | Primitive character literal (of type <tt>Char#</tt>):
 --   <tt><tt>c</tt>#</tt>
+pattern PrimCharLit :: Char -> Literal
 
 -- | Primitive string literal (of type <tt>Addr#</tt>): <tt>"xxx"#</tt>
+pattern PrimStringLit :: String -> Literal
 
 
 -- | UPattern matching on UModule-level AST fragments for refactorings.
@@ -1868,382 +2015,553 @@ module Language.Haskell.Tools.Rewrite.Match.Modules
 
 -- | The representation of a haskell module, that is a separate compilation
 --   unit. It may or may not have a header.
+pattern Module :: FilePragmaList -> MaybeModuleHead -> ImportDeclList -> DeclList -> Module
 
 -- | Module declaration with name and (optional) exports
+pattern ModuleHead :: ModuleName -> MaybeModulePragma -> MaybeExportSpecs -> ModuleHead
 
 -- | A list of export specifications surrounded by parentheses
+pattern ExportSpecs :: ExportSpecList -> ExportSpecs
 
 -- | Export a name and related names
+pattern ExportSpec :: IESpec -> ExportSpec
 
 -- | The export of an imported module (<tt> module A </tt>)
+pattern ModuleExport :: ModuleName -> ExportSpec
 
 -- | Marks a name to be imported or exported with related names
 --   (subspecifier)
+pattern IESpec :: MaybeImportModifier -> Name -> MaybeSubSpec -> IESpec
 
 -- | <tt>(..)</tt>: a class exported with all of its methods, or a datatype
 --   exported with all of its constructors.
+pattern SubAll :: SubSpec
 
 -- | <tt>(a,b,c)</tt>: a class exported with some of its methods, or a
 --   datatype exported with some of its constructors.
+pattern SubList :: NameList -> SubSpec
+pattern ImportDecl :: MaybeImportSource -> MaybeImportQualified -> MaybeImportSafe -> MaybeStringNode -> ModuleName -> MaybeImportRenaming -> MaybeImportSpec -> ImportDecl
+pattern ImportRenaming :: ModuleName -> ImportRenaming
+pattern ImportSpecList :: IESpecList -> ImportSpec
+pattern ImportHidingList :: IESpecList -> ImportSpec
+pattern ModuleName :: String -> ModuleName
 
 -- | <tt>LANGUAGE</tt> pragma, listing the enabled language extensions in
 --   that file
+pattern LanguagePragma :: LanguageExtensionList -> FilePragma
 
 -- | <tt>OPTIONS</tt> pragma, possibly qualified with a tool, e.g.
 --   OPTIONS_GHC
+pattern OptionsPragma :: String -> FilePragma
 
 -- | The name of the enabled language extension, for example (<tt>
 --   LambdaCase </tt>)
+pattern LanguageExtension :: String -> LanguageExtension
 
 -- | A warning pragma attached to the module
+pattern ModuleWarningPragma :: StringNodeList -> ModulePragma
 
 -- | A deprecated pragma attached to the module
+pattern ModuleDeprecatedPragma :: StringNodeList -> ModulePragma
 
 
 -- | Generation of basic AST fragments (names for example) for refactorings
 module Language.Haskell.Tools.Rewrite.Match.Names
 
 -- | A normal operator used as an operator.
+pattern NormalOp :: QualifiedName -> Operator
 
 -- | A normal name used as an operator with backticks: <tt> a `mod` b </tt>
+pattern BacktickOp :: QualifiedName -> Operator
 
 -- | A normal, non-operator name.
+pattern NormalName :: QualifiedName -> Name
 
 -- | Parenthesized name: <tt> foldl (+) 0 </tt>
+pattern ParenName :: QualifiedName -> Name
 
 -- | Creates an implicit name: <tt> ?var </tt>
+pattern ImplicitName :: QualifiedName -> Name
 
 -- | Program elements formatted as string literals (import packages, pragma
 --   texts)
+pattern StringNode :: String -> StringNode
 
 -- | Possibly qualified name.
+pattern QualifiedName :: NamePartList -> NamePart -> QualifiedName
 
 -- | Parts of a qualified name.
+pattern NamePart :: String -> NamePart
 
 
 -- | UPattern matching on pattern-level AST fragments for refactorings.
 module Language.Haskell.Tools.Rewrite.Match.Patterns
 
 -- | Pattern name binding
+pattern VarPat :: Name -> Pattern
 
 -- | Literal pattern
+pattern LitPat :: Literal -> Pattern
 
 -- | Infix constructor application pattern (<tt> a :+: b </tt>)
+pattern InfixAppPat :: Pattern -> Operator -> Pattern -> Pattern
 
 -- | Constructor application pattern (<tt> Point x y </tt>)
+pattern AppPat :: Name -> PatternList -> Pattern
 
 -- | Tuple pattern (<tt> (x,y) </tt>)
+pattern TuplePat :: PatternList -> Pattern
 
 -- | Unboxed tuple pattern (<tt> (# x, y #) </tt>)
+pattern UnboxTuplePat :: PatternList -> Pattern
 
 -- | List pattern (<tt> [1,2,a,x] </tt>)
+pattern ListPat :: PatternList -> Pattern
 
 -- | Parallel array pattern (<tt> [:1,2,a,x:] </tt>)
+pattern ParArrayPat :: PatternList -> Pattern
 
 -- | Parenthesised patterns
+pattern ParenPat :: Pattern -> Pattern
 
 -- | Record pattern (<tt> Point { x = 3, y } </tt>)
+pattern RecPat :: Name -> PatternFieldList -> Pattern
 
 -- | As-pattern (explicit name binding) (<tt> ls@(hd:_) </tt>)
+pattern AsPat :: Name -> Pattern -> Pattern
 
 -- | Wildcard pattern: (<tt> _ </tt>)
+pattern WildPat :: Pattern
 
 -- | Irrefutable pattern (<tt> ~(x:_) </tt>)
+pattern IrrefutablePat :: Pattern -> Pattern
 
 -- | Bang pattern (<tt> !x </tt>)
+pattern BangPat :: Pattern -> Pattern
 
 -- | Pattern with explicit type signature (<tt> x :: Int </tt>)
+pattern TypeSigPat :: Pattern -> Type -> Pattern
 
 -- | View pattern (<tt> f -&gt; Just 1 </tt>)
+pattern ViewPat :: Expr -> Pattern -> Pattern
 
 -- | Splice patterns: <tt>$(generateX inp)</tt>
+pattern SplicePat :: Splice -> Pattern
 
 -- | Quasi-quoted patterns: <tt>[| 1 + 2 |]</tt>
+pattern QuasiQuotePat :: QuasiQuote -> Pattern
+pattern NPlusKPat :: Name -> Literal -> Pattern
 
 -- | Named field pattern (<tt> p = Point 3 2 </tt>)
+pattern FieldPattern :: Name -> Pattern -> PatternField
 
 -- | Named field pun (<tt> p </tt>)
+pattern FieldPunPattern :: Name -> PatternField
 
 -- | Wildcard field pattern (<tt> .. </tt>)
+pattern FieldWildcardPattern :: FieldWildcard -> PatternField
 
 
 -- | UPattern matching on statement-level AST fragments for refactorings.
 module Language.Haskell.Tools.Rewrite.Match.Stmts
 
 -- | Binding statement (<tt> x &lt;- action </tt>)
+pattern BindStmt :: Pattern -> Expr -> Stmt
 
 -- | Non-binding statement (<tt> action </tt>)
+pattern ExprStmt :: Expr -> Stmt
 
 -- | Let statement (<tt> let x = 3; y = 4 </tt>)
+pattern LetStmt :: LocalBindList -> Stmt
 
 -- | A recursive binding statement with (<tt> rec b &lt;- f a c; c &lt;- f
 --   b a </tt>)
+pattern RecStmt :: StmtList -> Stmt
+pattern DoKeyword :: DoKind
+pattern MDoKeyword :: DoKind
 
 -- | Body of a list comprehension: (<tt> | x &lt;- [1..10] </tt>)
+pattern ListCompBody :: CompStmtList -> ListCompBody
 
 -- | Normal monadic statement of a list comprehension
+pattern CompStmt :: Stmt -> CompStmt
 
 -- | Then statements by <tt>TransformListComp</tt> (<tt> then sortWith by
 --   (x + y) </tt>)
+pattern ThenStmt :: Expr -> MaybeExpr -> CompStmt
 
 -- | Grouping statements by <tt>TransformListComp</tt> (<tt> then group by
 --   (x + y) using groupWith </tt>)
+pattern GroupStmt :: MaybeExpr -> MaybeExpr -> CompStmt
 
 -- | Binding statement command (<tt> x &lt;- action </tt>)
+pattern BindStmtCmd :: Pattern -> Cmd -> CmdStmt
 
 -- | Non-binding statement command (<tt> action </tt>)
+pattern ExprStmtCmd :: Cmd -> CmdStmt
 
 -- | Let statement command (<tt> let x = 3; y = 4 </tt>)
+pattern LetStmtCmd :: LocalBindList -> CmdStmt
 
 -- | A recursive binding statement command with (<tt> rec b &lt;- f a c; c
 --   &lt;- f b a </tt>)
+pattern RecStmtCmd :: CmdStmtList -> CmdStmt
 
 
 -- | UPattern matching expression-level AST fragments for refactorings.
 module Language.Haskell.Tools.Rewrite.Match.Exprs
 
 -- | An expression for a variable or a data constructor (<tt> a </tt>)
+pattern Var :: Name -> Expr
 
 -- | A literal expression (<tt> 42 </tt>)
+pattern Lit :: Literal -> Expr
 
 -- | An infix operator application (<tt> a + b </tt>)
+pattern InfixApp :: Expr -> Operator -> Expr -> Expr
 
 -- | Prefix operator application (<tt> -x </tt>)
+pattern PrefixApp :: Operator -> Expr -> Expr
 
 -- | Function application (<tt> f 4 </tt>)
+pattern App :: Expr -> Expr -> Expr
 
 -- | Lambda expression (<tt> \a b -&gt; a + b </tt>)
+pattern Lambda :: PatternList -> Expr -> Expr
 
 -- | Local binding (<tt> let x = 2; y = 3 in e x y </tt>)
+pattern Let :: LocalBindList -> Expr -> Expr
 
 -- | If expression (<tt> if a then b else c </tt>)
+pattern If :: Expr -> Expr -> Expr -> Expr
 
 -- | Multi way if expressions with <tt>MultiWayIf</tt> extension (<tt> if |
 --   guard1 -&gt; expr1; guard2 -&gt; expr2 </tt>)
+pattern MultiIf :: GuardedCaseRhsList -> Expr
 
 -- | Pattern matching expression (<tt> case expr of pat1 -&gt; expr1; pat2
 --   -&gt; expr2 </tt>)
+pattern Case :: Expr -> AltList -> Expr
 
 -- | Do-notation expressions (<tt> do x &lt;- act1; act2 </tt>)
+pattern Do :: StmtList -> Expr
 
 -- | MDo-notation expressions (<tt> mdo x &lt;- act1; act2 </tt>)
+pattern MDo :: StmtList -> Expr
+pattern ParArrayComp :: Expr -> ListCompBodyList -> Expr
 
 -- | Tuple expression (<tt> (e1, e2, e3) </tt>)
+pattern Tuple :: ExprList -> Expr
 
 -- | Unboxed tuple expression (<tt> (# e1, e2, e3 #) </tt>)
+pattern UnboxedTuple :: ExprList -> Expr
 
 -- | Tuple section, enabled with <tt>TupleSections</tt> (<tt> (a,,b)
 --   </tt>). One of the elements must be missing.
+pattern TupleSection :: TupSecElemList -> Expr
 
 -- | Unboxed tuple section enabled with <tt>TupleSections</tt> (<tt> ()
 --   </tt>). One of the elements must be missing.
+pattern UnboxedTupleSection :: TupSecElemList -> Expr
 
 -- | List expression: <tt>[1,2,3]</tt>
+pattern List :: ExprList -> Expr
 
 -- | Parallel array expression: <tt>[: 1,2,3 :]</tt>
+pattern ParArray :: ExprList -> Expr
 
 -- | Parenthesized expression: <tt>( a + b )</tt>
+pattern Paren :: Expr -> Expr
 
 -- | Left operator section: <tt>(1+)</tt>
+pattern LeftSection :: Expr -> Operator -> Expr
 
 -- | Right operator section: <tt>(+1)</tt>
+pattern RightSection :: Operator -> Expr -> Expr
 
 -- | Record value construction: <tt>Point { x = 3, y = -2 }</tt>
+pattern RecCon :: Name -> FieldUpdateList -> Expr
 
 -- | Record value update: <tt>p1 { x = 3, y = -2 }</tt>
+pattern RecUpdate :: Expr -> FieldUpdateList -> Expr
 
 -- | Enumeration expression (<tt> [1,3..10] </tt>)
+pattern Enum :: Expr -> MaybeExpr -> MaybeExpr -> Expr
 
 -- | Parallel array enumeration (<tt> [: 1,3 .. 10 :] </tt>)
+pattern ParArrayEnum :: Expr -> MaybeExpr -> Expr -> Expr
 
 -- | List comprehension (<tt> [ (x, y) | x &lt;- xs | y &lt;- ys ] </tt>)
+pattern ListComp :: Expr -> ListCompBodyList -> Expr
 
 -- | Parallel array comprehensions <tt> [: (x, y) | x &lt;- xs , y &lt;- ys
 --   :] </tt> enabled by <tt>ParallelArrays</tt>
+pattern ParArrayListComp :: Expr -> ListCompBodyList -> Expr
 
 -- | Explicit type signature (<tt> x :: Int </tt>)
+pattern TypeSig :: Expr -> Type -> Expr
 
 -- | Explicit type application (<tt> show @Integer (read "5") </tt>)
+pattern ExplicitTypeApp :: Expr -> Type -> Expr
 
 -- | <tt>'x</tt> for template haskell reifying of expressions
+pattern VarQuote :: Name -> Expr
 
 -- | <tt>''T</tt> for template haskell reifying of types
+pattern TypeQuote :: Name -> Expr
 
 -- | Template haskell bracket expression
+pattern BracketExpr :: Bracket -> Expr
 
 -- | Template haskell splice expression, for example: <tt>$(gen a)</tt> or
 --   <tt>$x</tt>
+pattern SpliceExpr :: Splice -> Expr
 
 -- | Template haskell quasi-quotation: <tt>[$quoter|str]</tt>
+pattern QuasiQuoteExpr :: QuasiQuote -> Expr
 
 -- | Template haskell quasi-quotation: <tt>[$quoter|str]</tt>
+pattern ExprPragma :: ExprPragma -> Expr -> Expr
 
 -- | Arrow definition: <tt>proc a -&gt; f -&lt; a+1</tt>
+pattern Proc :: Pattern -> Cmd -> Expr
 
 -- | Arrow definition: <tt>proc a -&gt; f -&lt; a+1</tt>
+pattern ArrowApp :: Expr -> ArrowApp -> Expr -> Expr
 
 -- | Lambda case ( <tt>case 0 -&gt; 1; 1 -&gt; 2</tt> )
+pattern LambdaCase :: AltList -> Expr
 
 -- | Static pointer expression (<tt> static e </tt>). The inner expression
 --   must be closed (cannot have variables bound outside)
+pattern StaticPointer :: Expr -> Expr
 
 -- | Update of a field (<tt> x = 1 </tt>)
+pattern NormalFieldUpdate :: Name -> Expr -> FieldUpdate
 
 -- | Update the field to the value of the same name (<tt> x </tt>)
+pattern FieldPun :: Name -> FieldUpdate
 
 -- | Update the fields of the bounded names to their values (<tt> ..
 --   </tt>). Must be the last initializer. Cannot be used in a record
 --   update expression.
+pattern FieldWildcard :: FieldWildcard -> FieldUpdate
 
 -- | An existing element in a tuple section
+pattern TupSecPresent :: Expr -> TupSecElem
 
 -- | A missing element in a tuple section
+pattern TupSecMissing :: TupSecElem
 
 -- | Clause of case expression (<tt> Just x -&gt; x + 1 </tt>)
+pattern Alt :: Pattern -> CaseRhs -> MaybeLocalBinds -> Alt
 
 -- | Unguarded right-hand side a pattern match (<tt> -&gt; 3 </tt>)
+pattern CaseRhs :: Expr -> CaseRhs
 
 -- | Guarded right-hand sides of a pattern match (<tt> | x == 1 -&gt; 3; |
 --   otherwise -&gt; 4 </tt>)
+pattern GuardedCaseRhss :: GuardedCaseRhsList -> CaseRhs
 
 -- | A guarded right-hand side of pattern matches binding (<tt> | x &gt; 3
 --   -&gt; 2 </tt>)
+pattern GuardedCaseRhs :: RhsGuardList -> Expr -> GuardedCaseRhs
 
 -- | A <tt>CORE</tt> pragma for adding notes to expressions.
+pattern CorePragma :: String -> ExprPragma
 
 -- | An <tt>SCC</tt> pragma for defining cost centers for profiling
+pattern SccPragma :: String -> ExprPragma
 
 -- | A pragma that describes if an expression was generated from a code
 --   fragment by an external tool (<tt> {--} </tt>)
+pattern GeneratedPragma :: SourceRange -> ExprPragma
 
 -- | In-AST source ranges (for generated pragmas)
+pattern SourceRange :: String -> Integer -> Integer -> Integer -> Integer -> SourceRange
 
 -- | An arrow application command (<tt> f -&lt; x + 1 </tt>)
+pattern ArrowAppCmd :: Expr -> ArrowApp -> Expr -> Cmd
 
 -- | A form command (<tt> (|untilA (increment -&lt; x+y) (within 0.5 -&lt;
 --   x)|) </tt>)
+pattern ArrowFormCmd :: Expr -> CmdList -> Cmd
 
 -- | A function application command
+pattern AppCmd :: Cmd -> Expr -> Cmd
 
 -- | An infix command application
+pattern InfixCmd :: Cmd -> Name -> Cmd -> Cmd
 
 -- | An infix command application
+pattern LambdaCmd :: PatternList -> Cmd -> Cmd
 
 -- | A parenthesized command
+pattern ParenCmd :: Cmd -> Cmd
 
 -- | A pattern match command
+pattern CaseCmd :: Expr -> CmdAltList -> Cmd
 
 -- | An if command (<tt> if f x y then g -&lt; x+1 else h -&lt; y+2 </tt>)
+pattern IfCmd :: Expr -> Cmd -> Cmd -> Cmd
 
 -- | A local binding command (<tt> let z = x+y </tt>)
+pattern LetCmd :: LocalBindList -> Cmd -> Cmd
 
 -- | A local binding command (<tt> let z = x+y </tt>)
+pattern DoCmd :: CmdStmtList -> Cmd
 
 -- | Left arrow application: <tt>-&lt;</tt>
+pattern LeftAppl :: ArrowApp
 
 -- | Right arrow application: <tt>&gt;-</tt>
+pattern RightAppl :: ArrowApp
 
 -- | Left arrow high application: <tt>-&lt;&lt;</tt>
+pattern LeftHighApp :: ArrowApp
 
 -- | Right arrow high application: <tt>&gt;&gt;-</tt>
+pattern RightHighApp :: ArrowApp
 
 -- | A hole expression <tt>_</tt>
+pattern Hole :: Expr
 
 
 -- | Pattern matching on Template Haskell AST fragments for refactorings.
 module Language.Haskell.Tools.Rewrite.Match.TH
 
 -- | A simple name splice: <tt>$generateX</tt>
+pattern IdSplice :: Name -> Splice
 
 -- | A splice with parentheses: <tt>$(generate input)</tt>
+pattern ParenSplice :: Expr -> Splice
 
 -- | Template haskell quasi-quotation: <tt>[quoter|str]</tt>
+pattern QuasiQuote :: Name -> String -> QuasiQuote
 
 -- | Expression bracket (<tt> [| x + y |] </tt>)
+pattern ExprBracket :: Expr -> Bracket
 
 -- | Pattern bracket (<tt> [p| Point x y |] </tt>)
+pattern PatternBracket :: Pattern -> Bracket
 
 -- | Type bracket (<tt> [t| (Int,Int) |] </tt>)
+pattern TypeBracket :: Type -> Bracket
 
 -- | Declaration bracket (<tt> [d| f :: Int -&gt; Int; f x = x*x |] </tt>)
+pattern DeclsBracket :: DeclList -> Bracket
 
 
 -- | UPattern matching on type-level AST fragments for refactorings.
 module Language.Haskell.Tools.Rewrite.Match.Types
 
 -- | Forall types (<tt> forall x y . type </tt>)
+pattern ForallType :: TyVarList -> Type -> Type
 
 -- | Type with a context (<tt> C a =&gt; type </tt>)
+pattern CtxType :: Context -> Type -> Type
 
 -- | Function types (<tt> a -&gt; b </tt>)
+pattern FunctionType :: Type -> Type -> Type
 
 -- | Tuple types (<tt> (a,b) </tt>)
+pattern TupleType :: TypeList -> Type
 
 -- | Unboxed tuple types (<tt> (#a,b#) </tt>)
+pattern UnboxedTupleType :: TypeList -> Type
 
 -- | List type with special syntax (<tt> [a] </tt>)
+pattern ListType :: Type -> Type
 
 -- | Parallel array type (<tt> [:a:] </tt>)
+pattern ParArrayType :: Type -> Type
 
 -- | Type application (<tt> F a </tt>)
+pattern TypeApp :: Type -> Type -> Type
 
 -- | Infix type constructor (<tt> (a &lt;: b) </tt>)
+pattern InfixTypeApp :: Type -> Operator -> Type -> Type
 
 -- | Type surrounded by parentheses (<tt> (T a) </tt>)
+pattern ParenType :: Type -> Type
 
 -- | Type variable or constructor (<tt> a </tt>)
+pattern VarType :: Name -> Type
 
 -- | Type with explicit kind signature (<tt> a :: * </tt>)
+pattern KindedType :: Type -> Kind -> Type
 
 -- | Strict type marked with <tt>!</tt>.
+pattern BangType :: Type -> Type
 
 -- | Lazy type marked with <tt>~</tt>. (Should only be used if
 --   <tt>Strict</tt> or <tt>StrictData</tt> language extension is used)
+pattern LazyType :: Type -> Type
 
 -- | Strict type marked with UNPACK pragma. (Usually contains the bang
 --   mark.)
+pattern UnpackType :: Type -> Type
 
 -- | Strict type marked with NOUNPACK pragma. (Usually contains the bang
 --   mark.)
+pattern NoUnpackType :: Type -> Type
 
 -- | A wildcard type (<tt> _ </tt>) with <tt>-XPartialTypeSignatures</tt>
+pattern WildcardType :: Type
 
 -- | A named wildcard type (<tt> _t </tt>) with
 --   <tt>-XPartialTypeSignatures</tt>
+pattern NamedWildcardType :: Name -> Type
 
 -- | A Template Haskell splice type (<tt> $(genType) </tt>).
+pattern SpliceType :: Splice -> Type
 
 -- | A Template Haskell splice type (<tt> $(genType) </tt>).
+pattern QuasiQuoteType :: QuasiQuote -> Type
 
 -- | Numeric value promoted to the type level.
+pattern PromotedIntType :: Integer -> Type
 
 -- | String value promoted to the type level.
+pattern PromotedStringType :: String -> Type
 
 -- | A data constructor value promoted to the type level.
+pattern PromotedConType :: Name -> Type
 
 -- | A list of elements as a type.
+pattern PromotedListType :: TypeList -> Type
 
 -- | A tuple of elements as a type.
+pattern PromotedTupleType :: TypeList -> Type
 
 -- | Kind of the unit value <tt>()</tt>.
+pattern PromotedUnitType :: Type
 
 -- | An unboxed sum type.
+pattern UnboxedSumType :: TypeList -> Type
 
 -- | Type variable declaration
+pattern TyVarDecl :: Name -> TyVar
 
 -- | Kinded type variable declaration (<tt> v :: * </tt>)
+pattern KindedTyVarDecl :: Name -> Kind -> TyVar
 
 -- | A context of assertions (<tt> C a =&gt; ... </tt>)
+pattern Context :: Assertion -> Context
 
 -- | Class assertion (<tt>Cls x</tt>)
+pattern ClassAssert :: Name -> TypeList -> Assertion
 
 -- | Infix class assertion, also contains type equations (<tt> a ~ X y
 --   </tt>)
+pattern InfixAssert :: Type -> Operator -> Type -> Assertion
 
 -- | Assertion for implicit parameter binding (<tt> ?cmp :: a -&gt; a -&gt;
 --   Bool </tt>)
+pattern ImplicitAssert :: Name -> Type -> Assertion
 
 -- | A list of assertions (<tt> (Eq a, Show a) </tt>)
+pattern TupleAssert :: [Assertion] -> Assertion
 
 
 -- | Public interface for the modules that can be used to pattern match on

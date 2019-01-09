@@ -1,0 +1,71 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts #-}
+<span class="lineno">    2 </span>-- | Functions that convert the literals of the GHC AST to corresponding elements in the Haskell-tools AST representation
+<span class="lineno">    3 </span>module Language.Haskell.Tools.BackendGHC.Literals where
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>import qualified Data.ByteString.Char8 as BS (foldr)
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>import BasicTypes as GHC (FractionalLit(..), IntegralLit(..))
+<span class="lineno">    8 </span>import FastString as GHC (unpackFS)
+<span class="lineno">    9 </span>import HsLit as GHC (OverLitVal(..), HsLit(..))
+<span class="lineno">   10 </span>import Type as GHC
+<span class="lineno">   11 </span>import TysWiredIn as GHC
+<span class="lineno">   12 </span>import TysPrim as GHC
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>import Language.Haskell.Tools.AST (Dom, RangeStage)
+<span class="lineno">   15 </span>import qualified Language.Haskell.Tools.AST as AST (ULiteral(..))
+<span class="lineno">   16 </span>import Language.Haskell.Tools.BackendGHC.Monad (Trf)
+<span class="lineno">   17 </span>import Language.Haskell.Tools.BackendGHC.Utils
+<span class="lineno">   18 </span>import Language.Haskell.Tools.BackendGHC.Names
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>trfLiteral' :: TransformName n r =&gt; HsLit n -&gt; Trf (AST.ULiteral (Dom r) RangeStage)
+<span class="lineno">   21 </span><span class="decl"><span class="istickedoff">trfLiteral' (HsChar _ ch) = pure $ AST.UCharLit <span class="nottickedoff">ch</span></span>
+<span class="lineno">   22 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsCharPrim _ ch) = pure $ AST.UPrimCharLit <span class="nottickedoff">ch</span></span>
+<span class="lineno">   23 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsString _ str) = pure $ AST.UStringLit <span class="nottickedoff">(unpackFS str)</span></span>
+<span class="lineno">   24 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsStringPrim _ str) = pure $ AST.UPrimStringLit <span class="nottickedoff">(BS.foldr (:) &quot;&quot; str)</span></span>
+<span class="lineno">   25 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsIntPrim _ i) = pure $ AST.UPrimIntLit <span class="nottickedoff">i</span></span>
+<span class="lineno">   26 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsWordPrim _ i) = pure $ AST.UPrimWordLit <span class="nottickedoff">i</span></span>
+<span class="lineno">   27 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsInt64Prim _ i) = <span class="nottickedoff">pure $ AST.UPrimIntLit i</span></span>
+<span class="lineno">   28 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsWord64Prim _ i) = <span class="nottickedoff">pure $ AST.UPrimWordLit i</span></span>
+<span class="lineno">   29 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsFloatPrim _ frac) = pure $ AST.UPrimFloatLit <span class="nottickedoff">(fl_value frac)</span></span>
+<span class="lineno">   30 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' (HsDoublePrim _ frac) = pure $ AST.UPrimDoubleLit <span class="nottickedoff">(fl_value frac)</span></span>
+<span class="lineno">   31 </span><span class="spaces"></span><span class="istickedoff">trfLiteral' l = <span class="nottickedoff">unhandledElement &quot;literal&quot; l</span></span></span>
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>monoLiteralType :: HsLit n -&gt; Type
+<span class="lineno">   34 </span><span class="decl"><span class="nottickedoff">monoLiteralType (HsChar _ _) = charTy</span>
+<span class="lineno">   35 </span><span class="spaces"></span><span class="nottickedoff">monoLiteralType (HsCharPrim _ _) = charPrimTy</span>
+<span class="lineno">   36 </span><span class="spaces"></span><span class="nottickedoff">monoLiteralType (HsString _ _) = stringTy</span>
+<span class="lineno">   37 </span><span class="spaces"></span><span class="nottickedoff">monoLiteralType (HsStringPrim _ _) = addrPrimTy</span>
+<span class="lineno">   38 </span><span class="spaces"></span><span class="nottickedoff">monoLiteralType (HsIntPrim _ _) = intPrimTy</span>
+<span class="lineno">   39 </span><span class="spaces"></span><span class="nottickedoff">monoLiteralType (HsWordPrim _ _) = wordTy</span>
+<span class="lineno">   40 </span><span class="spaces"></span><span class="nottickedoff">monoLiteralType (HsInt64Prim _ _) = int64PrimTy</span>
+<span class="lineno">   41 </span><span class="spaces"></span><span class="nottickedoff">monoLiteralType (HsWord64Prim _ _) = word64PrimTy</span>
+<span class="lineno">   42 </span><span class="spaces"></span><span class="nottickedoff">monoLiteralType (HsFloatPrim _ _) = floatX4PrimTy</span>
+<span class="lineno">   43 </span><span class="spaces"></span><span class="nottickedoff">monoLiteralType (HsDoublePrim _ _) = doubleX2PrimTy</span></span>
+<span class="lineno">   44 </span>
+<span class="lineno">   45 </span>trfOverloadedLit :: OverLitVal -&gt; Trf (AST.ULiteral (Dom r) RangeStage)
+<span class="lineno">   46 </span><span class="decl"><span class="istickedoff">trfOverloadedLit (HsIntegral (IL _ _ i)) = pure $ AST.UIntLit <span class="nottickedoff">i</span></span>
+<span class="lineno">   47 </span><span class="spaces"></span><span class="istickedoff">trfOverloadedLit (HsFractional frac) = pure $ AST.UFracLit <span class="nottickedoff">(fl_value frac)</span></span>
+<span class="lineno">   48 </span><span class="spaces"></span><span class="istickedoff">trfOverloadedLit (HsIsString _ str) = pure $ AST.UStringLit <span class="nottickedoff">(unpackFS str)</span></span></span>
+
+</pre>
+</body>
+</html>

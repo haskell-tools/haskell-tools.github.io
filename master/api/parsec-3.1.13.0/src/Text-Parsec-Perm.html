@@ -35,7 +35,7 @@
 <a name="line-26"></a><span class='hs-comment'>-----------------------------------------------------------------------------</span>
 <a name="line-27"></a>
 <a name="line-28"></a>
-<a name="line-29"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Perm</span>
+<a name="line-29"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text.Parsec.Perm</span>
 <a name="line-30"></a>    <span class='hs-layout'>(</span> <span class='hs-conid'>PermParser</span>
 <a name="line-31"></a>    <span class='hs-layout'>,</span> <span class='hs-conid'>StreamPermParser</span> <span class='hs-comment'>-- abstract</span>
 <a name="line-32"></a>
@@ -44,14 +44,14 @@
 <a name="line-35"></a>    <span class='hs-layout'>,</span> <span class='hs-layout'>(</span><span class='hs-varop'>&lt;|?&gt;</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-layout'>(</span><span class='hs-varop'>&lt;$?&gt;</span><span class='hs-layout'>)</span>
 <a name="line-36"></a>    <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-37"></a>
-<a name="line-38"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span>
+<a name="line-38"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text.Parsec</span>
 <a name="line-39"></a>
-<a name="line-40"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Identity</span>
+<a name="line-40"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control.Monad.Identity</span>
 <a name="line-41"></a><span class='hs-cpp'>#if MIN_VERSION_base(4,7,0)</span>
-<a name="line-42"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Typeable</span> <span class='hs-layout'>(</span> <span class='hs-conid'>Typeable</span> <span class='hs-layout'>)</span>
+<a name="line-42"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Typeable</span> <span class='hs-layout'>(</span> <span class='hs-conid'>Typeable</span> <span class='hs-layout'>)</span>
 <a name="line-43"></a><span class='hs-cpp'>#else</span>
 <a name="line-44"></a><span class='hs-comment'>-- For GHC 7.6</span>
-<a name="line-45"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Typeable</span> <span class='hs-layout'>(</span> <span class='hs-conid'>Typeable3</span> <span class='hs-layout'>)</span>
+<a name="line-45"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Typeable</span> <span class='hs-layout'>(</span> <span class='hs-conid'>Typeable3</span> <span class='hs-layout'>)</span>
 <a name="line-46"></a><span class='hs-cpp'>#endif</span>
 <a name="line-47"></a>
 <a name="line-48"></a><span class='hs-keyword'>infixl</span> <span class='hs-num'>1</span> <span class='hs-varop'>&lt;||&gt;</span><span class='hs-layout'>,</span> <span class='hs-varop'>&lt;|?&gt;</span>

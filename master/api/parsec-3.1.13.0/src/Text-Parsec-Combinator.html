@@ -27,7 +27,7 @@
 <a name="line-18"></a><span class='hs-comment'>--</span>
 <a name="line-19"></a><span class='hs-comment'>-----------------------------------------------------------------------------</span>
 <a name="line-20"></a>
-<a name="line-21"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Combinator</span>
+<a name="line-21"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text.Parsec.Combinator</span>
 <a name="line-22"></a>    <span class='hs-layout'>(</span> <span class='hs-varid'>choice</span>
 <a name="line-23"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>count</span>
 <a name="line-24"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>between</span>
@@ -51,9 +51,9 @@
 <a name="line-42"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>parserTrace</span><span class='hs-layout'>,</span> <span class='hs-varid'>parserTraced</span>
 <a name="line-43"></a>    <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-44"></a>
-<a name="line-45"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span>
-<a name="line-46"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Prim</span>
-<a name="line-47"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Debug</span><span class='hs-varop'>.</span><span class='hs-conid'>Trace</span> <span class='hs-layout'>(</span><span class='hs-varid'>trace</span><span class='hs-layout'>)</span>
+<a name="line-45"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control.Monad</span>
+<a name="line-46"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text.Parsec.Prim</span>
+<a name="line-47"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Debug.Trace</span> <span class='hs-layout'>(</span><span class='hs-varid'>trace</span><span class='hs-layout'>)</span>
 <a name="line-48"></a>
 <a name="line-49"></a><span class='hs-comment'>-- | @choice ps@ tries to apply the parsers in the list @ps@ in order,</span>
 <a name="line-50"></a><span class='hs-comment'>-- until one of them succeeds. Returns the value of the succeeding</span>

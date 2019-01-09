@@ -23,17 +23,17 @@
 <a name="line-14"></a><span class='hs-comment'>--</span>
 <a name="line-15"></a><span class='hs-comment'>-----------------------------------------------------------------------------</span>
 <a name="line-16"></a>
-<a name="line-17"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>ByteString</span><span class='hs-varop'>.</span><span class='hs-conid'>Lazy</span>
+<a name="line-17"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text.Parsec.ByteString.Lazy</span>
 <a name="line-18"></a>    <span class='hs-layout'>(</span> <span class='hs-conid'>Parser</span><span class='hs-layout'>,</span> <span class='hs-conid'>GenParser</span><span class='hs-layout'>,</span> <span class='hs-varid'>parseFromFile</span>
 <a name="line-19"></a>    <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-20"></a>
-<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Error</span>
-<a name="line-22"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Prim</span>
+<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text.Parsec.Error</span>
+<a name="line-22"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text.Parsec.Prim</span>
 <a name="line-23"></a>
-<a name="line-24"></a><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>ByteString</span><span class='hs-varop'>.</span><span class='hs-conid'>Lazy</span><span class='hs-varop'>.</span><span class='hs-conid'>Char8</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>C</span>
+<a name="line-24"></a><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Data.ByteString.Lazy.Char8</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>C</span>
 <a name="line-25"></a>
-<a name="line-26"></a><a name="Parser"></a><span class='hs-keyword'>type</span> <span class='hs-conid'>Parser</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Parsec</span> <span class='hs-conid'>C</span><span class='hs-varop'>.</span><span class='hs-conid'>ByteString</span> <span class='hs-conid'>()</span>
-<a name="line-27"></a><a name="GenParser"></a><span class='hs-keyword'>type</span> <span class='hs-conid'>GenParser</span> <span class='hs-varid'>t</span> <span class='hs-varid'>st</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Parsec</span> <span class='hs-conid'>C</span><span class='hs-varop'>.</span><span class='hs-conid'>ByteString</span> <span class='hs-varid'>st</span>
+<a name="line-26"></a><a name="Parser"></a><span class='hs-keyword'>type</span> <span class='hs-conid'>Parser</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Parsec</span> <span class='hs-conid'>C.ByteString</span> <span class='hs-conid'>()</span>
+<a name="line-27"></a><a name="GenParser"></a><span class='hs-keyword'>type</span> <span class='hs-conid'>GenParser</span> <span class='hs-varid'>t</span> <span class='hs-varid'>st</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Parsec</span> <span class='hs-conid'>C.ByteString</span> <span class='hs-varid'>st</span>
 <a name="line-28"></a>
 <a name="line-29"></a><a name="parseFromFile"></a><span class='hs-comment'>-- | @parseFromFile p filePath@ runs a lazy bytestring parser @p@ on the</span>
 <a name="line-30"></a><span class='hs-comment'>-- input read from @filePath@ using 'ByteString.Lazy.Char8.readFile'. Returns either a 'ParseError'</span>
@@ -46,7 +46,7 @@
 <a name="line-37"></a><span class='hs-comment'>-- &gt;              }</span>
 <a name="line-38"></a><span class='hs-definition'>parseFromFile</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Parser</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>String</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>IO</span> <span class='hs-layout'>(</span><span class='hs-conid'>Either</span> <span class='hs-conid'>ParseError</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span>
 <a name="line-39"></a><span class='hs-definition'>parseFromFile</span> <span class='hs-varid'>p</span> <span class='hs-varid'>fname</span>
-<a name="line-40"></a>    <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span> <span class='hs-varid'>input</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>C</span><span class='hs-varop'>.</span><span class='hs-varid'>readFile</span> <span class='hs-varid'>fname</span>
+<a name="line-40"></a>    <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span> <span class='hs-varid'>input</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>C.readFile</span> <span class='hs-varid'>fname</span>
 <a name="line-41"></a>         <span class='hs-varid'>return</span> <span class='hs-layout'>(</span><span class='hs-varid'>runP</span> <span class='hs-varid'>p</span> <span class='hs-conid'>()</span> <span class='hs-varid'>fname</span> <span class='hs-varid'>input</span><span class='hs-layout'>)</span>
 </pre></body>
 </html>

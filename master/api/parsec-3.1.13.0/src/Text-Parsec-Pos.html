@@ -24,7 +24,7 @@
 <a name="line-15"></a><span class='hs-comment'>--</span>
 <a name="line-16"></a><span class='hs-comment'>-----------------------------------------------------------------------------</span>
 <a name="line-17"></a>
-<a name="line-18"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Pos</span>
+<a name="line-18"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text.Parsec.Pos</span>
 <a name="line-19"></a>    <span class='hs-layout'>(</span> <span class='hs-conid'>SourceName</span><span class='hs-layout'>,</span> <span class='hs-conid'>Line</span><span class='hs-layout'>,</span> <span class='hs-conid'>Column</span>
 <a name="line-20"></a>    <span class='hs-layout'>,</span> <span class='hs-conid'>SourcePos</span>
 <a name="line-21"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>sourceLine</span><span class='hs-layout'>,</span> <span class='hs-varid'>sourceColumn</span><span class='hs-layout'>,</span> <span class='hs-varid'>sourceName</span>
@@ -34,8 +34,8 @@
 <a name="line-25"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>updatePosChar</span><span class='hs-layout'>,</span> <span class='hs-varid'>updatePosString</span>
 <a name="line-26"></a>    <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-27"></a>
-<a name="line-28"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Data</span> <span class='hs-layout'>(</span><span class='hs-conid'>Data</span><span class='hs-layout'>)</span>
-<a name="line-29"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Typeable</span> <span class='hs-layout'>(</span><span class='hs-conid'>Typeable</span><span class='hs-layout'>)</span>
+<a name="line-28"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Data</span> <span class='hs-layout'>(</span><span class='hs-conid'>Data</span><span class='hs-layout'>)</span>
+<a name="line-29"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Typeable</span> <span class='hs-layout'>(</span><span class='hs-conid'>Typeable</span><span class='hs-layout'>)</span>
 <a name="line-30"></a>
 <a name="line-31"></a><span class='hs-comment'>-- &lt; Source positions: a file name, a line and a column</span>
 <a name="line-32"></a><span class='hs-comment'>-- upper left is (1,1)</span>

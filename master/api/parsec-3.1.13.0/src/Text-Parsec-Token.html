@@ -30,7 +30,7 @@
 <a name="line-21"></a>
 <a name="line-22"></a><span class='hs-comment'>{-# OPTIONS_GHC -fno-warn-name-shadowing #-}</span>
 <a name="line-23"></a>
-<a name="line-24"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Token</span>
+<a name="line-24"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text.Parsec.Token</span>
 <a name="line-25"></a>    <span class='hs-layout'>(</span> <span class='hs-conid'>LanguageDef</span>
 <a name="line-26"></a>    <span class='hs-layout'>,</span> <span class='hs-conid'>GenLanguageDef</span> <span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span>
 <a name="line-27"></a>    <span class='hs-layout'>,</span> <span class='hs-conid'>TokenParser</span>
@@ -38,15 +38,15 @@
 <a name="line-29"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>makeTokenParser</span>
 <a name="line-30"></a>    <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-31"></a>
-<a name="line-32"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Char</span> <span class='hs-layout'>(</span> <span class='hs-varid'>isAlpha</span><span class='hs-layout'>,</span> <span class='hs-varid'>toLower</span><span class='hs-layout'>,</span> <span class='hs-varid'>toUpper</span><span class='hs-layout'>,</span> <span class='hs-varid'>isSpace</span><span class='hs-layout'>,</span> <span class='hs-varid'>digitToInt</span> <span class='hs-layout'>)</span>
+<a name="line-32"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Char</span> <span class='hs-layout'>(</span> <span class='hs-varid'>isAlpha</span><span class='hs-layout'>,</span> <span class='hs-varid'>toLower</span><span class='hs-layout'>,</span> <span class='hs-varid'>toUpper</span><span class='hs-layout'>,</span> <span class='hs-varid'>isSpace</span><span class='hs-layout'>,</span> <span class='hs-varid'>digitToInt</span> <span class='hs-layout'>)</span>
 <a name="line-33"></a><span class='hs-cpp'>#if MIN_VERSION_base(4,7,0)</span>
-<a name="line-34"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Typeable</span> <span class='hs-layout'>(</span> <span class='hs-conid'>Typeable</span> <span class='hs-layout'>)</span>
+<a name="line-34"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Typeable</span> <span class='hs-layout'>(</span> <span class='hs-conid'>Typeable</span> <span class='hs-layout'>)</span>
 <a name="line-35"></a><span class='hs-cpp'>#endif</span>
-<a name="line-36"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>List</span> <span class='hs-layout'>(</span> <span class='hs-varid'>nub</span><span class='hs-layout'>,</span> <span class='hs-varid'>sort</span> <span class='hs-layout'>)</span>
-<a name="line-37"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Identity</span>
-<a name="line-38"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Prim</span>
-<a name="line-39"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Char</span>
-<a name="line-40"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Combinator</span>
+<a name="line-36"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.List</span> <span class='hs-layout'>(</span> <span class='hs-varid'>nub</span><span class='hs-layout'>,</span> <span class='hs-varid'>sort</span> <span class='hs-layout'>)</span>
+<a name="line-37"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control.Monad.Identity</span>
+<a name="line-38"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text.Parsec.Prim</span>
+<a name="line-39"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text.Parsec.Char</span>
+<a name="line-40"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text.Parsec.Combinator</span>
 <a name="line-41"></a>
 <a name="line-42"></a><span class='hs-comment'>-----------------------------------------------------------</span>
 <a name="line-43"></a><span class='hs-comment'>-- Language Definition</span>

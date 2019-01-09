@@ -34,7 +34,7 @@
 <a name="line-25"></a><span class='hs-comment'>-- applies a sequence of monad transformers.</span>
 <a name="line-26"></a><span class='hs-comment'>-----------------------------------------------------------------------------</span>
 <a name="line-27"></a>
-<a name="line-28"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Trans</span><span class='hs-varop'>.</span><span class='hs-conid'>Class</span> <span class='hs-layout'>(</span>
+<a name="line-28"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Control.Monad.Trans.Class</span> <span class='hs-layout'>(</span>
 <a name="line-29"></a>    <span class='hs-comment'>-- * Transformer class</span>
 <a name="line-30"></a>    <span class='hs-conid'>MonadTrans</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span>
 <a name="line-31"></a>
@@ -122,145 +122,152 @@
 <a name="line-113"></a>
 <a name="line-114"></a><span class='hs-comment'>{- $example1
 <a name="line-115"></a>
-<a name="line-116"></a>One might define a parsing monad by adding a state (the 'String' remaining
-<a name="line-117"></a>to be parsed) to the @[]@ monad, which provides non-determinism:
-<a name="line-118"></a>
-<a name="line-119"></a>&gt; import Control.Monad.Trans.State
-<a name="line-120"></a>&gt;
-<a name="line-121"></a>&gt; type Parser = StateT String []
-<a name="line-122"></a>
-<a name="line-123"></a>Then @Parser@ is an instance of @MonadPlus@: monadic sequencing implements
-<a name="line-124"></a>concatenation of parsers, while @mplus@ provides choice.  To use parsers,
-<a name="line-125"></a>we need a primitive to run a constructed parser on an input string:
-<a name="line-126"></a>
-<a name="line-127"></a>&gt; runParser :: Parser a -&gt; String -&gt; [a]
-<a name="line-128"></a>&gt; runParser p s = [x | (x, "") &lt;- runStateT p s]
-<a name="line-129"></a>
-<a name="line-130"></a>Finally, we need a primitive parser that matches a single character,
-<a name="line-131"></a>from which arbitrarily complex parsers may be constructed:
+<a name="line-116"></a>The first example is a parser monad in the style of
+<a name="line-117"></a>
+<a name="line-118"></a>* \"Monadic parsing in Haskell\", by Graham Hutton and Erik Meijer,
+<a name="line-119"></a>/Journal of Functional Programming/ 8(4):437-444, July 1998
+<a name="line-120"></a>(&lt;<a href="http://www.cs.nott.ac.uk/~pszgmh/bib.html#pearl">http://www.cs.nott.ac.uk/~pszgmh/bib.html#pearl</a>&gt;).
+<a name="line-121"></a>
+<a name="line-122"></a>We can define such a parser monad by adding a state (the 'String' remaining
+<a name="line-123"></a>to be parsed) to the @[]@ monad, which provides non-determinism:
+<a name="line-124"></a>
+<a name="line-125"></a>&gt; import Control.Monad.Trans.State
+<a name="line-126"></a>&gt;
+<a name="line-127"></a>&gt; type Parser = StateT String []
+<a name="line-128"></a>
+<a name="line-129"></a>Then @Parser@ is an instance of @MonadPlus@: monadic sequencing implements
+<a name="line-130"></a>concatenation of parsers, while @mplus@ provides choice.  To use parsers,
+<a name="line-131"></a>we need a primitive to run a constructed parser on an input string:
 <a name="line-132"></a>
-<a name="line-133"></a>&gt; item :: Parser Char
-<a name="line-134"></a>&gt; item = do
-<a name="line-135"></a>&gt;     c:cs &lt;- get
-<a name="line-136"></a>&gt;     put cs
-<a name="line-137"></a>&gt;     return c
+<a name="line-133"></a>&gt; runParser :: Parser a -&gt; String -&gt; [a]
+<a name="line-134"></a>&gt; runParser p s = [x | (x, "") &lt;- runStateT p s]
+<a name="line-135"></a>
+<a name="line-136"></a>Finally, we need a primitive parser that matches a single character,
+<a name="line-137"></a>from which arbitrarily complex parsers may be constructed:
 <a name="line-138"></a>
-<a name="line-139"></a>In this example we use the operations @get@ and @put@ from
-<a name="line-140"></a>"Control.Monad.Trans.State", which are defined only for monads that are
-<a name="line-141"></a>applications of 'Control.Monad.Trans.State.Lazy.StateT'.  Alternatively one
-<a name="line-142"></a>could use monad classes from the @mtl@ package or similar, which contain
-<a name="line-143"></a>methods @get@ and @put@ with types generalized over all suitable monads.
-<a name="line-144"></a>-}</span>
-<a name="line-145"></a>
-<a name="line-146"></a><span class='hs-comment'>{- $example2
-<a name="line-147"></a>
-<a name="line-148"></a>We can define a parser that also counts by adding a
-<a name="line-149"></a>'Control.Monad.Trans.Writer.Lazy.WriterT' transformer:
-<a name="line-150"></a>
-<a name="line-151"></a>&gt; import Control.Monad.Trans.Class
-<a name="line-152"></a>&gt; import Control.Monad.Trans.State
-<a name="line-153"></a>&gt; import Control.Monad.Trans.Writer
-<a name="line-154"></a>&gt; import Data.Monoid
-<a name="line-155"></a>&gt;
-<a name="line-156"></a>&gt; type Parser = WriterT (Sum Int) (StateT String [])
-<a name="line-157"></a>
-<a name="line-158"></a>The function that applies a parser must now unwrap each of the monad
-<a name="line-159"></a>transformers in turn:
-<a name="line-160"></a>
-<a name="line-161"></a>&gt; runParser :: Parser a -&gt; String -&gt; [(a, Int)]
-<a name="line-162"></a>&gt; runParser p s = [(x, n) | ((x, Sum n), "") &lt;- runStateT (runWriterT p) s]
+<a name="line-139"></a>&gt; item :: Parser Char
+<a name="line-140"></a>&gt; item = do
+<a name="line-141"></a>&gt;     c:cs &lt;- get
+<a name="line-142"></a>&gt;     put cs
+<a name="line-143"></a>&gt;     return c
+<a name="line-144"></a>
+<a name="line-145"></a>In this example we use the operations @get@ and @put@ from
+<a name="line-146"></a>"Control.Monad.Trans.State", which are defined only for monads that are
+<a name="line-147"></a>applications of 'Control.Monad.Trans.State.Lazy.StateT'.  Alternatively one
+<a name="line-148"></a>could use monad classes from the @mtl@ package or similar, which contain
+<a name="line-149"></a>methods @get@ and @put@ with types generalized over all suitable monads.
+<a name="line-150"></a>-}</span>
+<a name="line-151"></a>
+<a name="line-152"></a><span class='hs-comment'>{- $example2
+<a name="line-153"></a>
+<a name="line-154"></a>We can define a parser that also counts by adding a
+<a name="line-155"></a>'Control.Monad.Trans.Writer.Lazy.WriterT' transformer:
+<a name="line-156"></a>
+<a name="line-157"></a>&gt; import Control.Monad.Trans.Class
+<a name="line-158"></a>&gt; import Control.Monad.Trans.State
+<a name="line-159"></a>&gt; import Control.Monad.Trans.Writer
+<a name="line-160"></a>&gt; import Data.Monoid
+<a name="line-161"></a>&gt;
+<a name="line-162"></a>&gt; type Parser = WriterT (Sum Int) (StateT String [])
 <a name="line-163"></a>
-<a name="line-164"></a>To define the @item@ parser, we need to lift the
-<a name="line-165"></a>'Control.Monad.Trans.State.Lazy.StateT' operations through the
-<a name="line-166"></a>'Control.Monad.Trans.Writer.Lazy.WriterT' transformer.
-<a name="line-167"></a>
-<a name="line-168"></a>&gt; item :: Parser Char
-<a name="line-169"></a>&gt; item = do
-<a name="line-170"></a>&gt;     c:cs &lt;- lift get
-<a name="line-171"></a>&gt;     lift (put cs)
-<a name="line-172"></a>&gt;     return c
+<a name="line-164"></a>The function that applies a parser must now unwrap each of the monad
+<a name="line-165"></a>transformers in turn:
+<a name="line-166"></a>
+<a name="line-167"></a>&gt; runParser :: Parser a -&gt; String -&gt; [(a, Int)]
+<a name="line-168"></a>&gt; runParser p s = [(x, n) | ((x, Sum n), "") &lt;- runStateT (runWriterT p) s]
+<a name="line-169"></a>
+<a name="line-170"></a>To define the @item@ parser, we need to lift the
+<a name="line-171"></a>'Control.Monad.Trans.State.Lazy.StateT' operations through the
+<a name="line-172"></a>'Control.Monad.Trans.Writer.Lazy.WriterT' transformer.
 <a name="line-173"></a>
-<a name="line-174"></a>In this case, we were able to do this with 'lift', but operations with
-<a name="line-175"></a>more complex types require special lifting functions, which are provided
-<a name="line-176"></a>by monad transformers for which they can be implemented.  If you use the
-<a name="line-177"></a>monad classes of the @mtl@ package or similar, this lifting is handled
-<a name="line-178"></a>automatically by the instances of the classes, and you need only use
-<a name="line-179"></a>the generalized methods @get@ and @put@.
-<a name="line-180"></a>
-<a name="line-181"></a>We can also define a primitive using the Writer:
-<a name="line-182"></a>
-<a name="line-183"></a>&gt; tick :: Parser ()
-<a name="line-184"></a>&gt; tick = tell (Sum 1)
-<a name="line-185"></a>
-<a name="line-186"></a>Then the parser will keep track of how many @tick@s it executes.
-<a name="line-187"></a>-}</span>
+<a name="line-174"></a>&gt; item :: Parser Char
+<a name="line-175"></a>&gt; item = do
+<a name="line-176"></a>&gt;     c:cs &lt;- lift get
+<a name="line-177"></a>&gt;     lift (put cs)
+<a name="line-178"></a>&gt;     return c
+<a name="line-179"></a>
+<a name="line-180"></a>In this case, we were able to do this with 'lift', but operations with
+<a name="line-181"></a>more complex types require special lifting functions, which are provided
+<a name="line-182"></a>by monad transformers for which they can be implemented.  If you use the
+<a name="line-183"></a>monad classes of the @mtl@ package or similar, this lifting is handled
+<a name="line-184"></a>automatically by the instances of the classes, and you need only use
+<a name="line-185"></a>the generalized methods @get@ and @put@.
+<a name="line-186"></a>
+<a name="line-187"></a>We can also define a primitive using the Writer:
 <a name="line-188"></a>
-<a name="line-189"></a><span class='hs-comment'>{- $example3
-<a name="line-190"></a>
-<a name="line-191"></a>This example is a cut-down version of the one in
-<a name="line-192"></a>\"Monad Transformers and Modular Interpreters\",
-<a name="line-193"></a>by Sheng Liang, Paul Hudak and Mark Jones in /POPL'95/
-<a name="line-194"></a>(&lt;<a href="http://web.cecs.pdx.edu/~mpj/pubs/modinterp.html">http://web.cecs.pdx.edu/~mpj/pubs/modinterp.html</a>&gt;).
-<a name="line-195"></a>
-<a name="line-196"></a>Suppose we want to define an interpreter that can do I\/O and has
-<a name="line-197"></a>exceptions, an environment and a modifiable store.  We can define
-<a name="line-198"></a>a monad that supports all these things as a stack of monad transformers:
-<a name="line-199"></a>
-<a name="line-200"></a>&gt; import Control.Monad.Trans.Class
-<a name="line-201"></a>&gt; import Control.Monad.Trans.State
-<a name="line-202"></a>&gt; import qualified Control.Monad.Trans.Reader as R
-<a name="line-203"></a>&gt; import qualified Control.Monad.Trans.Except as E
-<a name="line-204"></a>&gt; import Control.Monad.IO.Class
-<a name="line-205"></a>&gt;
-<a name="line-206"></a>&gt; type InterpM = StateT Store (R.ReaderT Env (E.ExceptT Err IO))
-<a name="line-207"></a>
-<a name="line-208"></a>for suitable types @Store@, @Env@ and @Err@.
-<a name="line-209"></a>
-<a name="line-210"></a>Now we would like to be able to use the operations associated with each
-<a name="line-211"></a>of those monad transformers on @InterpM@ actions.  Since the uppermost
-<a name="line-212"></a>monad transformer of @InterpM@ is 'Control.Monad.Trans.State.Lazy.StateT',
-<a name="line-213"></a>it already has the state operations @get@ and @set@.
+<a name="line-189"></a>&gt; tick :: Parser ()
+<a name="line-190"></a>&gt; tick = tell (Sum 1)
+<a name="line-191"></a>
+<a name="line-192"></a>Then the parser will keep track of how many @tick@s it executes.
+<a name="line-193"></a>-}</span>
+<a name="line-194"></a>
+<a name="line-195"></a><span class='hs-comment'>{- $example3
+<a name="line-196"></a>
+<a name="line-197"></a>This example is a cut-down version of the one in
+<a name="line-198"></a>
+<a name="line-199"></a>* \"Monad Transformers and Modular Interpreters\",
+<a name="line-200"></a>by Sheng Liang, Paul Hudak and Mark Jones in /POPL'95/
+<a name="line-201"></a>(&lt;<a href="http://web.cecs.pdx.edu/~mpj/pubs/modinterp.html">http://web.cecs.pdx.edu/~mpj/pubs/modinterp.html</a>&gt;).
+<a name="line-202"></a>
+<a name="line-203"></a>Suppose we want to define an interpreter that can do I\/O and has
+<a name="line-204"></a>exceptions, an environment and a modifiable store.  We can define
+<a name="line-205"></a>a monad that supports all these things as a stack of monad transformers:
+<a name="line-206"></a>
+<a name="line-207"></a>&gt; import Control.Monad.Trans.Class
+<a name="line-208"></a>&gt; import Control.Monad.Trans.State
+<a name="line-209"></a>&gt; import qualified Control.Monad.Trans.Reader as R
+<a name="line-210"></a>&gt; import qualified Control.Monad.Trans.Except as E
+<a name="line-211"></a>&gt; import Control.Monad.IO.Class
+<a name="line-212"></a>&gt;
+<a name="line-213"></a>&gt; type InterpM = StateT Store (R.ReaderT Env (E.ExceptT Err IO))
 <a name="line-214"></a>
-<a name="line-215"></a>The first of the 'Control.Monad.Trans.Reader.ReaderT' operations,
-<a name="line-216"></a>'Control.Monad.Trans.Reader.ask', is a simple action, so we can lift it
-<a name="line-217"></a>through 'Control.Monad.Trans.State.Lazy.StateT' to @InterpM@ using 'lift':
-<a name="line-218"></a>
-<a name="line-219"></a>&gt; ask :: InterpM Env
-<a name="line-220"></a>&gt; ask = lift R.ask
+<a name="line-215"></a>for suitable types @Store@, @Env@ and @Err@.
+<a name="line-216"></a>
+<a name="line-217"></a>Now we would like to be able to use the operations associated with each
+<a name="line-218"></a>of those monad transformers on @InterpM@ actions.  Since the uppermost
+<a name="line-219"></a>monad transformer of @InterpM@ is 'Control.Monad.Trans.State.Lazy.StateT',
+<a name="line-220"></a>it already has the state operations @get@ and @set@.
 <a name="line-221"></a>
-<a name="line-222"></a>The other 'Control.Monad.Trans.Reader.ReaderT' operation,
-<a name="line-223"></a>'Control.Monad.Trans.Reader.local', has a suitable type for lifting
-<a name="line-224"></a>using 'Control.Monad.Trans.State.Lazy.mapStateT':
+<a name="line-222"></a>The first of the 'Control.Monad.Trans.Reader.ReaderT' operations,
+<a name="line-223"></a>'Control.Monad.Trans.Reader.ask', is a simple action, so we can lift it
+<a name="line-224"></a>through 'Control.Monad.Trans.State.Lazy.StateT' to @InterpM@ using 'lift':
 <a name="line-225"></a>
-<a name="line-226"></a>&gt; local :: (Env -&gt; Env) -&gt; InterpM a -&gt; InterpM a
-<a name="line-227"></a>&gt; local f = mapStateT (R.local f)
+<a name="line-226"></a>&gt; ask :: InterpM Env
+<a name="line-227"></a>&gt; ask = lift R.ask
 <a name="line-228"></a>
-<a name="line-229"></a>We also wish to lift the operations of 'Control.Monad.Trans.Except.ExceptT'
-<a name="line-230"></a>through both 'Control.Monad.Trans.Reader.ReaderT' and
-<a name="line-231"></a>'Control.Monad.Trans.State.Lazy.StateT'.  For the operation
-<a name="line-232"></a>'Control.Monad.Trans.Except.throwE', we know @throwE e@ is a simple
-<a name="line-233"></a>action, so we can lift it through the two monad transformers to @InterpM@
-<a name="line-234"></a>with two 'lift's:
+<a name="line-229"></a>The other 'Control.Monad.Trans.Reader.ReaderT' operation,
+<a name="line-230"></a>'Control.Monad.Trans.Reader.local', has a suitable type for lifting
+<a name="line-231"></a>using 'Control.Monad.Trans.State.Lazy.mapStateT':
+<a name="line-232"></a>
+<a name="line-233"></a>&gt; local :: (Env -&gt; Env) -&gt; InterpM a -&gt; InterpM a
+<a name="line-234"></a>&gt; local f = mapStateT (R.local f)
 <a name="line-235"></a>
-<a name="line-236"></a>&gt; throwE :: Err -&gt; InterpM a
-<a name="line-237"></a>&gt; throwE e = lift (lift (E.throwE e))
-<a name="line-238"></a>
-<a name="line-239"></a>The 'Control.Monad.Trans.Except.catchE' operation has a more
-<a name="line-240"></a>complex type, so we need to use the special-purpose lifting function
-<a name="line-241"></a>@liftCatch@ provided by most monad transformers.  Here we use
-<a name="line-242"></a>the 'Control.Monad.Trans.Reader.ReaderT' version followed by the
-<a name="line-243"></a>'Control.Monad.Trans.State.Lazy.StateT' version:
-<a name="line-244"></a>
-<a name="line-245"></a>&gt; catchE :: InterpM a -&gt; (Err -&gt; InterpM a) -&gt; InterpM a
-<a name="line-246"></a>&gt; catchE = liftCatch (R.liftCatch E.catchE)
-<a name="line-247"></a>
-<a name="line-248"></a>We could lift 'IO' actions to @InterpM@ using three 'lift's, but @InterpM@
-<a name="line-249"></a>is automatically an instance of 'Control.Monad.IO.Class.MonadIO',
-<a name="line-250"></a>so we can use 'Control.Monad.IO.Class.liftIO' instead:
+<a name="line-236"></a>We also wish to lift the operations of 'Control.Monad.Trans.Except.ExceptT'
+<a name="line-237"></a>through both 'Control.Monad.Trans.Reader.ReaderT' and
+<a name="line-238"></a>'Control.Monad.Trans.State.Lazy.StateT'.  For the operation
+<a name="line-239"></a>'Control.Monad.Trans.Except.throwE', we know @throwE e@ is a simple
+<a name="line-240"></a>action, so we can lift it through the two monad transformers to @InterpM@
+<a name="line-241"></a>with two 'lift's:
+<a name="line-242"></a>
+<a name="line-243"></a>&gt; throwE :: Err -&gt; InterpM a
+<a name="line-244"></a>&gt; throwE e = lift (lift (E.throwE e))
+<a name="line-245"></a>
+<a name="line-246"></a>The 'Control.Monad.Trans.Except.catchE' operation has a more
+<a name="line-247"></a>complex type, so we need to use the special-purpose lifting function
+<a name="line-248"></a>@liftCatch@ provided by most monad transformers.  Here we use
+<a name="line-249"></a>the 'Control.Monad.Trans.Reader.ReaderT' version followed by the
+<a name="line-250"></a>'Control.Monad.Trans.State.Lazy.StateT' version:
 <a name="line-251"></a>
-<a name="line-252"></a>&gt; putStr :: String -&gt; InterpM ()
-<a name="line-253"></a>&gt; putStr s = liftIO (Prelude.putStr s)
+<a name="line-252"></a>&gt; catchE :: InterpM a -&gt; (Err -&gt; InterpM a) -&gt; InterpM a
+<a name="line-253"></a>&gt; catchE = liftCatch (R.liftCatch E.catchE)
 <a name="line-254"></a>
-<a name="line-255"></a>-}</span>
+<a name="line-255"></a>We could lift 'IO' actions to @InterpM@ using three 'lift's, but @InterpM@
+<a name="line-256"></a>is automatically an instance of 'Control.Monad.IO.Class.MonadIO',
+<a name="line-257"></a>so we can use 'Control.Monad.IO.Class.liftIO' instead:
+<a name="line-258"></a>
+<a name="line-259"></a>&gt; putStr :: String -&gt; InterpM ()
+<a name="line-260"></a>&gt; putStr s = liftIO (Prelude.putStr s)
+<a name="line-261"></a>
+<a name="line-262"></a>-}</span>
 </pre></body>
 </html>

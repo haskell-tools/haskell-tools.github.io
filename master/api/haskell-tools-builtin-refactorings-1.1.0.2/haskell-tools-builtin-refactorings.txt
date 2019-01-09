@@ -95,6 +95,7 @@ GADTs :: Extension
 GADTSyntax :: Extension
 NPlusKPatterns :: Extension
 DoAndIfThenElse :: Extension
+BlockArguments :: Extension
 RebindableSyntax :: Extension
 ConstraintKinds :: Extension
 PolyKinds :: Extension
@@ -112,6 +113,7 @@ DefaultSignatures :: Extension
 DeriveAnyClass :: Extension
 DeriveLift :: Extension
 DerivingStrategies :: Extension
+DerivingVia :: Extension
 TypeSynonymInstances :: Extension
 FlexibleContexts :: Extension
 FlexibleInstances :: Extension
@@ -163,6 +165,9 @@ Strict :: Extension
 StrictData :: Extension
 MonadFailDesugaring :: Extension
 EmptyDataDeriving :: Extension
+NumericUnderscores :: Extension
+QuantifiedConstraints :: Extension
+StarIsType :: Extension
 data Formula v
 Var :: v -> Formula v
 Yes :: Formula v
@@ -178,7 +183,7 @@ Some :: [Formula v] -> Formula v
 None :: [Formula v] -> Formula v
 ExactlyOne :: [Formula v] -> Formula v
 AtMostOne :: [Formula v] -> Formula v
-Let :: Formula v -> Formula v -> Formula v -> Formula v
+Let :: Formula v -> (Formula v -> Formula v) -> Formula v
 Bound :: Integer -> Formula v
 instance GHC.Base.Functor Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap.Occurence
 instance GHC.Classes.Ord a => GHC.Classes.Ord (Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap.Occurence a)
@@ -224,6 +229,7 @@ runExtMonadIO :: ExtMonad a -> IO a
 runExtMonadGHC :: ExtMonad a -> Ghc a
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector
+type family HasChecker node
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.SupportedExtensions
 isSupported :: Extension -> Bool
@@ -574,7 +580,7 @@ generateExportsRefactoring :: RefactoringChoice
 module Language.Haskell.Tools.Refactor.Builtin.GenerateTypeSignature
 
 -- | Perform the refactoring on either local or top-level definition
-generateTypeSignature :: Simple Traversal Module DeclList -> Simple Traversal Module LocalBindList -> (forall d. (BindingElem d) => AnnList d -> Maybe ValueBind) -> LocalRefactoring
+generateTypeSignature :: Simple Traversal Module DeclList -> Simple Traversal Module LocalBindList -> (forall d. BindingElem d => AnnList d -> Maybe ValueBind) -> LocalRefactoring
 generateTypeSignature' :: RealSrcSpan -> LocalRefactoring
 tryItOut :: String -> String -> IO ()
 generateTypeSignatureRefactoring :: RefactoringChoice

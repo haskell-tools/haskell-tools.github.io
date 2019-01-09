@@ -15,21 +15,21 @@
 <a name="line-6"></a>
 <a name="line-7"></a><span class='hs-comment'>{-# LINE 5 "libraries/hpc/Trace/Hpc/Reflect.hsc" #-}</span>
 <a name="line-8"></a>
-<a name="line-9"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Trace</span><span class='hs-varop'>.</span><span class='hs-conid'>Hpc</span><span class='hs-varop'>.</span><span class='hs-conid'>Reflect</span>
+<a name="line-9"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Trace.Hpc.Reflect</span>
 <a name="line-10"></a>  <span class='hs-layout'>(</span> <span class='hs-varid'>clearTix</span>
 <a name="line-11"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>examineTix</span>
 <a name="line-12"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>updateTix</span>
 <a name="line-13"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-14"></a>
-<a name="line-15"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Trace</span><span class='hs-varop'>.</span><span class='hs-conid'>Hpc</span><span class='hs-varop'>.</span><span class='hs-conid'>Tix</span>
+<a name="line-15"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Trace.Hpc.Tix</span>
 <a name="line-16"></a>
-<a name="line-17"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign</span><span class='hs-varop'>.</span><span class='hs-conid'>C</span><span class='hs-varop'>.</span><span class='hs-conid'>String</span>
-<a name="line-18"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign</span><span class='hs-varop'>.</span><span class='hs-conid'>Marshal</span><span class='hs-varop'>.</span><span class='hs-conid'>Array</span>
-<a name="line-19"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign</span><span class='hs-varop'>.</span><span class='hs-conid'>Ptr</span>
-<a name="line-20"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign</span><span class='hs-varop'>.</span><span class='hs-conid'>Storable</span> <span class='hs-layout'>(</span> <span class='hs-conid'>Storable</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span> <span class='hs-layout'>)</span>
-<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Word</span>
-<a name="line-22"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Trace</span><span class='hs-varop'>.</span><span class='hs-conid'>Hpc</span><span class='hs-varop'>.</span><span class='hs-conid'>Util</span>
-<a name="line-23"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>IO</span><span class='hs-varop'>.</span><span class='hs-conid'>Unsafe</span>
+<a name="line-17"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign.C.String</span>
+<a name="line-18"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign.Marshal.Array</span>
+<a name="line-19"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign.Ptr</span>
+<a name="line-20"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign.Storable</span> <span class='hs-layout'>(</span> <span class='hs-conid'>Storable</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span> <span class='hs-layout'>)</span>
+<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Word</span>
+<a name="line-22"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Trace.Hpc.Util</span>
+<a name="line-23"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System.IO.Unsafe</span>
 <a name="line-24"></a>
 <a name="line-25"></a>
 <a name="line-26"></a>

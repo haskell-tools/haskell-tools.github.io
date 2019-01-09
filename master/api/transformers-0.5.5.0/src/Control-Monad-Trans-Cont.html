@@ -35,7 +35,7 @@
 <a name="line-26"></a><span class='hs-comment'>--</span>
 <a name="line-27"></a><span class='hs-comment'>-----------------------------------------------------------------------------</span>
 <a name="line-28"></a>
-<a name="line-29"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Trans</span><span class='hs-varop'>.</span><span class='hs-conid'>Cont</span> <span class='hs-layout'>(</span>
+<a name="line-29"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Control.Monad.Trans.Cont</span> <span class='hs-layout'>(</span>
 <a name="line-30"></a>    <span class='hs-comment'>-- * The Cont monad</span>
 <a name="line-31"></a>    <span class='hs-conid'>Cont</span><span class='hs-layout'>,</span>
 <a name="line-32"></a>    <span class='hs-varid'>cont</span><span class='hs-layout'>,</span>
@@ -57,13 +57,13 @@
 <a name="line-48"></a>    <span class='hs-varid'>liftLocal</span><span class='hs-layout'>,</span>
 <a name="line-49"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-50"></a>
-<a name="line-51"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>IO</span><span class='hs-varop'>.</span><span class='hs-conid'>Class</span>
-<a name="line-52"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Trans</span><span class='hs-varop'>.</span><span class='hs-conid'>Class</span>
-<a name="line-53"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Functor</span><span class='hs-varop'>.</span><span class='hs-conid'>Identity</span>
+<a name="line-51"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control.Monad.IO.Class</span>
+<a name="line-52"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control.Monad.Trans.Class</span>
+<a name="line-53"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Functor.Identity</span>
 <a name="line-54"></a>
-<a name="line-55"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Applicative</span>
+<a name="line-55"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control.Applicative</span>
 <a name="line-56"></a><span class='hs-cpp'>#if MIN_VERSION_base(4,9,0)</span>
-<a name="line-57"></a><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Fail</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>Fail</span>
+<a name="line-57"></a><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Control.Monad.Fail</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>Fail</span>
 <a name="line-58"></a><span class='hs-cpp'>#endif</span>
 <a name="line-59"></a>
 <a name="line-60"></a><a name="Cont"></a><span class='hs-comment'>{- |
@@ -191,8 +191,8 @@
 <a name="line-182"></a>    <span class='hs-comment'>{-# INLINE (&gt;&gt;=) #-}</span>
 <a name="line-183"></a>
 <a name="line-184"></a><span class='hs-cpp'>#if MIN_VERSION_base(4,9,0)</span>
-<a name="line-185"></a><a name="instance%20Fail.MonadFail%20(ContT%20r%20m)"></a><span class='hs-keyword'>instance</span> <span class='hs-layout'>(</span><span class='hs-conid'>Fail</span><span class='hs-varop'>.</span><span class='hs-conid'>MonadFail</span> <span class='hs-varid'>m</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=&gt;</span> <span class='hs-conid'>Fail</span><span class='hs-varop'>.</span><span class='hs-conid'>MonadFail</span> <span class='hs-layout'>(</span><span class='hs-conid'>ContT</span> <span class='hs-varid'>r</span> <span class='hs-varid'>m</span><span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
-<a name="line-186"></a>    <span class='hs-varid'>fail</span> <span class='hs-varid'>msg</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>ContT</span> <span class='hs-varop'>$</span> <span class='hs-keyglyph'>\</span> <span class='hs-keyword'>_</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Fail</span><span class='hs-varop'>.</span><span class='hs-varid'>fail</span> <span class='hs-varid'>msg</span>
+<a name="line-185"></a><a name="instance%20Fail.MonadFail%20(ContT%20r%20m)"></a><span class='hs-keyword'>instance</span> <span class='hs-layout'>(</span><span class='hs-conid'>Fail.MonadFail</span> <span class='hs-varid'>m</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=&gt;</span> <span class='hs-conid'>Fail.MonadFail</span> <span class='hs-layout'>(</span><span class='hs-conid'>ContT</span> <span class='hs-varid'>r</span> <span class='hs-varid'>m</span><span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
+<a name="line-186"></a>    <span class='hs-varid'>fail</span> <span class='hs-varid'>msg</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>ContT</span> <span class='hs-varop'>$</span> <span class='hs-keyglyph'>\</span> <span class='hs-keyword'>_</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Fail.fail</span> <span class='hs-varid'>msg</span>
 <a name="line-187"></a>    <span class='hs-comment'>{-# INLINE fail #-}</span>
 <a name="line-188"></a><span class='hs-cpp'>#endif</span>
 <a name="line-189"></a>

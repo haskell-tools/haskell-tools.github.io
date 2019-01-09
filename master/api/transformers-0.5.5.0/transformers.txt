@@ -5,10 +5,14 @@
 -- | Concrete functor and monad transformers
 --   
 --   A portable library of functor and monad transformers, inspired by the
---   paper "Functional Programming with Overloading and Higher-Order
+--   paper
+--   
+--   <ul>
+--   <li>"Functional Programming with Overloading and Higher-Order
 --   Polymorphism", by Mark P Jones, in <i>Advanced School of Functional
 --   Programming</i>, 1995
---   (<a>http://web.cecs.pdx.edu/~mpj/pubs/springschool.html</a>).
+--   (<a>http://web.cecs.pdx.edu/~mpj/pubs/springschool.html</a>).</li>
+--   </ul>
 --   
 --   This package contains:
 --   
@@ -53,6 +57,7 @@ instance GHC.Base.Applicative f => GHC.Base.Applicative (Control.Applicative.Bac
 instance GHC.Base.Alternative f => GHC.Base.Alternative (Control.Applicative.Backwards.Backwards f)
 instance Data.Foldable.Foldable f => Data.Foldable.Foldable (Control.Applicative.Backwards.Backwards f)
 instance Data.Traversable.Traversable f => Data.Traversable.Traversable (Control.Applicative.Backwards.Backwards f)
+instance Data.Functor.Contravariant.Contravariant f => Data.Functor.Contravariant.Contravariant (Control.Applicative.Backwards.Backwards f)
 
 
 -- | Signatures for monad operations that require specialized lifting. Each
@@ -121,7 +126,7 @@ module Control.Monad.Trans.Class
 class MonadTrans t
 
 -- | Lift a computation from the argument monad to the constructed monad.
-lift :: (MonadTrans t, (Monad m)) => m a -> t m a
+lift :: (MonadTrans t, Monad m) => m a -> t m a
 
 
 -- | Continuation monads.
@@ -176,7 +181,7 @@ mapCont :: (r -> r) -> Cont r a -> Cont r a
 --   <li><pre><a>runCont</a> (<a>withCont</a> f m) = <a>runCont</a> m .
 --   f</pre></li>
 --   </ul>
-withCont :: ((b -> r) -> (a -> r)) -> Cont r a -> Cont r b
+withCont :: ((b -> r) -> a -> r) -> Cont r a -> Cont r b
 
 -- | <tt><a>reset</a> m</tt> delimits the continuation of any <a>shift</a>
 --   inside <tt>m</tt>.
@@ -202,7 +207,7 @@ shift :: ((a -> r) -> Cont r r) -> Cont r a
 --   <a>ContT</a> is not a functor on the category of monads, and many
 --   operations cannot be lifted through it.
 newtype ContT r m a
-ContT :: (a -> m r) -> m r -> ContT r m a
+ContT :: ((a -> m r) -> m r) -> ContT r m a
 [runContT] :: ContT r m a -> (a -> m r) -> m r
 
 -- | The result of running a CPS computation with <a>return</a> as the
@@ -211,7 +216,7 @@ ContT :: (a -> m r) -> m r -> ContT r m a
 --   <ul>
 --   <li><pre><a>evalContT</a> (<a>lift</a> m) = m</pre></li>
 --   </ul>
-evalContT :: (Monad m) => ContT r m r -> m r
+evalContT :: Monad m => ContT r m r -> m r
 
 -- | Apply a function to transform the result of a continuation-passing
 --   computation. This has a more restricted type than the <tt>map</tt>
@@ -231,7 +236,7 @@ mapContT :: (m r -> m r) -> ContT r m a -> ContT r m a
 --   <li><pre><a>runContT</a> (<a>withContT</a> f m) = <a>runContT</a> m .
 --   f</pre></li>
 --   </ul>
-withContT :: ((b -> m r) -> (a -> m r)) -> ContT r m a -> ContT r m b
+withContT :: ((b -> m r) -> a -> m r) -> ContT r m a -> ContT r m b
 
 -- | <tt>callCC</tt> (call-with-current-continuation) calls its argument
 --   function, passing it the current continuation. It provides an escape
@@ -255,7 +260,7 @@ callCC :: ((a -> ContT r m b) -> ContT r m a) -> ContT r m a
 --   <ul>
 --   <li><pre><a>resetT</a> (<a>lift</a> m) = <a>lift</a> m</pre></li>
 --   </ul>
-resetT :: (Monad m) => ContT r m r -> ContT r' m r
+resetT :: Monad m => ContT r m r -> ContT r' m r
 
 -- | <tt><a>shiftT</a> f</tt> captures the continuation up to the nearest
 --   enclosing <a>resetT</a> and passes it to <tt>f</tt>:
@@ -264,11 +269,11 @@ resetT :: (Monad m) => ContT r m r -> ContT r' m r
 --   <li><pre><a>resetT</a> (<a>shiftT</a> f &gt;&gt;= k) = <a>resetT</a>
 --   (f (<a>evalContT</a> . k))</pre></li>
 --   </ul>
-shiftT :: (Monad m) => ((a -> m r) -> ContT r m r) -> ContT r m a
+shiftT :: Monad m => ((a -> m r) -> ContT r m r) -> ContT r m a
 
 -- | <tt><a>liftLocal</a> ask local</tt> yields a <tt>local</tt> function
 --   for <tt><a>ContT</a> r m</tt>.
-liftLocal :: (Monad m) => m r' -> ((r' -> r') -> m r -> m r) -> (r' -> r') -> ContT r m a -> ContT r m a
+liftLocal :: Monad m => m r' -> ((r' -> r') -> m r -> m r) -> (r' -> r') -> ContT r m a -> ContT r m a
 instance forall k (r :: k) (m :: k -> *). GHC.Base.Functor (Control.Monad.Trans.Cont.ContT r m)
 instance forall k (r :: k) (m :: k -> *). GHC.Base.Applicative (Control.Monad.Trans.Cont.ContT r m)
 instance forall k (r :: k) (m :: k -> *). GHC.Base.Monad (Control.Monad.Trans.Cont.ContT r m)
@@ -346,7 +351,7 @@ mapErrorT :: (m (Either e a) -> n (Either e' b)) -> ErrorT e m a -> ErrorT e' n 
 --   <li><pre><a>throwError</a> e &gt;&gt;= m = <a>throwError</a>
 --   e</pre></li>
 --   </ul>
-throwError :: (Monad m) => e -> ErrorT e m a
+throwError :: Monad m => e -> ErrorT e m a
 
 -- | Handle an error.
 --   
@@ -355,16 +360,16 @@ throwError :: (Monad m) => e -> ErrorT e m a
 --   m</pre></li>
 --   <li><pre><a>catchError</a> h (<a>throwError</a> e) = h e</pre></li>
 --   </ul>
-catchError :: (Monad m) => ErrorT e m a -> (e -> ErrorT e m a) -> ErrorT e m a
+catchError :: Monad m => ErrorT e m a -> (e -> ErrorT e m a) -> ErrorT e m a
 
 -- | Lift a <tt>callCC</tt> operation to the new monad.
 liftCallCC :: CallCC m (Either e a) (Either e b) -> CallCC (ErrorT e m) a b
 
 -- | Lift a <tt>listen</tt> operation to the new monad.
-liftListen :: (Monad m) => Listen w m (Either e a) -> Listen w (ErrorT e m) a
+liftListen :: Monad m => Listen w m (Either e a) -> Listen w (ErrorT e m) a
 
 -- | Lift a <tt>pass</tt> operation to the new monad.
-liftPass :: (Monad m) => Pass w m (Either e a) -> Pass w (ErrorT e m) a
+liftPass :: Monad m => Pass w m (Either e a) -> Pass w (ErrorT e m) a
 instance (GHC.Classes.Eq e, Data.Functor.Classes.Eq1 m) => Data.Functor.Classes.Eq1 (Control.Monad.Trans.Error.ErrorT e m)
 instance (GHC.Classes.Ord e, Data.Functor.Classes.Ord1 m) => Data.Functor.Classes.Ord1 (Control.Monad.Trans.Error.ErrorT e m)
 instance (GHC.Read.Read e, Data.Functor.Classes.Read1 m) => Data.Functor.Classes.Read1 (Control.Monad.Trans.Error.ErrorT e m)
@@ -384,6 +389,7 @@ instance (GHC.Base.Monad m, Control.Monad.Trans.Error.Error e) => GHC.Base.Monad
 instance (Control.Monad.Fix.MonadFix m, Control.Monad.Trans.Error.Error e) => Control.Monad.Fix.MonadFix (Control.Monad.Trans.Error.ErrorT e m)
 instance Control.Monad.Trans.Class.MonadTrans (Control.Monad.Trans.Error.ErrorT e)
 instance (Control.Monad.Trans.Error.Error e, Control.Monad.IO.Class.MonadIO m) => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.Error.ErrorT e m)
+instance Data.Functor.Contravariant.Contravariant m => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.Error.ErrorT e m)
 instance Control.Monad.Trans.Error.ErrorList a => Control.Monad.Trans.Error.Error [a]
 instance Control.Monad.Trans.Error.ErrorList GHC.Types.Char
 instance Control.Monad.Trans.Error.Error e => GHC.Base.Alternative (Data.Either.Either e)
@@ -391,7 +397,7 @@ instance Control.Monad.Trans.Error.Error e => GHC.Base.MonadPlus (Data.Either.Ei
 instance Control.Monad.Trans.Error.Error GHC.IO.Exception.IOException
 
 
--- | This monad transformer extends a monad with the ability throw
+-- | This monad transformer extends a monad with the ability to throw
 --   exceptions.
 --   
 --   A sequence of actions terminates normally, producing a value, only if
@@ -446,7 +452,7 @@ withExcept :: (e -> e') -> Except e a -> Except e' a
 --   given value, while <tt>&gt;&gt;=</tt> sequences two subcomputations,
 --   exiting on the first exception.
 newtype ExceptT e m a
-ExceptT :: (m (Either e a)) -> ExceptT e m a
+ExceptT :: m (Either e a) -> ExceptT e m a
 
 -- | The inverse of <a>ExceptT</a>.
 runExceptT :: ExceptT e m a -> m (Either e a)
@@ -461,7 +467,7 @@ mapExceptT :: (m (Either e a) -> n (Either e' b)) -> ExceptT e m a -> ExceptT e'
 
 -- | Transform any exceptions thrown by the computation using the given
 --   function.
-withExceptT :: (Functor m) => (e -> e') -> ExceptT e m a -> ExceptT e' m a
+withExceptT :: Functor m => (e -> e') -> ExceptT e m a -> ExceptT e' m a
 
 -- | Signal an exception value <tt>e</tt>.
 --   
@@ -470,7 +476,7 @@ withExceptT :: (Functor m) => (e -> e') -> ExceptT e m a -> ExceptT e' m a
 --   (<a>Left</a> e)</pre></li>
 --   <li><pre><a>throwE</a> e &gt;&gt;= m = <a>throwE</a> e</pre></li>
 --   </ul>
-throwE :: (Monad m) => e -> ExceptT e m a
+throwE :: Monad m => e -> ExceptT e m a
 
 -- | Handle an exception.
 --   
@@ -478,16 +484,16 @@ throwE :: (Monad m) => e -> ExceptT e m a
 --   <li><pre><a>catchE</a> h (<a>lift</a> m) = <a>lift</a> m</pre></li>
 --   <li><pre><a>catchE</a> h (<a>throwE</a> e) = h e</pre></li>
 --   </ul>
-catchE :: (Monad m) => ExceptT e m a -> (e -> ExceptT e' m a) -> ExceptT e' m a
+catchE :: Monad m => ExceptT e m a -> (e -> ExceptT e' m a) -> ExceptT e' m a
 
 -- | Lift a <tt>callCC</tt> operation to the new monad.
 liftCallCC :: CallCC m (Either e a) (Either e b) -> CallCC (ExceptT e m) a b
 
 -- | Lift a <tt>listen</tt> operation to the new monad.
-liftListen :: (Monad m) => Listen w m (Either e a) -> Listen w (ExceptT e m) a
+liftListen :: Monad m => Listen w m (Either e a) -> Listen w (ExceptT e m) a
 
 -- | Lift a <tt>pass</tt> operation to the new monad.
-liftPass :: (Monad m) => Pass w m (Either e a) -> Pass w (ExceptT e m) a
+liftPass :: Monad m => Pass w m (Either e a) -> Pass w (ExceptT e m) a
 instance (GHC.Classes.Eq e, Data.Functor.Classes.Eq1 m) => Data.Functor.Classes.Eq1 (Control.Monad.Trans.Except.ExceptT e m)
 instance (GHC.Classes.Ord e, Data.Functor.Classes.Ord1 m) => Data.Functor.Classes.Ord1 (Control.Monad.Trans.Except.ExceptT e m)
 instance (GHC.Read.Read e, Data.Functor.Classes.Read1 m) => Data.Functor.Classes.Read1 (Control.Monad.Trans.Except.ExceptT e m)
@@ -508,6 +514,7 @@ instance Control.Monad.Fix.MonadFix m => Control.Monad.Fix.MonadFix (Control.Mon
 instance Control.Monad.Trans.Class.MonadTrans (Control.Monad.Trans.Except.ExceptT e)
 instance Control.Monad.IO.Class.MonadIO m => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.Except.ExceptT e m)
 instance Control.Monad.Zip.MonadZip m => Control.Monad.Zip.MonadZip (Control.Monad.Trans.Except.ExceptT e m)
+instance Data.Functor.Contravariant.Contravariant m => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.Except.ExceptT e m)
 
 
 -- | The identity monad transformer.
@@ -549,6 +556,7 @@ instance Control.Monad.Fix.MonadFix m => Control.Monad.Fix.MonadFix (Control.Mon
 instance Control.Monad.IO.Class.MonadIO m => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.Identity.IdentityT m)
 instance Control.Monad.Zip.MonadZip m => Control.Monad.Zip.MonadZip (Control.Monad.Trans.Identity.IdentityT m)
 instance Control.Monad.Trans.Class.MonadTrans Control.Monad.Trans.Identity.IdentityT
+instance Data.Functor.Contravariant.Contravariant f => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.Identity.IdentityT f)
 
 
 -- | The ListT monad transformer, adding backtracking to a given monad,
@@ -594,9 +602,11 @@ instance GHC.Base.Applicative m => GHC.Base.Alternative (Control.Monad.Trans.Lis
 instance GHC.Base.Monad m => GHC.Base.Monad (Control.Monad.Trans.List.ListT m)
 instance GHC.Base.Monad m => Control.Monad.Fail.MonadFail (Control.Monad.Trans.List.ListT m)
 instance GHC.Base.Monad m => GHC.Base.MonadPlus (Control.Monad.Trans.List.ListT m)
+instance Control.Monad.Fix.MonadFix m => Control.Monad.Fix.MonadFix (Control.Monad.Trans.List.ListT m)
 instance Control.Monad.Trans.Class.MonadTrans Control.Monad.Trans.List.ListT
 instance Control.Monad.IO.Class.MonadIO m => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.List.ListT m)
 instance Control.Monad.Zip.MonadZip m => Control.Monad.Zip.MonadZip (Control.Monad.Trans.List.ListT m)
+instance Data.Functor.Contravariant.Contravariant m => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.List.ListT m)
 
 
 -- | The <a>MaybeT</a> monad transformer extends a monad with the ability
@@ -632,11 +642,11 @@ mapMaybeT :: (m (Maybe a) -> n (Maybe b)) -> MaybeT m a -> MaybeT n b
 
 -- | Convert a <a>MaybeT</a> computation to <a>ExceptT</a>, with a default
 --   exception value.
-maybeToExceptT :: (Functor m) => e -> MaybeT m a -> ExceptT e m a
+maybeToExceptT :: Functor m => e -> MaybeT m a -> ExceptT e m a
 
 -- | Convert a <a>ExceptT</a> computation to <a>MaybeT</a>, discarding the
 --   value of any exception.
-exceptToMaybeT :: (Functor m) => ExceptT e m a -> MaybeT m a
+exceptToMaybeT :: Functor m => ExceptT e m a -> MaybeT m a
 
 -- | Lift a <tt>callCC</tt> operation to the new monad.
 liftCallCC :: CallCC m (Maybe a) (Maybe b) -> CallCC (MaybeT m) a b
@@ -645,10 +655,10 @@ liftCallCC :: CallCC m (Maybe a) (Maybe b) -> CallCC (MaybeT m) a b
 liftCatch :: Catch e m (Maybe a) -> Catch e (MaybeT m) a
 
 -- | Lift a <tt>listen</tt> operation to the new monad.
-liftListen :: (Monad m) => Listen w m (Maybe a) -> Listen w (MaybeT m) a
+liftListen :: Monad m => Listen w m (Maybe a) -> Listen w (MaybeT m) a
 
 -- | Lift a <tt>pass</tt> operation to the new monad.
-liftPass :: (Monad m) => Pass w m (Maybe a) -> Pass w (MaybeT m) a
+liftPass :: Monad m => Pass w m (Maybe a) -> Pass w (MaybeT m) a
 instance Data.Functor.Classes.Eq1 m => Data.Functor.Classes.Eq1 (Control.Monad.Trans.Maybe.MaybeT m)
 instance Data.Functor.Classes.Ord1 m => Data.Functor.Classes.Ord1 (Control.Monad.Trans.Maybe.MaybeT m)
 instance Data.Functor.Classes.Read1 m => Data.Functor.Classes.Read1 (Control.Monad.Trans.Maybe.MaybeT m)
@@ -669,6 +679,7 @@ instance Control.Monad.Fix.MonadFix m => Control.Monad.Fix.MonadFix (Control.Mon
 instance Control.Monad.Trans.Class.MonadTrans Control.Monad.Trans.Maybe.MaybeT
 instance Control.Monad.IO.Class.MonadIO m => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.Maybe.MaybeT m)
 instance Control.Monad.Zip.MonadZip m => Control.Monad.Zip.MonadZip (Control.Monad.Trans.Maybe.MaybeT m)
+instance Data.Functor.Contravariant.Contravariant m => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.Maybe.MaybeT m)
 
 
 -- | A monad transformer that combines <tt>ReaderT</tt>, <tt>WriterT</tt>
@@ -717,16 +728,16 @@ withRWS :: (r' -> s -> (r, s)) -> RWS r w s a -> RWS r' w s a
 --   collecting an output of type <tt>w</tt> and updating a state of type
 --   <tt>s</tt> to an inner monad <tt>m</tt>.
 newtype RWST r w s m a
-RWST :: r -> s -> m (a, s, w) -> RWST r w s m a
+RWST :: (r -> s -> m (a, s, w)) -> RWST r w s m a
 [runRWST] :: RWST r w s m a -> r -> s -> m (a, s, w)
 
 -- | Evaluate a computation with the given initial state and environment,
 --   returning the final value and output, discarding the final state.
-evalRWST :: (Monad m) => RWST r w s m a -> r -> s -> m (a, w)
+evalRWST :: Monad m => RWST r w s m a -> r -> s -> m (a, w)
 
 -- | Evaluate a computation with the given initial state and environment,
 --   returning the final state and output, discarding the final value.
-execRWST :: (Monad m) => RWST r w s m a -> r -> s -> m (s, w)
+execRWST :: Monad m => RWST r w s m a -> r -> s -> m (s, w)
 
 -- | Map the inner computation using the given function.
 --   
@@ -768,11 +779,11 @@ local :: (r -> r) -> RWST r w s m a -> RWST r w s m a
 asks :: (Monoid w, Monad m) => (r -> a) -> RWST r w s m a
 
 -- | Construct a writer computation from a (result, output) pair.
-writer :: (Monad m) => (a, w) -> RWST r w s m a
+writer :: Monad m => (a, w) -> RWST r w s m a
 
 -- | <tt><a>tell</a> w</tt> is an action that produces the output
 --   <tt>w</tt>.
-tell :: (Monad m) => w -> RWST r w s m ()
+tell :: Monad m => w -> RWST r w s m ()
 
 -- | <tt><a>listen</a> m</tt> is an action that executes the action
 --   <tt>m</tt> and adds its output to the value of the computation.
@@ -781,7 +792,7 @@ tell :: (Monad m) => w -> RWST r w s m ()
 --   <li><pre><a>runRWST</a> (<a>listen</a> m) r s = <a>liftM</a> (\ (a, w)
 --   -&gt; ((a, w), w)) (<a>runRWST</a> m r s)</pre></li>
 --   </ul>
-listen :: (Monad m) => RWST r w s m a -> RWST r w s m (a, w)
+listen :: Monad m => RWST r w s m a -> RWST r w s m (a, w)
 
 -- | <tt><a>listens</a> f m</tt> is an action that executes the action
 --   <tt>m</tt> and adds the result of applying <tt>f</tt> to the output to
@@ -793,7 +804,7 @@ listen :: (Monad m) => RWST r w s m a -> RWST r w s m (a, w)
 --   <li><pre><a>runRWST</a> (<a>listens</a> f m) r s = <a>liftM</a> (\ (a,
 --   w) -&gt; ((a, f w), w)) (<a>runRWST</a> m r s)</pre></li>
 --   </ul>
-listens :: (Monad m) => (w -> b) -> RWST r w s m a -> RWST r w s m (a, b)
+listens :: Monad m => (w -> b) -> RWST r w s m a -> RWST r w s m (a, b)
 
 -- | <tt><a>pass</a> m</tt> is an action that executes the action
 --   <tt>m</tt>, which returns a value and a function, and returns the
@@ -803,7 +814,7 @@ listens :: (Monad m) => (w -> b) -> RWST r w s m a -> RWST r w s m (a, b)
 --   <li><pre><a>runRWST</a> (<a>pass</a> m) r s = <a>liftM</a> (\ ((a, f),
 --   w) -&gt; (a, f w)) (<a>runRWST</a> m r s)</pre></li>
 --   </ul>
-pass :: (Monad m) => RWST r w s m (a, w -> w) -> RWST r w s m a
+pass :: Monad m => RWST r w s m (a, w -> w) -> RWST r w s m a
 
 -- | <tt><a>censor</a> f m</tt> is an action that executes the action
 --   <tt>m</tt> and applies the function <tt>f</tt> to its output, leaving
@@ -815,7 +826,7 @@ pass :: (Monad m) => RWST r w s m (a, w -> w) -> RWST r w s m a
 --   <li><pre><a>runRWST</a> (<a>censor</a> f m) r s = <a>liftM</a> (\ (a,
 --   w) -&gt; (a, f w)) (<a>runRWST</a> m r s)</pre></li>
 --   </ul>
-censor :: (Monad m) => (w -> w) -> RWST r w s m a -> RWST r w s m a
+censor :: Monad m => (w -> w) -> RWST r w s m a -> RWST r w s m a
 
 -- | Construct a state monad computation from a state transformer function.
 state :: (Monoid w, Monad m) => (s -> (a, s)) -> RWST r w s m a
@@ -845,11 +856,11 @@ gets :: (Monoid w, Monad m) => (s -> a) -> RWST r w s m a
 
 -- | Uniform lifting of a <tt>callCC</tt> operation to the new monad. This
 --   version rolls back to the original state on entering the continuation.
-liftCallCC :: (Monoid w) => CallCC m (a, s, w) (b, s, w) -> CallCC (RWST r w s m) a b
+liftCallCC :: Monoid w => CallCC m (a, s, w) (b, s, w) -> CallCC (RWST r w s m) a b
 
 -- | In-situ lifting of a <tt>callCC</tt> operation to the new monad. This
 --   version uses the current state on entering the continuation.
-liftCallCC' :: (Monoid w) => CallCC m (a, s, w) (b, s, w) -> CallCC (RWST r w s m) a b
+liftCallCC' :: Monoid w => CallCC m (a, s, w) (b, s, w) -> CallCC (RWST r w s m) a b
 
 -- | Lift a <tt>catchE</tt> operation to the new monad.
 liftCatch :: Catch e m (a, s, w) -> Catch e (RWST r w s m) a
@@ -862,6 +873,7 @@ instance (GHC.Base.Monoid w, GHC.Base.MonadPlus m) => GHC.Base.MonadPlus (Contro
 instance (GHC.Base.Monoid w, Control.Monad.Fix.MonadFix m) => Control.Monad.Fix.MonadFix (Control.Monad.Trans.RWS.Lazy.RWST r w s m)
 instance GHC.Base.Monoid w => Control.Monad.Trans.Class.MonadTrans (Control.Monad.Trans.RWS.Lazy.RWST r w s)
 instance (GHC.Base.Monoid w, Control.Monad.IO.Class.MonadIO m) => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.RWS.Lazy.RWST r w s m)
+instance Data.Functor.Contravariant.Contravariant m => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.RWS.Lazy.RWST r w s m)
 
 
 -- | A monad transformer that combines <tt>ReaderT</tt>, <tt>WriterT</tt>
@@ -916,16 +928,16 @@ withRWS :: (r' -> s -> (r, s)) -> RWS r w s a -> RWS r' w s a
 --   collecting an output of type <tt>w</tt> and updating a state of type
 --   <tt>s</tt> to an inner monad <tt>m</tt>.
 newtype RWST r w s m a
-RWST :: r -> s -> m (a, s, w) -> RWST r w s m a
+RWST :: (r -> s -> m (a, s, w)) -> RWST r w s m a
 [runRWST] :: RWST r w s m a -> r -> s -> m (a, s, w)
 
 -- | Evaluate a computation with the given initial state and environment,
 --   returning the final value and output, discarding the final state.
-evalRWST :: (Monad m) => RWST r w s m a -> r -> s -> m (a, w)
+evalRWST :: Monad m => RWST r w s m a -> r -> s -> m (a, w)
 
 -- | Evaluate a computation with the given initial state and environment,
 --   returning the final state and output, discarding the final value.
-execRWST :: (Monad m) => RWST r w s m a -> r -> s -> m (s, w)
+execRWST :: Monad m => RWST r w s m a -> r -> s -> m (s, w)
 
 -- | Map the inner computation using the given function.
 --   
@@ -967,11 +979,11 @@ local :: (r -> r) -> RWST r w s m a -> RWST r w s m a
 asks :: (Monoid w, Monad m) => (r -> a) -> RWST r w s m a
 
 -- | Construct a writer computation from a (result, output) pair.
-writer :: (Monad m) => (a, w) -> RWST r w s m a
+writer :: Monad m => (a, w) -> RWST r w s m a
 
 -- | <tt><a>tell</a> w</tt> is an action that produces the output
 --   <tt>w</tt>.
-tell :: (Monad m) => w -> RWST r w s m ()
+tell :: Monad m => w -> RWST r w s m ()
 
 -- | <tt><a>listen</a> m</tt> is an action that executes the action
 --   <tt>m</tt> and adds its output to the value of the computation.
@@ -980,7 +992,7 @@ tell :: (Monad m) => w -> RWST r w s m ()
 --   <li><pre><a>runRWST</a> (<a>listen</a> m) r s = <a>liftM</a> (\ (a, w)
 --   -&gt; ((a, w), w)) (<a>runRWST</a> m r s)</pre></li>
 --   </ul>
-listen :: (Monad m) => RWST r w s m a -> RWST r w s m (a, w)
+listen :: Monad m => RWST r w s m a -> RWST r w s m (a, w)
 
 -- | <tt><a>listens</a> f m</tt> is an action that executes the action
 --   <tt>m</tt> and adds the result of applying <tt>f</tt> to the output to
@@ -992,7 +1004,7 @@ listen :: (Monad m) => RWST r w s m a -> RWST r w s m (a, w)
 --   <li><pre><a>runRWST</a> (<a>listens</a> f m) r s = <a>liftM</a> (\ (a,
 --   w) -&gt; ((a, f w), w)) (<a>runRWST</a> m r s)</pre></li>
 --   </ul>
-listens :: (Monad m) => (w -> b) -> RWST r w s m a -> RWST r w s m (a, b)
+listens :: Monad m => (w -> b) -> RWST r w s m a -> RWST r w s m (a, b)
 
 -- | <tt><a>pass</a> m</tt> is an action that executes the action
 --   <tt>m</tt>, which returns a value and a function, and returns the
@@ -1002,7 +1014,7 @@ listens :: (Monad m) => (w -> b) -> RWST r w s m a -> RWST r w s m (a, b)
 --   <li><pre><a>runRWST</a> (<a>pass</a> m) r s = <a>liftM</a> (\ ((a, f),
 --   w) -&gt; (a, f w)) (<a>runRWST</a> m r s)</pre></li>
 --   </ul>
-pass :: (Monad m) => RWST r w s m (a, w -> w) -> RWST r w s m a
+pass :: Monad m => RWST r w s m (a, w -> w) -> RWST r w s m a
 
 -- | <tt><a>censor</a> f m</tt> is an action that executes the action
 --   <tt>m</tt> and applies the function <tt>f</tt> to its output, leaving
@@ -1014,7 +1026,7 @@ pass :: (Monad m) => RWST r w s m (a, w -> w) -> RWST r w s m a
 --   <li><pre><a>runRWST</a> (<a>censor</a> f m) r s = <a>liftM</a> (\ (a,
 --   w) -&gt; (a, f w)) (<a>runRWST</a> m r s)</pre></li>
 --   </ul>
-censor :: (Monad m) => (w -> w) -> RWST r w s m a -> RWST r w s m a
+censor :: Monad m => (w -> w) -> RWST r w s m a -> RWST r w s m a
 
 -- | Construct a state monad computation from a state transformer function.
 state :: (Monoid w, Monad m) => (s -> (a, s)) -> RWST r w s m a
@@ -1044,11 +1056,11 @@ gets :: (Monoid w, Monad m) => (s -> a) -> RWST r w s m a
 
 -- | Uniform lifting of a <tt>callCC</tt> operation to the new monad. This
 --   version rolls back to the original state on entering the continuation.
-liftCallCC :: (Monoid w) => CallCC m (a, s, w) (b, s, w) -> CallCC (RWST r w s m) a b
+liftCallCC :: Monoid w => CallCC m (a, s, w) (b, s, w) -> CallCC (RWST r w s m) a b
 
 -- | In-situ lifting of a <tt>callCC</tt> operation to the new monad. This
 --   version uses the current state on entering the continuation.
-liftCallCC' :: (Monoid w) => CallCC m (a, s, w) (b, s, w) -> CallCC (RWST r w s m) a b
+liftCallCC' :: Monoid w => CallCC m (a, s, w) (b, s, w) -> CallCC (RWST r w s m) a b
 
 -- | Lift a <tt>catchE</tt> operation to the new monad.
 liftCatch :: Catch e m (a, s, w) -> Catch e (RWST r w s m) a
@@ -1061,6 +1073,7 @@ instance (GHC.Base.Monoid w, GHC.Base.MonadPlus m) => GHC.Base.MonadPlus (Contro
 instance (GHC.Base.Monoid w, Control.Monad.Fix.MonadFix m) => Control.Monad.Fix.MonadFix (Control.Monad.Trans.RWS.Strict.RWST r w s m)
 instance GHC.Base.Monoid w => Control.Monad.Trans.Class.MonadTrans (Control.Monad.Trans.RWS.Strict.RWST r w s)
 instance (GHC.Base.Monoid w, Control.Monad.IO.Class.MonadIO m) => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.RWS.Strict.RWST r w s m)
+instance Data.Functor.Contravariant.Contravariant m => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.RWS.Strict.RWST r w s m)
 
 
 -- | Declaration of the <a>ReaderT</a> monad transformer, which adds a
@@ -1081,7 +1094,7 @@ type Reader r = ReaderT r Identity
 
 -- | Constructor for computations in the reader monad (equivalent to
 --   <a>asks</a>).
-reader :: (Monad m) => (r -> a) -> ReaderT r m a
+reader :: Monad m => (r -> a) -> ReaderT r m a
 
 -- | Runs a <tt>Reader</tt> and extracts the final value from it. (The
 --   inverse of <a>reader</a>.)
@@ -1111,7 +1124,7 @@ withReader :: (r' -> r) -> Reader r a -> Reader r' a
 --   <tt>&gt;&gt;=</tt> passes the inherited environment to both
 --   subcomputations.
 newtype ReaderT r m a
-ReaderT :: r -> m a -> ReaderT r m a
+ReaderT :: (r -> m a) -> ReaderT r m a
 [runReaderT] :: ReaderT r m a -> r -> m a
 
 -- | Transform the computation inside a <tt>ReaderT</tt>.
@@ -1132,7 +1145,7 @@ mapReaderT :: (m a -> n b) -> ReaderT r m a -> ReaderT r n b
 withReaderT :: (r' -> r) -> ReaderT r m a -> ReaderT r' m a
 
 -- | Fetch the value of the environment.
-ask :: (Monad m) => ReaderT r m r
+ask :: Monad m => ReaderT r m r
 
 -- | Execute a computation in a modified environment (a specialization of
 --   <a>withReaderT</a>).
@@ -1148,7 +1161,7 @@ local :: (r -> r) -> ReaderT r m a -> ReaderT r m a
 --   <ul>
 --   <li><pre><a>asks</a> f = <a>liftM</a> f <a>ask</a></pre></li>
 --   </ul>
-asks :: (Monad m) => (r -> a) -> ReaderT r m a
+asks :: Monad m => (r -> a) -> ReaderT r m a
 
 -- | Lift a <tt>callCC</tt> operation to the new monad.
 liftCallCC :: CallCC m a b -> CallCC (ReaderT r m) a b
@@ -1165,6 +1178,7 @@ instance Control.Monad.Fix.MonadFix m => Control.Monad.Fix.MonadFix (Control.Mon
 instance Control.Monad.Trans.Class.MonadTrans (Control.Monad.Trans.Reader.ReaderT r)
 instance Control.Monad.IO.Class.MonadIO m => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.Reader.ReaderT r m)
 instance Control.Monad.Zip.MonadZip m => Control.Monad.Zip.MonadZip (Control.Monad.Trans.Reader.ReaderT r m)
+instance Data.Functor.Contravariant.Contravariant m => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.Reader.ReaderT r m)
 
 
 -- | Selection monad transformer, modelling search algorithms.
@@ -1221,12 +1235,12 @@ runSelectT :: SelectT r m a -> (a -> m r) -> m a
 mapSelectT :: (m a -> m a) -> SelectT r m a -> SelectT r m a
 
 -- | Convert a selection computation to a continuation-passing computation.
-selectToContT :: (Monad m) => SelectT r m a -> ContT r m a
+selectToContT :: Monad m => SelectT r m a -> ContT r m a
 
 -- | Deprecated name for <a>selectToContT</a>.
 
 -- | <i>Deprecated: Use selectToContT instead</i>
-selectToCont :: (Monad m) => SelectT r m a -> ContT r m a
+selectToCont :: Monad m => SelectT r m a -> ContT r m a
 instance GHC.Base.Functor m => GHC.Base.Functor (Control.Monad.Trans.Select.SelectT r m)
 instance (GHC.Base.Functor m, GHC.Base.Monad m) => GHC.Base.Applicative (Control.Monad.Trans.Select.SelectT r m)
 instance (GHC.Base.Functor m, GHC.Base.MonadPlus m) => GHC.Base.Alternative (Control.Monad.Trans.Select.SelectT r m)
@@ -1270,7 +1284,7 @@ type State s = StateT s Identity
 
 -- | Construct a state monad computation from a function. (The inverse of
 --   <a>runState</a>.)
-state :: (Monad m) => (s -> (a, s)) -> StateT s m a
+state :: Monad m => (s -> (a, s)) -> StateT s m a
 
 -- | Unwrap a state monad computation as a function. (The inverse of
 --   <a>state</a>.)
@@ -1322,7 +1336,7 @@ withState :: (s -> s) -> State s a -> State s a
 --   <tt>&gt;&gt;=</tt> uses the final state of the first computation as
 --   the initial state of the second.
 newtype StateT s m a
-StateT :: s -> m (a, s) -> StateT s m a
+StateT :: (s -> m (a, s)) -> StateT s m a
 [runStateT] :: StateT s m a -> s -> m (a, s)
 
 -- | Evaluate a state computation with the given initial state and return
@@ -1332,7 +1346,7 @@ StateT :: s -> m (a, s) -> StateT s m a
 --   <li><pre><a>evalStateT</a> m s = <a>liftM</a> <a>fst</a>
 --   (<a>runStateT</a> m s)</pre></li>
 --   </ul>
-evalStateT :: (Monad m) => StateT s m a -> s -> m a
+evalStateT :: Monad m => StateT s m a -> s -> m a
 
 -- | Evaluate a state computation with the given initial state and return
 --   the final state, discarding the final value.
@@ -1341,7 +1355,7 @@ evalStateT :: (Monad m) => StateT s m a -> s -> m a
 --   <li><pre><a>execStateT</a> m s = <a>liftM</a> <a>snd</a>
 --   (<a>runStateT</a> m s)</pre></li>
 --   </ul>
-execStateT :: (Monad m) => StateT s m a -> s -> m s
+execStateT :: Monad m => StateT s m a -> s -> m s
 
 -- | Map both the return value and final state of a computation using the
 --   given function.
@@ -1361,10 +1375,10 @@ mapStateT :: (m (a, s) -> n (b, s)) -> StateT s m a -> StateT s n b
 withStateT :: (s -> s) -> StateT s m a -> StateT s m a
 
 -- | Fetch the current value of the state within the monad.
-get :: (Monad m) => StateT s m s
+get :: Monad m => StateT s m s
 
 -- | <tt><a>put</a> s</tt> sets the state within the monad to <tt>s</tt>.
-put :: (Monad m) => s -> StateT s m ()
+put :: Monad m => s -> StateT s m ()
 
 -- | <tt><a>modify</a> f</tt> is an action that updates the state to the
 --   result of applying <tt>f</tt> to the current state.
@@ -1373,7 +1387,7 @@ put :: (Monad m) => s -> StateT s m ()
 --   <li><pre><a>modify</a> f = <a>get</a> &gt;&gt;= (<a>put</a> .
 --   f)</pre></li>
 --   </ul>
-modify :: (Monad m) => (s -> s) -> StateT s m ()
+modify :: Monad m => (s -> s) -> StateT s m ()
 
 -- | A variant of <a>modify</a> in which the computation is strict in the
 --   new state.
@@ -1382,7 +1396,7 @@ modify :: (Monad m) => (s -> s) -> StateT s m ()
 --   <li><pre><a>modify'</a> f = <a>get</a> &gt;&gt;= ((<a>$!</a>)
 --   <a>put</a> . f)</pre></li>
 --   </ul>
-modify' :: (Monad m) => (s -> s) -> StateT s m ()
+modify' :: Monad m => (s -> s) -> StateT s m ()
 
 -- | Get a specific component of the state, using a projection function
 --   supplied.
@@ -1390,7 +1404,7 @@ modify' :: (Monad m) => (s -> s) -> StateT s m ()
 --   <ul>
 --   <li><pre><a>gets</a> f = <a>liftM</a> f <a>get</a></pre></li>
 --   </ul>
-gets :: (Monad m) => (s -> a) -> StateT s m a
+gets :: Monad m => (s -> a) -> StateT s m a
 
 -- | Uniform lifting of a <tt>callCC</tt> operation to the new monad. This
 --   version rolls back to the original state on entering the continuation.
@@ -1406,10 +1420,10 @@ liftCallCC' :: CallCC m (a, s) (b, s) -> CallCC (StateT s m) a b
 liftCatch :: Catch e m (a, s) -> Catch e (StateT s m) a
 
 -- | Lift a <tt>listen</tt> operation to the new monad.
-liftListen :: (Monad m) => Listen w m (a, s) -> Listen w (StateT s m) a
+liftListen :: Monad m => Listen w m (a, s) -> Listen w (StateT s m) a
 
 -- | Lift a <tt>pass</tt> operation to the new monad.
-liftPass :: (Monad m) => Pass w m (a, s) -> Pass w (StateT s m) a
+liftPass :: Monad m => Pass w m (a, s) -> Pass w (StateT s m) a
 instance GHC.Base.Functor m => GHC.Base.Functor (Control.Monad.Trans.State.Lazy.StateT s m)
 instance (GHC.Base.Functor m, GHC.Base.Monad m) => GHC.Base.Applicative (Control.Monad.Trans.State.Lazy.StateT s m)
 instance (GHC.Base.Functor m, GHC.Base.MonadPlus m) => GHC.Base.Alternative (Control.Monad.Trans.State.Lazy.StateT s m)
@@ -1419,6 +1433,7 @@ instance GHC.Base.MonadPlus m => GHC.Base.MonadPlus (Control.Monad.Trans.State.L
 instance Control.Monad.Fix.MonadFix m => Control.Monad.Fix.MonadFix (Control.Monad.Trans.State.Lazy.StateT s m)
 instance Control.Monad.Trans.Class.MonadTrans (Control.Monad.Trans.State.Lazy.StateT s)
 instance Control.Monad.IO.Class.MonadIO m => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.State.Lazy.StateT s m)
+instance Data.Functor.Contravariant.Contravariant m => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.State.Lazy.StateT s m)
 
 
 -- | State monads, passing an updatable state through a computation.
@@ -1465,7 +1480,7 @@ type State s = StateT s Identity
 
 -- | Construct a state monad computation from a function. (The inverse of
 --   <a>runState</a>.)
-state :: (Monad m) => (s -> (a, s)) -> StateT s m a
+state :: Monad m => (s -> (a, s)) -> StateT s m a
 
 -- | Unwrap a state monad computation as a function. (The inverse of
 --   <a>state</a>.)
@@ -1517,7 +1532,7 @@ withState :: (s -> s) -> State s a -> State s a
 --   <tt>&gt;&gt;=</tt> uses the final state of the first computation as
 --   the initial state of the second.
 newtype StateT s m a
-StateT :: s -> m (a, s) -> StateT s m a
+StateT :: (s -> m (a, s)) -> StateT s m a
 [runStateT] :: StateT s m a -> s -> m (a, s)
 
 -- | Evaluate a state computation with the given initial state and return
@@ -1527,7 +1542,7 @@ StateT :: s -> m (a, s) -> StateT s m a
 --   <li><pre><a>evalStateT</a> m s = <a>liftM</a> <a>fst</a>
 --   (<a>runStateT</a> m s)</pre></li>
 --   </ul>
-evalStateT :: (Monad m) => StateT s m a -> s -> m a
+evalStateT :: Monad m => StateT s m a -> s -> m a
 
 -- | Evaluate a state computation with the given initial state and return
 --   the final state, discarding the final value.
@@ -1536,7 +1551,7 @@ evalStateT :: (Monad m) => StateT s m a -> s -> m a
 --   <li><pre><a>execStateT</a> m s = <a>liftM</a> <a>snd</a>
 --   (<a>runStateT</a> m s)</pre></li>
 --   </ul>
-execStateT :: (Monad m) => StateT s m a -> s -> m s
+execStateT :: Monad m => StateT s m a -> s -> m s
 
 -- | Map both the return value and final state of a computation using the
 --   given function.
@@ -1556,10 +1571,10 @@ mapStateT :: (m (a, s) -> n (b, s)) -> StateT s m a -> StateT s n b
 withStateT :: (s -> s) -> StateT s m a -> StateT s m a
 
 -- | Fetch the current value of the state within the monad.
-get :: (Monad m) => StateT s m s
+get :: Monad m => StateT s m s
 
 -- | <tt><a>put</a> s</tt> sets the state within the monad to <tt>s</tt>.
-put :: (Monad m) => s -> StateT s m ()
+put :: Monad m => s -> StateT s m ()
 
 -- | <tt><a>modify</a> f</tt> is an action that updates the state to the
 --   result of applying <tt>f</tt> to the current state.
@@ -1568,7 +1583,7 @@ put :: (Monad m) => s -> StateT s m ()
 --   <li><pre><a>modify</a> f = <a>get</a> &gt;&gt;= (<a>put</a> .
 --   f)</pre></li>
 --   </ul>
-modify :: (Monad m) => (s -> s) -> StateT s m ()
+modify :: Monad m => (s -> s) -> StateT s m ()
 
 -- | A variant of <a>modify</a> in which the computation is strict in the
 --   new state.
@@ -1577,7 +1592,7 @@ modify :: (Monad m) => (s -> s) -> StateT s m ()
 --   <li><pre><a>modify'</a> f = <a>get</a> &gt;&gt;= ((<a>$!</a>)
 --   <a>put</a> . f)</pre></li>
 --   </ul>
-modify' :: (Monad m) => (s -> s) -> StateT s m ()
+modify' :: Monad m => (s -> s) -> StateT s m ()
 
 -- | Get a specific component of the state, using a projection function
 --   supplied.
@@ -1585,7 +1600,7 @@ modify' :: (Monad m) => (s -> s) -> StateT s m ()
 --   <ul>
 --   <li><pre><a>gets</a> f = <a>liftM</a> f <a>get</a></pre></li>
 --   </ul>
-gets :: (Monad m) => (s -> a) -> StateT s m a
+gets :: Monad m => (s -> a) -> StateT s m a
 
 -- | Uniform lifting of a <tt>callCC</tt> operation to the new monad. This
 --   version rolls back to the original state on entering the continuation.
@@ -1601,10 +1616,10 @@ liftCallCC' :: CallCC m (a, s) (b, s) -> CallCC (StateT s m) a b
 liftCatch :: Catch e m (a, s) -> Catch e (StateT s m) a
 
 -- | Lift a <tt>listen</tt> operation to the new monad.
-liftListen :: (Monad m) => Listen w m (a, s) -> Listen w (StateT s m) a
+liftListen :: Monad m => Listen w m (a, s) -> Listen w (StateT s m) a
 
 -- | Lift a <tt>pass</tt> operation to the new monad.
-liftPass :: (Monad m) => Pass w m (a, s) -> Pass w (StateT s m) a
+liftPass :: Monad m => Pass w m (a, s) -> Pass w (StateT s m) a
 instance GHC.Base.Functor m => GHC.Base.Functor (Control.Monad.Trans.State.Strict.StateT s m)
 instance (GHC.Base.Functor m, GHC.Base.Monad m) => GHC.Base.Applicative (Control.Monad.Trans.State.Strict.StateT s m)
 instance (GHC.Base.Functor m, GHC.Base.MonadPlus m) => GHC.Base.Alternative (Control.Monad.Trans.State.Strict.StateT s m)
@@ -1614,6 +1629,7 @@ instance GHC.Base.MonadPlus m => GHC.Base.MonadPlus (Control.Monad.Trans.State.S
 instance Control.Monad.Fix.MonadFix m => Control.Monad.Fix.MonadFix (Control.Monad.Trans.State.Strict.StateT s m)
 instance Control.Monad.Trans.Class.MonadTrans (Control.Monad.Trans.State.Strict.StateT s)
 instance Control.Monad.IO.Class.MonadIO m => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.State.Strict.StateT s m)
+instance Data.Functor.Contravariant.Contravariant m => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.State.Strict.StateT s m)
 
 
 -- | The lazy <a>WriterT</a> monad transformer, which adds collection of
@@ -1637,7 +1653,7 @@ type Writer w = WriterT w Identity
 
 -- | Construct a writer computation from a (result, output) pair. (The
 --   inverse of <a>runWriter</a>.)
-writer :: (Monad m) => (a, w) -> WriterT w m a
+writer :: Monad m => (a, w) -> WriterT w m a
 
 -- | Unwrap a writer computation as a (result, output) pair. (The inverse
 --   of <a>writer</a>.)
@@ -1680,7 +1696,7 @@ WriterT :: m (a, w) -> WriterT w m a
 --   <li><pre><a>execWriterT</a> m = <a>liftM</a> <a>snd</a>
 --   (<a>runWriterT</a> m)</pre></li>
 --   </ul>
-execWriterT :: (Monad m) => WriterT w m a -> m w
+execWriterT :: Monad m => WriterT w m a -> m w
 
 -- | Map both the return value and output of a computation using the given
 --   function.
@@ -1693,7 +1709,7 @@ mapWriterT :: (m (a, w) -> n (b, w')) -> WriterT w m a -> WriterT w' n b
 
 -- | <tt><a>tell</a> w</tt> is an action that produces the output
 --   <tt>w</tt>.
-tell :: (Monad m) => w -> WriterT w m ()
+tell :: Monad m => w -> WriterT w m ()
 
 -- | <tt><a>listen</a> m</tt> is an action that executes the action
 --   <tt>m</tt> and adds its output to the value of the computation.
@@ -1702,7 +1718,7 @@ tell :: (Monad m) => w -> WriterT w m ()
 --   <li><pre><a>runWriterT</a> (<a>listen</a> m) = <a>liftM</a> (\ (a, w)
 --   -&gt; ((a, w), w)) (<a>runWriterT</a> m)</pre></li>
 --   </ul>
-listen :: (Monad m) => WriterT w m a -> WriterT w m (a, w)
+listen :: Monad m => WriterT w m a -> WriterT w m (a, w)
 
 -- | <tt><a>listens</a> f m</tt> is an action that executes the action
 --   <tt>m</tt> and adds the result of applying <tt>f</tt> to the output to
@@ -1714,7 +1730,7 @@ listen :: (Monad m) => WriterT w m a -> WriterT w m (a, w)
 --   <li><pre><a>runWriterT</a> (<a>listens</a> f m) = <a>liftM</a> (\ (a,
 --   w) -&gt; ((a, f w), w)) (<a>runWriterT</a> m)</pre></li>
 --   </ul>
-listens :: (Monad m) => (w -> b) -> WriterT w m a -> WriterT w m (a, b)
+listens :: Monad m => (w -> b) -> WriterT w m a -> WriterT w m (a, b)
 
 -- | <tt><a>pass</a> m</tt> is an action that executes the action
 --   <tt>m</tt>, which returns a value and a function, and returns the
@@ -1724,7 +1740,7 @@ listens :: (Monad m) => (w -> b) -> WriterT w m a -> WriterT w m (a, b)
 --   <li><pre><a>runWriterT</a> (<a>pass</a> m) = <a>liftM</a> (\ ((a, f),
 --   w) -&gt; (a, f w)) (<a>runWriterT</a> m)</pre></li>
 --   </ul>
-pass :: (Monad m) => WriterT w m (a, w -> w) -> WriterT w m a
+pass :: Monad m => WriterT w m (a, w -> w) -> WriterT w m a
 
 -- | <tt><a>censor</a> f m</tt> is an action that executes the action
 --   <tt>m</tt> and applies the function <tt>f</tt> to its output, leaving
@@ -1736,10 +1752,10 @@ pass :: (Monad m) => WriterT w m (a, w -> w) -> WriterT w m a
 --   <li><pre><a>runWriterT</a> (<a>censor</a> f m) = <a>liftM</a> (\ (a,
 --   w) -&gt; (a, f w)) (<a>runWriterT</a> m)</pre></li>
 --   </ul>
-censor :: (Monad m) => (w -> w) -> WriterT w m a -> WriterT w m a
+censor :: Monad m => (w -> w) -> WriterT w m a -> WriterT w m a
 
 -- | Lift a <tt>callCC</tt> operation to the new monad.
-liftCallCC :: (Monoid w) => CallCC m (a, w) (b, w) -> CallCC (WriterT w m) a b
+liftCallCC :: Monoid w => CallCC m (a, w) (b, w) -> CallCC (WriterT w m) a b
 
 -- | Lift a <tt>catchE</tt> operation to the new monad.
 liftCatch :: Catch e m (a, w) -> Catch e (WriterT w m) a
@@ -1763,6 +1779,7 @@ instance (GHC.Base.Monoid w, Control.Monad.Fix.MonadFix m) => Control.Monad.Fix.
 instance GHC.Base.Monoid w => Control.Monad.Trans.Class.MonadTrans (Control.Monad.Trans.Writer.Lazy.WriterT w)
 instance (GHC.Base.Monoid w, Control.Monad.IO.Class.MonadIO m) => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.Writer.Lazy.WriterT w m)
 instance (GHC.Base.Monoid w, Control.Monad.Zip.MonadZip m) => Control.Monad.Zip.MonadZip (Control.Monad.Trans.Writer.Lazy.WriterT w m)
+instance Data.Functor.Contravariant.Contravariant m => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.Writer.Lazy.WriterT w m)
 
 
 -- | The WriterT monad transformer. This version is lazy; for a strict
@@ -1790,7 +1807,7 @@ type Accum w = AccumT w Identity
 
 -- | Construct an accumulation computation from a (result, output) pair.
 --   (The inverse of <a>runAccum</a>.)
-accum :: (Monad m) => (w -> (a, w)) -> AccumT w m a
+accum :: Monad m => (w -> (a, w)) -> AccumT w m a
 
 -- | Unwrap an accumulation computation as a (result, output) pair. (The
 --   inverse of <a>accum</a>.)
@@ -1811,7 +1828,7 @@ execAccum :: Accum w a -> w -> w
 --   <li><pre><a>evalAccum</a> m w = <a>fst</a> (<a>runAccum</a> m
 --   w)</pre></li>
 --   </ul>
-evalAccum :: (Monoid w) => Accum w a -> w -> a
+evalAccum :: Monoid w => Accum w a -> w -> a
 
 -- | Map both the return value and output of a computation using the given
 --   function.
@@ -1854,7 +1871,7 @@ runAccumT :: AccumT w m a -> w -> m (a, w)
 --   <li><pre><a>execAccumT</a> m w = <a>liftM</a> <a>snd</a>
 --   (<a>runAccumT</a> m w)</pre></li>
 --   </ul>
-execAccumT :: (Monad m) => AccumT w m a -> w -> m w
+execAccumT :: Monad m => AccumT w m a -> w -> m w
 
 -- | Evaluate an accumulation computation with the given initial output
 --   history and return the final value, discarding the final output.
@@ -1884,7 +1901,7 @@ looks :: (Monoid w, Monad m) => (w -> a) -> AccumT w m a
 
 -- | <tt><a>add</a> w</tt> is an action that produces the output
 --   <tt>w</tt>.
-add :: (Monad m) => w -> AccumT w m ()
+add :: Monad m => w -> AccumT w m ()
 
 -- | Uniform lifting of a <tt>callCC</tt> operation to the new monad. This
 --   version rolls back to the original output history on entering the
@@ -1901,10 +1918,10 @@ liftCallCC' :: CallCC m (a, w) (b, w) -> CallCC (AccumT w m) a b
 liftCatch :: Catch e m (a, w) -> Catch e (AccumT w m) a
 
 -- | Lift a <tt>listen</tt> operation to the new monad.
-liftListen :: (Monad m) => Listen w m (a, s) -> Listen w (AccumT s m) a
+liftListen :: Monad m => Listen w m (a, s) -> Listen w (AccumT s m) a
 
 -- | Lift a <tt>pass</tt> operation to the new monad.
-liftPass :: (Monad m) => Pass w m (a, s) -> Pass w (AccumT s m) a
+liftPass :: Monad m => Pass w m (a, s) -> Pass w (AccumT s m) a
 
 -- | Convert a read-only computation into an accumulation computation.
 readerToAccumT :: (Functor m, Monoid w) => ReaderT w m a -> AccumT w m a
@@ -1950,7 +1967,7 @@ type Writer w = WriterT w Identity
 
 -- | Construct a writer computation from a (result, output) pair. (The
 --   inverse of <a>runWriter</a>.)
-writer :: (Monad m) => (a, w) -> WriterT w m a
+writer :: Monad m => (a, w) -> WriterT w m a
 
 -- | Unwrap a writer computation as a (result, output) pair. (The inverse
 --   of <a>writer</a>.)
@@ -1993,7 +2010,7 @@ WriterT :: m (a, w) -> WriterT w m a
 --   <li><pre><a>execWriterT</a> m = <a>liftM</a> <a>snd</a>
 --   (<a>runWriterT</a> m)</pre></li>
 --   </ul>
-execWriterT :: (Monad m) => WriterT w m a -> m w
+execWriterT :: Monad m => WriterT w m a -> m w
 
 -- | Map both the return value and output of a computation using the given
 --   function.
@@ -2006,7 +2023,7 @@ mapWriterT :: (m (a, w) -> n (b, w')) -> WriterT w m a -> WriterT w' n b
 
 -- | <tt><a>tell</a> w</tt> is an action that produces the output
 --   <tt>w</tt>.
-tell :: (Monad m) => w -> WriterT w m ()
+tell :: Monad m => w -> WriterT w m ()
 
 -- | <tt><a>listen</a> m</tt> is an action that executes the action
 --   <tt>m</tt> and adds its output to the value of the computation.
@@ -2015,7 +2032,7 @@ tell :: (Monad m) => w -> WriterT w m ()
 --   <li><pre><a>runWriterT</a> (<a>listen</a> m) = <a>liftM</a> (\ (a, w)
 --   -&gt; ((a, w), w)) (<a>runWriterT</a> m)</pre></li>
 --   </ul>
-listen :: (Monad m) => WriterT w m a -> WriterT w m (a, w)
+listen :: Monad m => WriterT w m a -> WriterT w m (a, w)
 
 -- | <tt><a>listens</a> f m</tt> is an action that executes the action
 --   <tt>m</tt> and adds the result of applying <tt>f</tt> to the output to
@@ -2027,7 +2044,7 @@ listen :: (Monad m) => WriterT w m a -> WriterT w m (a, w)
 --   <li><pre><a>runWriterT</a> (<a>listens</a> f m) = <a>liftM</a> (\ (a,
 --   w) -&gt; ((a, f w), w)) (<a>runWriterT</a> m)</pre></li>
 --   </ul>
-listens :: (Monad m) => (w -> b) -> WriterT w m a -> WriterT w m (a, b)
+listens :: Monad m => (w -> b) -> WriterT w m a -> WriterT w m (a, b)
 
 -- | <tt><a>pass</a> m</tt> is an action that executes the action
 --   <tt>m</tt>, which returns a value and a function, and returns the
@@ -2037,7 +2054,7 @@ listens :: (Monad m) => (w -> b) -> WriterT w m a -> WriterT w m (a, b)
 --   <li><pre><a>runWriterT</a> (<a>pass</a> m) = <a>liftM</a> (\ ((a, f),
 --   w) -&gt; (a, f w)) (<a>runWriterT</a> m)</pre></li>
 --   </ul>
-pass :: (Monad m) => WriterT w m (a, w -> w) -> WriterT w m a
+pass :: Monad m => WriterT w m (a, w -> w) -> WriterT w m a
 
 -- | <tt><a>censor</a> f m</tt> is an action that executes the action
 --   <tt>m</tt> and applies the function <tt>f</tt> to its output, leaving
@@ -2049,10 +2066,10 @@ pass :: (Monad m) => WriterT w m (a, w -> w) -> WriterT w m a
 --   <li><pre><a>runWriterT</a> (<a>censor</a> f m) = <a>liftM</a> (\ (a,
 --   w) -&gt; (a, f w)) (<a>runWriterT</a> m)</pre></li>
 --   </ul>
-censor :: (Monad m) => (w -> w) -> WriterT w m a -> WriterT w m a
+censor :: Monad m => (w -> w) -> WriterT w m a -> WriterT w m a
 
 -- | Lift a <tt>callCC</tt> operation to the new monad.
-liftCallCC :: (Monoid w) => CallCC m (a, w) (b, w) -> CallCC (WriterT w m) a b
+liftCallCC :: Monoid w => CallCC m (a, w) (b, w) -> CallCC (WriterT w m) a b
 
 -- | Lift a <tt>catchE</tt> operation to the new monad.
 liftCatch :: Catch e m (a, w) -> Catch e (WriterT w m) a
@@ -2076,6 +2093,7 @@ instance (GHC.Base.Monoid w, Control.Monad.Fix.MonadFix m) => Control.Monad.Fix.
 instance GHC.Base.Monoid w => Control.Monad.Trans.Class.MonadTrans (Control.Monad.Trans.Writer.Strict.WriterT w)
 instance (GHC.Base.Monoid w, Control.Monad.IO.Class.MonadIO m) => Control.Monad.IO.Class.MonadIO (Control.Monad.Trans.Writer.Strict.WriterT w m)
 instance (GHC.Base.Monoid w, Control.Monad.Zip.MonadZip m) => Control.Monad.Zip.MonadZip (Control.Monad.Trans.Writer.Strict.WriterT w m)
+instance Data.Functor.Contravariant.Contravariant m => Data.Functor.Contravariant.Contravariant (Control.Monad.Trans.Writer.Strict.WriterT w m)
 
 
 -- | The constant functor.
@@ -2106,6 +2124,7 @@ instance forall k a (b :: k). GHC.Base.Monoid a => GHC.Base.Monoid (Data.Functor
 instance Data.Bifunctor.Bifunctor Data.Functor.Constant.Constant
 instance Data.Bifoldable.Bifoldable Data.Functor.Constant.Constant
 instance Data.Bitraversable.Bitraversable Data.Functor.Constant.Constant
+instance Data.Functor.Contravariant.Contravariant (Data.Functor.Constant.Constant a)
 
 
 -- | Adding a new kind of pure computation to an applicative functor.
@@ -2115,10 +2134,10 @@ module Control.Applicative.Lift
 --   applicative functor.
 data Lift f a
 Pure :: a -> Lift f a
-Other :: (f a) -> Lift f a
+Other :: f a -> Lift f a
 
 -- | Projection to the other functor.
-unLift :: (Applicative f) => Lift f a -> f a
+unLift :: Applicative f => Lift f a -> f a
 
 -- | Apply a transformation to the other computation.
 mapLift :: (f a -> g a) -> Lift f a -> Lift g a
@@ -2204,3 +2223,4 @@ instance Control.Monad.Fail.MonadFail m => Control.Monad.Fail.MonadFail (Data.Fu
 instance GHC.Base.MonadPlus m => GHC.Base.MonadPlus (Data.Functor.Reverse.Reverse m)
 instance Data.Foldable.Foldable f => Data.Foldable.Foldable (Data.Functor.Reverse.Reverse f)
 instance Data.Traversable.Traversable f => Data.Traversable.Traversable (Data.Functor.Reverse.Reverse f)
+instance Data.Functor.Contravariant.Contravariant f => Data.Functor.Contravariant.Contravariant (Data.Functor.Reverse.Reverse f)

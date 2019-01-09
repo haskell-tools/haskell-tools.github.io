@@ -9,7 +9,7 @@
 <body>
 <pre><a name="line-1"></a><span class='hs-comment'>{-# LANGUAGE BangPatterns #-}</span>
 <a name="line-2"></a><span class='hs-comment'>{-# LANGUAGE CPP #-}</span>
-<a name="line-3"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>Process</span><span class='hs-varop'>.</span><span class='hs-conid'>Posix</span>
+<a name="line-3"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>System.Process.Posix</span>
 <a name="line-4"></a>    <span class='hs-layout'>(</span> <span class='hs-varid'>mkProcessHandle</span>
 <a name="line-5"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>translateInternal</span>
 <a name="line-6"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>createProcess_Internal</span>
@@ -28,28 +28,28 @@
 <a name="line-19"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>interruptProcessGroupOfInternal</span>
 <a name="line-20"></a>    <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-21"></a>
-<a name="line-22"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Concurrent</span>
-<a name="line-23"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Exception</span>
-<a name="line-24"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Bits</span>
-<a name="line-25"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign</span><span class='hs-varop'>.</span><span class='hs-conid'>C</span>
-<a name="line-26"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign</span><span class='hs-varop'>.</span><span class='hs-conid'>Marshal</span>
-<a name="line-27"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign</span><span class='hs-varop'>.</span><span class='hs-conid'>Ptr</span>
-<a name="line-28"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign</span><span class='hs-varop'>.</span><span class='hs-conid'>Storable</span>
-<a name="line-29"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>IO</span><span class='hs-varop'>.</span><span class='hs-conid'>Unsafe</span>
+<a name="line-22"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control.Concurrent</span>
+<a name="line-23"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control.Exception</span>
+<a name="line-24"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Bits</span>
+<a name="line-25"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign.C</span>
+<a name="line-26"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign.Marshal</span>
+<a name="line-27"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign.Ptr</span>
+<a name="line-28"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Foreign.Storable</span>
+<a name="line-29"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System.IO.Unsafe</span>
 <a name="line-30"></a>
-<a name="line-31"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span>
-<a name="line-32"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Char</span>
-<a name="line-33"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>IO</span>
-<a name="line-34"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>Posix</span><span class='hs-varop'>.</span><span class='hs-conid'>Process</span><span class='hs-varop'>.</span><span class='hs-conid'>Internals</span> <span class='hs-layout'>(</span> <span class='hs-varid'>pPrPr_disableITimers</span><span class='hs-layout'>,</span> <span class='hs-varid'>c_execvpe</span> <span class='hs-layout'>)</span>
-<a name="line-35"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>Posix</span><span class='hs-varop'>.</span><span class='hs-conid'>Types</span>
+<a name="line-31"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control.Monad</span>
+<a name="line-32"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Char</span>
+<a name="line-33"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System.IO</span>
+<a name="line-34"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System.Posix.Process.Internals</span> <span class='hs-layout'>(</span> <span class='hs-varid'>pPrPr_disableITimers</span><span class='hs-layout'>,</span> <span class='hs-varid'>c_execvpe</span> <span class='hs-layout'>)</span>
+<a name="line-35"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System.Posix.Types</span>
 <a name="line-36"></a>
-<a name="line-37"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>Posix</span><span class='hs-varop'>.</span><span class='hs-conid'>Internals</span>
-<a name="line-38"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>GHC</span><span class='hs-varop'>.</span><span class='hs-conid'>IO</span><span class='hs-varop'>.</span><span class='hs-conid'>Exception</span>
-<a name="line-39"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>Posix</span><span class='hs-varop'>.</span><span class='hs-conid'>Signals</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>Sig</span>
-<a name="line-40"></a><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>Posix</span><span class='hs-varop'>.</span><span class='hs-conid'>IO</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>Posix</span>
-<a name="line-41"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>Posix</span><span class='hs-varop'>.</span><span class='hs-conid'>Process</span> <span class='hs-layout'>(</span><span class='hs-varid'>getProcessGroupIDOf</span><span class='hs-layout'>)</span>
+<a name="line-37"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System.Posix.Internals</span>
+<a name="line-38"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>GHC.IO.Exception</span>
+<a name="line-39"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System.Posix.Signals</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>Sig</span>
+<a name="line-40"></a><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>System.Posix.IO</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>Posix</span>
+<a name="line-41"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System.Posix.Process</span> <span class='hs-layout'>(</span><span class='hs-varid'>getProcessGroupIDOf</span><span class='hs-layout'>)</span>
 <a name="line-42"></a>
-<a name="line-43"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>Process</span><span class='hs-varop'>.</span><span class='hs-conid'>Common</span> <span class='hs-varid'>hiding</span> <span class='hs-layout'>(</span><span class='hs-varid'>mb_delegate_ctlc</span><span class='hs-layout'>)</span>
+<a name="line-43"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System.Process.Common</span> <span class='hs-varid'>hiding</span> <span class='hs-layout'>(</span><span class='hs-varid'>mb_delegate_ctlc</span><span class='hs-layout'>)</span>
 <a name="line-44"></a>
 <a name="line-45"></a><span class='hs-cpp'>#include "HsProcessConfig.h"</span>
 <a name="line-46"></a><span class='hs-cpp'>#include "processFlags.h"</span>
@@ -204,7 +204,7 @@
 <a name="line-195"></a><span class='hs-comment'>-- restore when the last one has finished.</span>
 <a name="line-196"></a>
 <a name="line-197"></a><a name="runInteractiveProcess_delegate_ctlc"></a><span class='hs-comment'>{-# NOINLINE runInteractiveProcess_delegate_ctlc #-}</span>
-<a name="line-198"></a><span class='hs-definition'>runInteractiveProcess_delegate_ctlc</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>MVar</span> <span class='hs-layout'>(</span><span class='hs-conid'>Maybe</span> <span class='hs-layout'>(</span><span class='hs-conid'>Int</span><span class='hs-layout'>,</span> <span class='hs-conid'>Sig</span><span class='hs-varop'>.</span><span class='hs-conid'>Handler</span><span class='hs-layout'>,</span> <span class='hs-conid'>Sig</span><span class='hs-varop'>.</span><span class='hs-conid'>Handler</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
+<a name="line-198"></a><span class='hs-definition'>runInteractiveProcess_delegate_ctlc</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>MVar</span> <span class='hs-layout'>(</span><span class='hs-conid'>Maybe</span> <span class='hs-layout'>(</span><span class='hs-conid'>Int</span><span class='hs-layout'>,</span> <span class='hs-conid'>Sig.Handler</span><span class='hs-layout'>,</span> <span class='hs-conid'>Sig.Handler</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
 <a name="line-199"></a><span class='hs-definition'>runInteractiveProcess_delegate_ctlc</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>unsafePerformIO</span> <span class='hs-varop'>$</span> <span class='hs-varid'>newMVar</span> <span class='hs-conid'>Nothing</span>
 <a name="line-200"></a>
 <a name="line-201"></a><a name="startDelegateControlC"></a><span class='hs-definition'>startDelegateControlC</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>IO</span> <span class='hs-conid'>()</span>
@@ -289,14 +289,14 @@
 <a name="line-280"></a>
 <a name="line-281"></a><a name="createPipeInternal"></a><span class='hs-definition'>createPipeInternal</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>IO</span> <span class='hs-layout'>(</span><span class='hs-conid'>Handle</span><span class='hs-layout'>,</span> <span class='hs-conid'>Handle</span><span class='hs-layout'>)</span>
 <a name="line-282"></a><span class='hs-definition'>createPipeInternal</span> <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span>
-<a name="line-283"></a>    <span class='hs-layout'>(</span><span class='hs-varid'>readfd</span><span class='hs-layout'>,</span> <span class='hs-varid'>writefd</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>Posix</span><span class='hs-varop'>.</span><span class='hs-varid'>createPipe</span>
-<a name="line-284"></a>    <span class='hs-varid'>readh</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>Posix</span><span class='hs-varop'>.</span><span class='hs-varid'>fdToHandle</span> <span class='hs-varid'>readfd</span>
-<a name="line-285"></a>    <span class='hs-varid'>writeh</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>Posix</span><span class='hs-varop'>.</span><span class='hs-varid'>fdToHandle</span> <span class='hs-varid'>writefd</span>
+<a name="line-283"></a>    <span class='hs-layout'>(</span><span class='hs-varid'>readfd</span><span class='hs-layout'>,</span> <span class='hs-varid'>writefd</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>Posix.createPipe</span>
+<a name="line-284"></a>    <span class='hs-varid'>readh</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>Posix.fdToHandle</span> <span class='hs-varid'>readfd</span>
+<a name="line-285"></a>    <span class='hs-varid'>writeh</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>Posix.fdToHandle</span> <span class='hs-varid'>writefd</span>
 <a name="line-286"></a>    <span class='hs-varid'>return</span> <span class='hs-layout'>(</span><span class='hs-varid'>readh</span><span class='hs-layout'>,</span> <span class='hs-varid'>writeh</span><span class='hs-layout'>)</span>
 <a name="line-287"></a>
 <a name="line-288"></a><a name="createPipeInternalFd"></a><span class='hs-definition'>createPipeInternalFd</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>IO</span> <span class='hs-layout'>(</span><span class='hs-conid'>FD</span><span class='hs-layout'>,</span> <span class='hs-conid'>FD</span><span class='hs-layout'>)</span>
 <a name="line-289"></a><span class='hs-definition'>createPipeInternalFd</span> <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span>
-<a name="line-290"></a>   <span class='hs-layout'>(</span><span class='hs-conid'>Fd</span> <span class='hs-varid'>readfd</span><span class='hs-layout'>,</span> <span class='hs-conid'>Fd</span> <span class='hs-varid'>writefd</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>Posix</span><span class='hs-varop'>.</span><span class='hs-varid'>createPipe</span>
+<a name="line-290"></a>   <span class='hs-layout'>(</span><span class='hs-conid'>Fd</span> <span class='hs-varid'>readfd</span><span class='hs-layout'>,</span> <span class='hs-conid'>Fd</span> <span class='hs-varid'>writefd</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>Posix.createPipe</span>
 <a name="line-291"></a>   <span class='hs-varid'>return</span> <span class='hs-layout'>(</span><span class='hs-varid'>readfd</span><span class='hs-layout'>,</span> <span class='hs-varid'>writefd</span><span class='hs-layout'>)</span>
 <a name="line-292"></a>
 <a name="line-293"></a><a name="interruptProcessGroupOfInternal"></a><span class='hs-definition'>interruptProcessGroupOfInternal</span>

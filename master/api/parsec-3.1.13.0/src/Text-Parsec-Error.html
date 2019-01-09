@@ -24,7 +24,7 @@
 <a name="line-15"></a><span class='hs-comment'>--</span>
 <a name="line-16"></a><span class='hs-comment'>-----------------------------------------------------------------------------</span>
 <a name="line-17"></a>
-<a name="line-18"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Error</span>
+<a name="line-18"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text.Parsec.Error</span>
 <a name="line-19"></a>    <span class='hs-layout'>(</span> <span class='hs-conid'>Message</span> <span class='hs-layout'>(</span> <span class='hs-conid'>SysUnExpect</span><span class='hs-layout'>,</span> <span class='hs-conid'>UnExpect</span><span class='hs-layout'>,</span> <span class='hs-conid'>Expect</span><span class='hs-layout'>,</span> <span class='hs-conid'>Message</span> <span class='hs-layout'>)</span>
 <a name="line-20"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>messageString</span>
 <a name="line-21"></a>    <span class='hs-layout'>,</span> <span class='hs-conid'>ParseError</span><span class='hs-layout'>,</span> <span class='hs-varid'>errorPos</span><span class='hs-layout'>,</span> <span class='hs-varid'>errorMessages</span><span class='hs-layout'>,</span> <span class='hs-varid'>errorIsUnknown</span>
@@ -34,10 +34,10 @@
 <a name="line-25"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>mergeError</span>
 <a name="line-26"></a>    <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-27"></a>
-<a name="line-28"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>List</span> <span class='hs-layout'>(</span> <span class='hs-varid'>nub</span><span class='hs-layout'>,</span> <span class='hs-varid'>sort</span> <span class='hs-layout'>)</span>
-<a name="line-29"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Typeable</span> <span class='hs-layout'>(</span> <span class='hs-conid'>Typeable</span> <span class='hs-layout'>)</span>
+<a name="line-28"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.List</span> <span class='hs-layout'>(</span> <span class='hs-varid'>nub</span><span class='hs-layout'>,</span> <span class='hs-varid'>sort</span> <span class='hs-layout'>)</span>
+<a name="line-29"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Typeable</span> <span class='hs-layout'>(</span> <span class='hs-conid'>Typeable</span> <span class='hs-layout'>)</span>
 <a name="line-30"></a>
-<a name="line-31"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Pos</span>
+<a name="line-31"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text.Parsec.Pos</span>
 <a name="line-32"></a>
 <a name="line-33"></a><span class='hs-comment'>-- | This abstract data type represents parse error messages. There are</span>
 <a name="line-34"></a><span class='hs-comment'>-- four kinds of messages:</span>

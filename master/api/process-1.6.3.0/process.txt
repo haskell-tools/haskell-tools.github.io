@@ -19,10 +19,10 @@
 --   <a>System.Process</a> instead.
 module System.Process.Internals
 data ProcessHandle
-ProcessHandle :: !(MVar ProcessHandle__) -> !Bool -> !(MVar ()) -> ProcessHandle
-[phandle] :: ProcessHandle -> !(MVar ProcessHandle__)
+ProcessHandle :: !MVar ProcessHandle__ -> !Bool -> !MVar () -> ProcessHandle
+[phandle] :: ProcessHandle -> !MVar ProcessHandle__
 [mb_delegate_ctlc] :: ProcessHandle -> !Bool
-[waitpidLock] :: ProcessHandle -> !(MVar ())
+[waitpidLock] :: ProcessHandle -> !MVar ()
 
 -- | A handle to a process, which can be used to wait for termination of
 --   the process using <a>waitForProcess</a>.
@@ -562,6 +562,13 @@ readProcessWithExitCode :: FilePath -> [String] -> String -> IO (ExitCode, Strin
 --   </pre>
 withCreateProcess :: CreateProcess -> (Maybe Handle -> Maybe Handle -> Maybe Handle -> ProcessHandle -> IO a) -> IO a
 
+-- | Cleans up the process.
+--   
+--   This function is meant to be invoked from any application level
+--   cleanup handler. It terminates the process, and closes any
+--   <a>CreatePipe</a> <tt>handle</tt>s.
+cleanupProcess :: (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle) -> IO ()
+
 -- | Given a program <tt><i>p</i></tt> and arguments <tt><i>args</i></tt>,
 --   <tt>showCommandForUser <i>p</i> <i>args</i></tt> returns a string
 --   suitable for pasting into <tt>/bin/sh</tt> (on Unix systems) or
@@ -613,8 +620,12 @@ getProcessExitCode :: ProcessHandle -> IO (Maybe ExitCode)
 --   has indeed terminated, use <a>getProcessExitCode</a>.
 --   
 --   On Unix systems, <a>terminateProcess</a> sends the process the SIGTERM
---   signal. On Windows systems, the Win32 <tt>TerminateProcess</tt>
---   function is called, passing an exit code of 1.
+--   signal. On Windows systems, if <a>use_process_jobs</a> is <a>True</a>
+--   then the Win32 <tt>TerminateJobObject</tt> function is called to kill
+--   all processes associated with the job and passing the exit code of 1
+--   to each of them. Otherwise if <a>use_process_jobs</a> is <a>False</a>
+--   then the Win32 <tt>TerminateProcess</tt> function is called, passing
+--   an exit code of 1.
 --   
 --   Note: on Windows, if the process was a shell command created by
 --   <a>createProcess</a> with <a>shell</a>, or created by

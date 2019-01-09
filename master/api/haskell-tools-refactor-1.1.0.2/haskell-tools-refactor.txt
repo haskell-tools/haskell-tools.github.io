@@ -58,7 +58,7 @@ instance GHC.Show.Show Language.Haskell.Tools.Refactor.Representation.RefactorEx
 instance GHC.Show.Show Language.Haskell.Tools.Refactor.Representation.SourceFileKey
 instance GHC.Classes.Ord Language.Haskell.Tools.Refactor.Representation.SourceFileKey
 instance GHC.Classes.Eq Language.Haskell.Tools.Refactor.Representation.SourceFileKey
-instance GHC.Exception.Exception Language.Haskell.Tools.Refactor.Representation.RefactorException
+instance GHC.Exception.Type.Exception Language.Haskell.Tools.Refactor.Representation.RefactorException
 instance GHC.Show.Show Language.Haskell.Tools.Refactor.Representation.RefactorChange
 instance GHC.Show.Show ErrUtils.ErrorMessages
 
@@ -138,7 +138,7 @@ module Language.Haskell.Tools.Refactor.Utils.AST
 
 -- | Remove an element from the AST while keeping the textual parts of it
 --   that should not be removed (like preprocessor pragmas).
-removeChild :: (SourceInfoTraversal e) => e dom SrcTemplateStage -> LocalRefactor ()
+removeChild :: SourceInfoTraversal e => e dom SrcTemplateStage -> LocalRefactor ()
 
 -- | Remove a separator from the AST while keeping the textual parts of it
 --   that should not be removed (like preprocessor pragmas).
@@ -277,6 +277,7 @@ GADTs :: Extension
 GADTSyntax :: Extension
 NPlusKPatterns :: Extension
 DoAndIfThenElse :: Extension
+BlockArguments :: Extension
 RebindableSyntax :: Extension
 ConstraintKinds :: Extension
 PolyKinds :: Extension
@@ -294,6 +295,7 @@ DefaultSignatures :: Extension
 DeriveAnyClass :: Extension
 DeriveLift :: Extension
 DerivingStrategies :: Extension
+DerivingVia :: Extension
 TypeSynonymInstances :: Extension
 FlexibleContexts :: Extension
 FlexibleInstances :: Extension
@@ -345,6 +347,9 @@ Strict :: Extension
 StrictData :: Extension
 MonadFailDesugaring :: Extension
 EmptyDataDeriving :: Extension
+NumericUnderscores :: Extension
+QuantifiedConstraints :: Extension
+StarIsType :: Extension
 
 
 -- | Utilities to modify the indentation of AST fragments
@@ -434,9 +439,9 @@ maybeTM :: Monad m => m b -> (a -> m b) -> MaybeT m a -> m b
 --   The <a>return</a> function yields a computation that produces that
 --   value, while <tt>&gt;&gt;=</tt> sequences two subcomputations, exiting
 --   if either computation does.
-newtype MaybeT (m :: * -> *) a
-MaybeT :: m Maybe a -> MaybeT a
-[runMaybeT] :: MaybeT a -> m Maybe a
+newtype MaybeT (m :: Type -> Type) a
+MaybeT :: m (Maybe a) -> MaybeT a
+[runMaybeT] :: MaybeT a -> m (Maybe a)
 
 
 -- | Basic utilities and types for defining refactorings.
@@ -567,7 +572,7 @@ readSrcSpan :: String -> RealSrcSpan
 -- | Read a source location from our format: <tt>line:col</tt>
 readSrcLoc :: String -> RealSrcLoc
 instance GHC.Show.Show Language.Haskell.Tools.Refactor.Prepare.UnsupportedExtension
-instance GHC.Exception.Exception Language.Haskell.Tools.Refactor.Prepare.UnsupportedExtension
+instance GHC.Exception.Type.Exception Language.Haskell.Tools.Refactor.Prepare.UnsupportedExtension
 
 
 -- | Defines a representation to represent refactorings that can be
@@ -577,13 +582,13 @@ module Language.Haskell.Tools.Refactor.Refactoring
 
 -- | The signature and behavior of one refactoring that can be executed.
 data RefactoringChoice
-NamingRefactoring :: String -> RealSrcSpan -> String -> Refactoring -> RefactoringChoice
+NamingRefactoring :: String -> (RealSrcSpan -> String -> Refactoring) -> RefactoringChoice
 [refactoringName] :: RefactoringChoice -> String
 [namingRefactoring] :: RefactoringChoice -> RealSrcSpan -> String -> Refactoring
-NamingRefactoringIndent :: String -> RealSrcSpan -> String -> Maybe String -> Refactoring -> RefactoringChoice
+NamingRefactoringIndent :: String -> (RealSrcSpan -> String -> Maybe String -> Refactoring) -> RefactoringChoice
 [refactoringName] :: RefactoringChoice -> String
 [namingRefactoringIndent] :: RefactoringChoice -> RealSrcSpan -> String -> Maybe String -> Refactoring
-SelectionRefactoring :: String -> RealSrcSpan -> Refactoring -> RefactoringChoice
+SelectionRefactoring :: String -> (RealSrcSpan -> Refactoring) -> RefactoringChoice
 [refactoringName] :: RefactoringChoice -> String
 [selectionRefactoring] :: RefactoringChoice -> RealSrcSpan -> Refactoring
 ModuleRefactoring :: String -> Refactoring -> RefactoringChoice
@@ -607,10 +612,10 @@ data QueryValue
 GeneralQuery :: Value -> QueryValue
 MarkerQuery :: [Marker] -> QueryValue
 data QueryChoice
-LocationQuery :: String -> RealSrcSpan -> ModuleDom -> [ModuleDom] -> QueryMonad QueryValue -> QueryChoice
+LocationQuery :: String -> (RealSrcSpan -> ModuleDom -> [ModuleDom] -> QueryMonad QueryValue) -> QueryChoice
 [queryName] :: QueryChoice -> String
 [locationQuery] :: QueryChoice -> RealSrcSpan -> ModuleDom -> [ModuleDom] -> QueryMonad QueryValue
-GlobalQuery :: String -> ModuleDom -> [ModuleDom] -> QueryMonad QueryValue -> QueryChoice
+GlobalQuery :: String -> (ModuleDom -> [ModuleDom] -> QueryMonad QueryValue) -> QueryChoice
 [queryName] :: QueryChoice -> String
 [globalQuery] :: QueryChoice -> ModuleDom -> [ModuleDom] -> QueryMonad QueryValue
 data Marker
@@ -800,7 +805,7 @@ trace :: () => String -> a -> a
 --   (represented as <tt><a>Just</a> a</tt>), or it is empty (represented
 --   as <a>Nothing</a>). Using <a>Maybe</a> is a good way to deal with
 --   errors or exceptional cases without resorting to drastic measures such
---   as <a>error</a>.
+--   as <tt>error</tt>.
 --   
 --   The <a>Maybe</a> type is also a monad. It is a simple kind of error
 --   monad, where all errors are represented by <a>Nothing</a>. A richer
@@ -854,7 +859,7 @@ Just :: a -> Maybe a
 --   &gt;&gt;&gt; maybe "" show Nothing
 --   ""
 --   </pre>
-maybe :: () => b -> a -> b -> Maybe a -> b
+maybe :: () => b -> (a -> b) -> Maybe a -> b
 
 -- | The <a>isJust</a> function returns <a>True</a> iff its argument is of
 --   the form <tt>Just _</tt>.
@@ -1080,7 +1085,7 @@ catMaybes :: () => [Maybe a] -> [a]
 --   &gt;&gt;&gt; mapMaybe Just [1,2,3]
 --   [1,2,3]
 --   </pre>
-mapMaybe :: () => a -> Maybe b -> [a] -> [b]
+mapMaybe :: () => (a -> Maybe b) -> [a] -> [b]
 
 -- | The <a>traceMarkerIO</a> function emits a marker to the eventlog, if
 --   eventlog profiling is available and enabled at runtime.
@@ -1247,9 +1252,9 @@ fromJust :: () => Maybe a -> a
 --   The <a>return</a> function yields a computation that produces that
 --   value, while <tt>&gt;&gt;=</tt> sequences two subcomputations, exiting
 --   if either computation does.
-newtype MaybeT (m :: * -> *) a
-MaybeT :: m Maybe a -> MaybeT a
-[runMaybeT] :: MaybeT a -> m Maybe a
+newtype MaybeT (m :: Type -> Type) a
+MaybeT :: m (Maybe a) -> MaybeT a
+[runMaybeT] :: MaybeT a -> m (Maybe a)
 inScope :: Name -> Scope -> Bool
 
 -- | Compares two source spans based on their lengths. Can only used for
@@ -1257,36 +1262,36 @@ inScope :: Name -> Scope -> Bool
 compareRangeLength :: SrcSpan -> SrcSpan -> Ordering
 
 -- | Get the shortest source range that contains the given
-getNodeContaining :: (Biplate Ann node dom stage Ann inner dom stage, SourceInfo stage, HasRange Ann inner dom stage) => RealSrcSpan -> Ann node dom stage -> Maybe Ann inner dom stage
+getNodeContaining :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage, HasRange (Ann inner dom stage)) => RealSrcSpan -> Ann node dom stage -> Maybe (Ann inner dom stage)
 
 -- | Get the nodes that have exactly the given range
-nodesWithRange :: (Biplate Ann node dom stage Ann inner dom stage, SourceInfo stage) => RealSrcSpan -> Simple Traversal Ann node dom stage Ann inner dom stage
+nodesWithRange :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage) => RealSrcSpan -> Simple Traversal (Ann node dom stage) (Ann inner dom stage)
 
 -- | Return true if the node contains a given range
-isContained :: HasRange inner dom stage => RealSrcSpan -> inner dom stage -> Bool
+isContained :: HasRange (inner dom stage) => RealSrcSpan -> inner dom stage -> Bool
 
 -- | Get all nodes that are contained in a given source range
-nodesContained :: (HasRange inner dom stage, Biplate node dom stage inner dom stage) => RealSrcSpan -> Simple Traversal node dom stage inner dom stage
+nodesContained :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage)) => RealSrcSpan -> Simple Traversal (node dom stage) (inner dom stage)
 
 -- | Return true if the node contains a given range
-isInside :: HasRange inner dom stage => RealSrcSpan -> inner dom stage -> Bool
+isInside :: HasRange (inner dom stage) => RealSrcSpan -> inner dom stage -> Bool
 
 -- | Get all nodes that contain a given source range
-nodesContaining :: (HasRange inner dom stage, Biplate node dom stage inner dom stage) => RealSrcSpan -> Simple Traversal node dom stage inner dom stage
+nodesContaining :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage)) => RealSrcSpan -> Simple Traversal (node dom stage) (inner dom stage)
 
 -- | Access the semantic information of an AST node.
-semantics :: RefMonads w r => Reference w r MU MU Ann elem dom stage Ann elem dom stage SemanticInfo dom elem SemanticInfo dom elem
-valBindPats :: (RefMonads w r, MonadPlus r, Morph Maybe r, Morph [] r) => Reference w r MU MU Ann UValueBind dom stage Ann UValueBind dom stage Ann UPattern dom stage Ann UPattern dom stage
+semantics :: () => Simple Lens (Ann elem dom stage) (SemanticInfo dom elem)
+valBindPats :: () => Simple Traversal (Ann UValueBind dom stage) (Ann UPattern dom stage)
 
 -- | A reference to access type arguments to a type constructor call that
 --   may be universally qualified or parenthesized.
-typeParams :: (RefMonads w r, MonadPlus r, Morph Maybe r, Morph [] r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UType dom stage Ann UType dom stage
+typeParams :: () => Simple Traversal (Ann UType dom stage) (Ann UType dom stage)
 
 -- | Accesses that name of a declaration through the declaration head.
-declHeadNames :: (RefMonads w r, MonadPlus r, Morph Maybe r, Morph [] r) => Reference w r MU MU Ann UDeclHead dom stage Ann UDeclHead dom stage Ann UQualifiedName dom stage Ann UQualifiedName dom stage
+declHeadNames :: () => Simple Traversal (Ann UDeclHead dom stage) (Ann UQualifiedName dom stage)
 
 -- | Accesses the name of a function or value binding
-bindingName :: (RefMonads w r, MonadPlus r, Morph Maybe r, Morph [] r) => Reference w r MU MU Ann UValueBind dom stage Ann UValueBind dom stage Ann UQualifiedName dom stage Ann UQualifiedName dom stage
+bindingName :: () => Simple Traversal (Ann UValueBind dom stage) (Ann UQualifiedName dom stage)
 
 -- | Does the import declaration import all elements that are not excluded
 --   explicitly?
@@ -1295,395 +1300,398 @@ importIsHiding :: () => Ann UImportDecl dom stage -> Bool
 -- | Does the import declaration import only the explicitly listed
 --   elements?
 importIsExact :: () => Ann UImportDecl dom stage -> Bool
+pattern AnnList :: forall (elem :: Type -> Type -> Type) dom stage. () => () => [Ann elem dom stage] -> AnnListG elem dom stage
+pattern AnnNothing :: forall (elem :: Type -> Type -> Type) dom stage. () => () => AnnMaybeG elem dom stage
+pattern AnnJust :: forall (elem :: Type -> Type -> Type) dom stage. () => () => Ann elem dom stage -> AnnMaybeG elem dom stage
 
 -- | A class to access the names of named elements. Have to locate where
 --   does the AST element store its name. The returned name will be the one
 --   that was marked isDefining.
-class NamedElement (elem :: * -> * -> *)
-elementName :: (NamedElement elem, RefMonads w r, MonadPlus r, Morph Maybe r, Morph [] r) => Reference w r MU MU Ann elem dom st Ann elem dom st Ann UQualifiedName dom st Ann UQualifiedName dom st
-stringNodeStr :: RefMonads w r => Reference w r MU MU Ann UStringNode dom stage Ann UStringNode dom stage String String
-simpleNameStr :: RefMonads w r => Reference w r MU MU Ann UNamePart dom stage Ann UNamePart dom stage String String
-unqualifiedName :: RefMonads w r => Reference w r MU MU Ann UQualifiedName dom stage Ann UQualifiedName dom stage Ann UNamePart dom stage Ann UNamePart dom stage
-qualifiers :: RefMonads w r => Reference w r MU MU Ann UQualifiedName dom stage Ann UQualifiedName dom stage AnnListG UNamePart dom stage AnnListG UNamePart dom stage
-simpleName :: RefMonads w r => Reference w r MU MU Ann UName dom stage Ann UName dom stage Ann UQualifiedName dom stage Ann UQualifiedName dom stage
-operatorName :: RefMonads w r => Reference w r MU MU Ann UOperator dom stage Ann UOperator dom stage Ann UQualifiedName dom stage Ann UQualifiedName dom stage
-promotedStringValue :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPromoted t dom stage Ann UPromoted t dom stage String String
-promotedIntValue :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPromoted t dom stage Ann UPromoted t dom stage Integer Integer
-promotedElements :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPromoted t dom stage Ann UPromoted t dom stage AnnListG t dom stage AnnListG t dom stage
-promotedConName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPromoted t dom stage Ann UPromoted t dom stage Ann UName dom stage Ann UName dom stage
-stringLitValue :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann ULiteral dom stage Ann ULiteral dom stage String String
-intLitValue :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann ULiteral dom stage Ann ULiteral dom stage Integer Integer
-fracLitValue :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann ULiteral dom stage Ann ULiteral dom stage Rational Rational
-floatLitValue :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann ULiteral dom stage Ann ULiteral dom stage Rational Rational
-charLitValue :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann ULiteral dom stage Ann ULiteral dom stage Char Char
-bracketType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UBracket dom stage Ann UBracket dom stage Ann UType dom stage Ann UType dom stage
-bracketPattern :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UBracket dom stage Ann UBracket dom stage Ann UPattern dom stage Ann UPattern dom stage
-bracketExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UBracket dom stage Ann UBracket dom stage Ann UExpr dom stage Ann UExpr dom stage
-bracketDecl :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UBracket dom stage Ann UBracket dom stage AnnListG UDecl dom stage AnnListG UDecl dom stage
-qqString :: RefMonads w r => Reference w r MU MU Ann QQString dom stage Ann QQString dom stage String String
-qqExprName :: RefMonads w r => Reference w r MU MU Ann UQuasiQuote dom stage Ann UQuasiQuote dom stage Ann UName dom stage Ann UName dom stage
-qqExprBody :: RefMonads w r => Reference w r MU MU Ann UQuasiQuote dom stage Ann UQuasiQuote dom stage Ann QQString dom stage Ann QQString dom stage
-spliceId :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann USplice dom stage Ann USplice dom stage Ann UName dom stage Ann UName dom stage
-spliceExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann USplice dom stage Ann USplice dom stage Ann UExpr dom stage Ann UExpr dom stage
-fieldPatternWildcard :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPatternField dom stage Ann UPatternField dom stage Ann UFieldWildcard dom stage Ann UFieldWildcard dom stage
-fieldPatternName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPatternField dom stage Ann UPatternField dom stage Ann UName dom stage Ann UName dom stage
-fieldPattern :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPatternField dom stage Ann UPatternField dom stage Ann UPattern dom stage Ann UPattern dom stage
-patternType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage Ann UType dom stage Ann UType dom stage
-patternSumPlaceholdersBefore :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage AnnListG UUnboxedSumPlaceHolder dom stage AnnListG UUnboxedSumPlaceHolder dom stage
-patternSumPlaceholdersAfter :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage AnnListG UUnboxedSumPlaceHolder dom stage AnnListG UUnboxedSumPlaceHolder dom stage
-patternSplice :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage Ann USplice dom stage Ann USplice dom stage
-patternRhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage Ann UPattern dom stage Ann UPattern dom stage
-patternOperator :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage Ann UOperator dom stage Ann UOperator dom stage
-patternName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage Ann UName dom stage Ann UName dom stage
-patternLiteral :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage Ann ULiteral dom stage Ann ULiteral dom stage
-patternLit :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage Ann ULiteral dom stage Ann ULiteral dom stage
-patternLhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage Ann UPattern dom stage Ann UPattern dom stage
-patternInner :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage Ann UPattern dom stage Ann UPattern dom stage
-patternFields :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage AnnListG UPatternField dom stage AnnListG UPatternField dom stage
-patternExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage Ann UExpr dom stage Ann UExpr dom stage
-patternElems :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage AnnListG UPattern dom stage AnnListG UPattern dom stage
-patternArgs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage AnnListG UPattern dom stage AnnListG UPattern dom stage
-patQQ :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPattern dom stage Ann UPattern dom stage Ann UQuasiQuote dom stage Ann UQuasiQuote dom stage
-cmdThen :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage
-cmdStmts :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage AnnListG UCmdStmt dom stage AnnListG UCmdStmt dom stage
-cmdRightCmd :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage
-cmdRhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UExpr dom stage Ann UExpr dom stage
-cmdOperator :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UName dom stage Ann UName dom stage
-cmdLhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UExpr dom stage Ann UExpr dom stage
-cmdLeftCmd :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage
-cmdInnerCmds :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage AnnListG UCmd dom stage AnnListG UCmd dom stage
-cmdInnerCmd :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage
-cmdInner :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage
-cmdExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UExpr dom stage Ann UExpr dom stage
-cmdElse :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage Ann UCmd dom stage
-cmdBinds :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage AnnListG ULocalBind dom stage AnnListG ULocalBind dom stage
-cmdBindings :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage AnnListG UPattern dom stage AnnListG UPattern dom stage
-cmdArrowOp :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UArrowAppl dom stage Ann UArrowAppl dom stage
-cmdApplied :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage Ann UExpr dom stage Ann UExpr dom stage
-cmdAlts :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCmd dom stage Ann UCmd dom stage AnnListG UCmdAlt dom stage AnnListG UCmdAlt dom stage
-compStmts :: RefMonads w r => Reference w r MU MU Ann UListCompBody dom stage Ann UListCompBody dom stage AnnListG UCompStmt dom stage AnnListG UCompStmt dom stage
-usingExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCompStmt dom stage Ann UCompStmt dom stage AnnMaybeG UExpr dom stage AnnMaybeG UExpr dom stage
-thenExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCompStmt dom stage Ann UCompStmt dom stage Ann UExpr dom stage Ann UExpr dom stage
-compStmt :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCompStmt dom stage Ann UCompStmt dom stage Ann UStmt dom stage Ann UStmt dom stage
-byExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCompStmt dom stage Ann UCompStmt dom stage AnnMaybeG UExpr dom stage AnnMaybeG UExpr dom stage
-stmtPattern :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UStmt' expr dom stage Ann UStmt' expr dom stage Ann UPattern dom stage Ann UPattern dom stage
-stmtExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UStmt' expr dom stage Ann UStmt' expr dom stage Ann expr dom stage Ann expr dom stage
-stmtBinds :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UStmt' expr dom stage Ann UStmt' expr dom stage AnnListG ULocalBind dom stage AnnListG ULocalBind dom stage
-cmdStmtBinds :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UStmt' expr dom stage Ann UStmt' expr dom stage AnnListG UStmt' expr dom stage AnnListG UStmt' expr dom stage
-caseGuardStmts :: RefMonads w r => Reference w r MU MU Ann UGuardedCaseRhs' expr dom stage Ann UGuardedCaseRhs' expr dom stage AnnListG URhsGuard dom stage AnnListG URhsGuard dom stage
-caseGuardExpr :: RefMonads w r => Reference w r MU MU Ann UGuardedCaseRhs' expr dom stage Ann UGuardedCaseRhs' expr dom stage Ann expr dom stage Ann expr dom stage
-rhsCaseGuards :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCaseRhs' expr dom stage Ann UCaseRhs' expr dom stage AnnListG UGuardedCaseRhs' expr dom stage AnnListG UGuardedCaseRhs' expr dom stage
-rhsCaseExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UCaseRhs' expr dom stage Ann UCaseRhs' expr dom stage Ann expr dom stage Ann expr dom stage
-pragmaStr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExprPragma dom stage Ann UExprPragma dom stage Ann UStringNode dom stage Ann UStringNode dom stage
-pragmaSrcRange :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExprPragma dom stage Ann UExprPragma dom stage Ann USourceRange dom stage Ann USourceRange dom stage
-tupSecExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTupSecElem dom stage Ann UTupSecElem dom stage Ann UExpr dom stage Ann UExpr dom stage
-fieldWildcard :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UFieldUpdate dom stage Ann UFieldUpdate dom stage Ann UFieldWildcard dom stage Ann UFieldWildcard dom stage
-fieldValue :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UFieldUpdate dom stage Ann UFieldUpdate dom stage Ann UExpr dom stage Ann UExpr dom stage
-fieldUpdateName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UFieldUpdate dom stage Ann UFieldUpdate dom stage Ann UName dom stage Ann UName dom stage
-fieldName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UFieldUpdate dom stage Ann UFieldUpdate dom stage Ann UName dom stage Ann UName dom stage
-altRhs :: RefMonads w r => Reference w r MU MU Ann UAlt' expr dom stage Ann UAlt' expr dom stage Ann UCaseRhs' expr dom stage Ann UCaseRhs' expr dom stage
-altPattern :: RefMonads w r => Reference w r MU MU Ann UAlt' expr dom stage Ann UAlt' expr dom stage Ann UPattern dom stage Ann UPattern dom stage
-altBinds :: RefMonads w r => Reference w r MU MU Ann UAlt' expr dom stage Ann UAlt' expr dom stage AnnMaybeG ULocalBinds dom stage AnnMaybeG ULocalBinds dom stage
-tupleSectionElems :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG UTupSecElem dom stage AnnListG UTupSecElem dom stage
-tupleElems :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG UExpr dom stage AnnListG UExpr dom stage
-quotedName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UName dom stage Ann UName dom stage
-procPattern :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UPattern dom stage Ann UPattern dom stage
-procExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UCmd dom stage Ann UCmd dom stage
-listElems :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG UExpr dom stage AnnListG UExpr dom stage
-innerExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-exprType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UType dom stage Ann UType dom stage
-exprThen :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-exprSumPlaceholdersBefore :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG UUnboxedSumPlaceHolder dom stage AnnListG UUnboxedSumPlaceHolder dom stage
-exprSumPlaceholdersAfter :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG UUnboxedSumPlaceHolder dom stage AnnListG UUnboxedSumPlaceHolder dom stage
-exprStmts :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG UStmt dom stage AnnListG UStmt dom stage
-exprSplice :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann USplice dom stage Ann USplice dom stage
-exprSig :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UType dom stage Ann UType dom stage
-exprRhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-exprRecName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UName dom stage Ann UName dom stage
-exprRecFields :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG UFieldUpdate dom stage AnnListG UFieldUpdate dom stage
-exprQQ :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UQuasiQuote dom stage Ann UQuasiQuote dom stage
-exprPragma :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExprPragma dom stage Ann UExprPragma dom stage
-exprOperator :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UOperator dom stage Ann UOperator dom stage
-exprName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UName dom stage Ann UName dom stage
-exprLit :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann ULiteral dom stage Ann ULiteral dom stage
-exprLhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-exprInner :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-exprIfAlts :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG UGuardedCaseRhs dom stage AnnListG UGuardedCaseRhs dom stage
-exprFunBind :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG ULocalBind dom stage AnnListG ULocalBind dom stage
-exprFun :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-exprElse :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-exprCond :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-exprCase :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-exprBracket :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UBracket dom stage Ann UBracket dom stage
-exprBindings :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG UPattern dom stage AnnListG UPattern dom stage
-exprArg :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-exprAlts :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG UAlt dom stage AnnListG UAlt dom stage
-enumToFix :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-enumTo :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnMaybeG UExpr dom stage AnnMaybeG UExpr dom stage
-enumThen :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnMaybeG UExpr dom stage AnnMaybeG UExpr dom stage
-enumFrom :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-doKind :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UDoKind dom stage Ann UDoKind dom stage
-compExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage Ann UExpr dom stage
-compBody :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage AnnListG UListCompBody dom stage AnnListG UListCompBody dom stage
-arrowAppl :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExpr dom stage Ann UExpr dom stage Ann UArrowAppl dom stage Ann UArrowAppl dom stage
-innerAsserts :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UAssertion dom stage Ann UAssertion dom stage AnnListG UAssertion dom stage AnnListG UAssertion dom stage
-assertTypes :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UAssertion dom stage Ann UAssertion dom stage AnnListG UType dom stage AnnListG UType dom stage
-assertRhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UAssertion dom stage Ann UAssertion dom stage Ann UType dom stage Ann UType dom stage
-assertOp :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UAssertion dom stage Ann UAssertion dom stage Ann UOperator dom stage Ann UOperator dom stage
-assertLhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UAssertion dom stage Ann UAssertion dom stage Ann UType dom stage Ann UType dom stage
-assertImplVar :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UAssertion dom stage Ann UAssertion dom stage Ann UName dom stage Ann UName dom stage
-assertImplType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UAssertion dom stage Ann UAssertion dom stage Ann UType dom stage Ann UType dom stage
-assertClsName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UAssertion dom stage Ann UAssertion dom stage Ann UName dom stage Ann UName dom stage
-contextAssertion :: RefMonads w r => Reference w r MU MU Ann UContext dom stage Ann UContext dom stage Ann UAssertion dom stage Ann UAssertion dom stage
-kindVar :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UName dom stage Ann UName dom stage
-kindType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UType dom stage Ann UType dom stage
-kindRight :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage
-kindRhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage
-kindPromoted :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UPromoted UKind dom stage Ann UPromoted UKind dom stage
-kindParen :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage
-kindLhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage
-kindLeft :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage
-kindElems :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage AnnListG UKind dom stage AnnListG UKind dom stage
-kindElem :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage
-kindAppOp :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UOperator dom stage Ann UOperator dom stage
-kindAppFun :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage
-kindAppArg :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage Ann UKind dom stage
-typeWildcardName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UName dom stage Ann UName dom stage
-typeType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UType dom stage Ann UType dom stage
-typeRight :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UType dom stage Ann UType dom stage
-typeResult :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UType dom stage Ann UType dom stage
-typeQQ :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UQuasiQuote dom stage Ann UQuasiQuote dom stage
-typeParam :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UType dom stage Ann UType dom stage
-typeOperator :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UOperator dom stage Ann UOperator dom stage
-typeName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UName dom stage Ann UName dom stage
-typeLeft :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UType dom stage Ann UType dom stage
-typeKind :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UKind dom stage Ann UKind dom stage
-typeInner :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UType dom stage Ann UType dom stage
-typeElements :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage AnnListG UType dom stage AnnListG UType dom stage
-typeElement :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UType dom stage Ann UType dom stage
-typeCtx :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UContext dom stage Ann UContext dom stage
-typeCon :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UType dom stage Ann UType dom stage
-typeBounded :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage AnnListG UTyVar dom stage AnnListG UTyVar dom stage
-typeArg :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UType dom stage Ann UType dom stage
-tsSplice :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann USplice dom stage Ann USplice dom stage
-tpPromoted :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UType dom stage Ann UType dom stage Ann UPromoted UType dom stage Ann UPromoted UType dom stage
-tyVarName :: RefMonads w r => Reference w r MU MU Ann UTyVar dom stage Ann UTyVar dom stage Ann UName dom stage Ann UName dom stage
-tyVarKind :: RefMonads w r => Reference w r MU MU Ann UTyVar dom stage Ann UTyVar dom stage AnnMaybeG UKindConstraint dom stage AnnMaybeG UKindConstraint dom stage
-valBindRhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UValueBind dom stage Ann UValueBind dom stage Ann URhs dom stage Ann URhs dom stage
-valBindPat :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UValueBind dom stage Ann UValueBind dom stage Ann UPattern dom stage Ann UPattern dom stage
-valBindLocals :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UValueBind dom stage Ann UValueBind dom stage AnnMaybeG ULocalBinds dom stage AnnMaybeG ULocalBinds dom stage
-funBindMatches :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UValueBind dom stage Ann UValueBind dom stage AnnListG UMatch dom stage AnnListG UMatch dom stage
-kindConstr :: RefMonads w r => Reference w r MU MU Ann UKindConstraint dom stage Ann UKindConstraint dom stage Ann UKind dom stage Ann UKind dom stage
-matchLhsRhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UMatchLhs dom stage Ann UMatchLhs dom stage Ann UPattern dom stage Ann UPattern dom stage
-matchLhsOperator :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UMatchLhs dom stage Ann UMatchLhs dom stage Ann UOperator dom stage Ann UOperator dom stage
-matchLhsName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UMatchLhs dom stage Ann UMatchLhs dom stage Ann UName dom stage Ann UName dom stage
-matchLhsLhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UMatchLhs dom stage Ann UMatchLhs dom stage Ann UPattern dom stage Ann UPattern dom stage
-matchLhsArgs :: RefMonads w r => Reference w r MU MU Ann UMatchLhs dom stage Ann UMatchLhs dom stage AnnListG UPattern dom stage AnnListG UPattern dom stage
-tsType :: RefMonads w r => Reference w r MU MU Ann UTypeSignature dom stage Ann UTypeSignature dom stage Ann UType dom stage Ann UType dom stage
-tsName :: RefMonads w r => Reference w r MU MU Ann UTypeSignature dom stage Ann UTypeSignature dom stage AnnListG UName dom stage AnnListG UName dom stage
-precedenceValue :: RefMonads w r => Reference w r MU MU Ann Precedence dom stage Ann Precedence dom stage Int Int
-fixityPrecedence :: RefMonads w r => Reference w r MU MU Ann UFixitySignature dom stage Ann UFixitySignature dom stage AnnMaybeG Precedence dom stage AnnMaybeG Precedence dom stage
-fixityOperators :: RefMonads w r => Reference w r MU MU Ann UFixitySignature dom stage Ann UFixitySignature dom stage AnnListG UOperator dom stage AnnListG UOperator dom stage
-fixityAssoc :: RefMonads w r => Reference w r MU MU Ann UFixitySignature dom stage Ann UFixitySignature dom stage Ann Assoc dom stage Ann Assoc dom stage
-localBinds :: RefMonads w r => Reference w r MU MU Ann ULocalBinds dom stage Ann ULocalBinds dom stage AnnListG ULocalBind dom stage AnnListG ULocalBind dom stage
-localVal :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann ULocalBind dom stage Ann ULocalBind dom stage Ann UValueBind dom stage Ann UValueBind dom stage
-localSig :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann ULocalBind dom stage Ann ULocalBind dom stage Ann UTypeSignature dom stage Ann UTypeSignature dom stage
-localInline :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann ULocalBind dom stage Ann ULocalBind dom stage Ann UInlinePragma dom stage Ann UInlinePragma dom stage
-localFixity :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann ULocalBind dom stage Ann ULocalBind dom stage Ann UFixitySignature dom stage Ann UFixitySignature dom stage
-guardRhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann URhsGuard dom stage Ann URhsGuard dom stage Ann UExpr dom stage Ann UExpr dom stage
-guardPat :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann URhsGuard dom stage Ann URhsGuard dom stage Ann UPattern dom stage Ann UPattern dom stage
-guardCheck :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann URhsGuard dom stage Ann URhsGuard dom stage Ann UExpr dom stage Ann UExpr dom stage
-guardBinds :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann URhsGuard dom stage Ann URhsGuard dom stage AnnListG ULocalBind dom stage AnnListG ULocalBind dom stage
-guardStmts :: RefMonads w r => Reference w r MU MU Ann UGuardedRhs dom stage Ann UGuardedRhs dom stage AnnListG URhsGuard dom stage AnnListG URhsGuard dom stage
-guardExpr :: RefMonads w r => Reference w r MU MU Ann UGuardedRhs dom stage Ann UGuardedRhs dom stage Ann UExpr dom stage Ann UExpr dom stage
-rhsGuards :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann URhs dom stage Ann URhs dom stage AnnListG UGuardedRhs dom stage AnnListG UGuardedRhs dom stage
-rhsExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann URhs dom stage Ann URhs dom stage Ann UExpr dom stage Ann UExpr dom stage
-matchRhs :: RefMonads w r => Reference w r MU MU Ann UMatch dom stage Ann UMatch dom stage Ann URhs dom stage Ann URhs dom stage
-matchLhs :: RefMonads w r => Reference w r MU MU Ann UMatch dom stage Ann UMatch dom stage Ann UMatchLhs dom stage Ann UMatchLhs dom stage
-matchBinds :: RefMonads w r => Reference w r MU MU Ann UMatch dom stage Ann UMatch dom stage AnnMaybeG ULocalBinds dom stage AnnMaybeG ULocalBinds dom stage
-specializeType :: RefMonads w r => Reference w r MU MU Ann USpecializePragma dom stage Ann USpecializePragma dom stage AnnListG UType dom stage AnnListG UType dom stage
-specializeDef :: RefMonads w r => Reference w r MU MU Ann USpecializePragma dom stage Ann USpecializePragma dom stage Ann UName dom stage Ann UName dom stage
-pragmaPhase :: RefMonads w r => Reference w r MU MU Ann USpecializePragma dom stage Ann USpecializePragma dom stage AnnMaybeG UPhaseControl dom stage AnnMaybeG UPhaseControl dom stage
-numberInteger :: RefMonads w r => Reference w r MU MU Ann Number dom stage Ann Number dom stage Integer Integer
-srToLine :: RefMonads w r => Reference w r MU MU Ann USourceRange dom stage Ann USourceRange dom stage Ann Number dom stage Ann Number dom stage
-srToCol :: RefMonads w r => Reference w r MU MU Ann USourceRange dom stage Ann USourceRange dom stage Ann Number dom stage Ann Number dom stage
-srFromLine :: RefMonads w r => Reference w r MU MU Ann USourceRange dom stage Ann USourceRange dom stage Ann Number dom stage Ann Number dom stage
-srFromCol :: RefMonads w r => Reference w r MU MU Ann USourceRange dom stage Ann USourceRange dom stage Ann Number dom stage Ann Number dom stage
-srFileName :: RefMonads w r => Reference w r MU MU Ann USourceRange dom stage Ann USourceRange dom stage Ann UStringNode dom stage Ann UStringNode dom stage
-minimalOrs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UMinimalFormula dom stage Ann UMinimalFormula dom stage AnnListG UMinimalFormula dom stage AnnListG UMinimalFormula dom stage
-minimalName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UMinimalFormula dom stage Ann UMinimalFormula dom stage Ann UName dom stage Ann UName dom stage
-minimalInner :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UMinimalFormula dom stage Ann UMinimalFormula dom stage Ann UMinimalFormula dom stage Ann UMinimalFormula dom stage
-minimalAnds :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UMinimalFormula dom stage Ann UMinimalFormula dom stage AnnListG UMinimalFormula dom stage AnnListG UMinimalFormula dom stage
-annotateName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UAnnotationSubject dom stage Ann UAnnotationSubject dom stage Ann UName dom stage Ann UName dom stage
-warnMessage :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage AnnListG UStringNode dom stage AnnListG UStringNode dom stage
-specializePragma :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage Ann USpecializePragma dom stage Ann USpecializePragma dom stage
-pragmaSignature :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage AnnMaybeG UName dom stage AnnMaybeG UName dom stage
-pragmaRule :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage AnnListG URule dom stage AnnListG URule dom stage
-pragmaObjects :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage AnnListG UName dom stage AnnListG UName dom stage
-pragmaLineNum :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage Ann LineNumber dom stage Ann LineNumber dom stage
-pragmaInline :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage Ann UInlinePragma dom stage Ann UInlinePragma dom stage
-pragmaFileName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage AnnMaybeG UStringNode dom stage AnnMaybeG UStringNode dom stage
-deprMessage :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage AnnListG UStringNode dom stage AnnListG UStringNode dom stage
-annotationSubject :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage Ann UAnnotationSubject dom stage Ann UAnnotationSubject dom stage
-annotateExpr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage Ann UExpr dom stage Ann UExpr dom stage
-phaseNum :: RefMonads w r => Reference w r MU MU Ann PhaseNumber dom stage Ann PhaseNumber dom stage Integer Integer
-phaseUntil :: RefMonads w r => Reference w r MU MU Ann UPhaseControl dom stage Ann UPhaseControl dom stage AnnMaybeG PhaseInvert dom stage AnnMaybeG PhaseInvert dom stage
-phaseNumber :: RefMonads w r => Reference w r MU MU Ann UPhaseControl dom stage Ann UPhaseControl dom stage AnnMaybeG PhaseNumber dom stage AnnMaybeG PhaseNumber dom stage
-ruleVarType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann URuleVar dom stage Ann URuleVar dom stage Ann UType dom stage Ann UType dom stage
-ruleVarName :: RefMonads w r => Reference w r MU MU Ann URuleVar dom stage Ann URuleVar dom stage Ann UName dom stage Ann UName dom stage
-ruleRhs :: RefMonads w r => Reference w r MU MU Ann URule dom stage Ann URule dom stage Ann UExpr dom stage Ann UExpr dom stage
-rulePhase :: RefMonads w r => Reference w r MU MU Ann URule dom stage Ann URule dom stage AnnMaybeG UPhaseControl dom stage AnnMaybeG UPhaseControl dom stage
-ruleName :: RefMonads w r => Reference w r MU MU Ann URule dom stage Ann URule dom stage Ann UStringNode dom stage Ann UStringNode dom stage
-ruleLhs :: RefMonads w r => Reference w r MU MU Ann URule dom stage Ann URule dom stage Ann UExpr dom stage Ann UExpr dom stage
-ruleBounded :: RefMonads w r => Reference w r MU MU Ann URule dom stage Ann URule dom stage AnnListG URuleVar dom stage AnnListG URuleVar dom stage
-teRhs :: RefMonads w r => Reference w r MU MU Ann UTypeEqn dom stage Ann UTypeEqn dom stage Ann UType dom stage Ann UType dom stage
-teLhs :: RefMonads w r => Reference w r MU MU Ann UTypeEqn dom stage Ann UTypeEqn dom stage Ann UType dom stage Ann UType dom stage
-ihType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstanceHead dom stage Ann UInstanceHead dom stage Ann UType dom stage Ann UType dom stage
-ihOperator :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstanceHead dom stage Ann UInstanceHead dom stage Ann UOperator dom stage Ann UOperator dom stage
-ihLeftOp :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstanceHead dom stage Ann UInstanceHead dom stage Ann UType dom stage Ann UType dom stage
-ihHead :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstanceHead dom stage Ann UInstanceHead dom stage Ann UInstanceHead dom stage Ann UInstanceHead dom stage
-ihFun :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstanceHead dom stage Ann UInstanceHead dom stage Ann UInstanceHead dom stage Ann UInstanceHead dom stage
-ihConName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstanceHead dom stage Ann UInstanceHead dom stage Ann UName dom stage Ann UName dom stage
-irVars :: RefMonads w r => Reference w r MU MU Ann UInstanceRule dom stage Ann UInstanceRule dom stage AnnMaybeG AnnListG UTyVar dom stage AnnMaybeG AnnListG UTyVar dom stage
-irHead :: RefMonads w r => Reference w r MU MU Ann UInstanceRule dom stage Ann UInstanceRule dom stage Ann UInstanceHead dom stage Ann UInstanceHead dom stage
-irCtx :: RefMonads w r => Reference w r MU MU Ann UInstanceRule dom stage Ann UInstanceRule dom stage AnnMaybeG UContext dom stage AnnMaybeG UContext dom stage
-oneDerived :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDeriving dom stage Ann UDeriving dom stage Ann UInstanceHead dom stage Ann UInstanceHead dom stage
-allDerived :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDeriving dom stage Ann UDeriving dom stage AnnListG UInstanceHead dom stage AnnListG UInstanceHead dom stage
-deriveStrategy :: RefMonads w r => Reference w r MU MU Ann UDeriving dom stage Ann UDeriving dom stage AnnMaybeG UDeriveStrategy dom stage AnnMaybeG UDeriveStrategy dom stage
-fieldType :: RefMonads w r => Reference w r MU MU Ann UFieldDecl dom stage Ann UFieldDecl dom stage Ann UType dom stage Ann UType dom stage
-fieldNames :: RefMonads w r => Reference w r MU MU Ann UFieldDecl dom stage Ann UFieldDecl dom stage AnnListG UName dom stage AnnListG UName dom stage
-conDeclRhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UConDecl dom stage Ann UConDecl dom stage Ann UType dom stage Ann UType dom stage
-conDeclOp :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UConDecl dom stage Ann UConDecl dom stage Ann UOperator dom stage Ann UOperator dom stage
-conDeclName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UConDecl dom stage Ann UConDecl dom stage Ann UName dom stage Ann UName dom stage
-conDeclLhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UConDecl dom stage Ann UConDecl dom stage Ann UType dom stage Ann UType dom stage
-conDeclFields :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UConDecl dom stage Ann UConDecl dom stage AnnListG UFieldDecl dom stage AnnListG UFieldDecl dom stage
-conDeclArgs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UConDecl dom stage Ann UConDecl dom stage AnnListG UType dom stage AnnListG UType dom stage
-conTypeCtx :: RefMonads w r => Reference w r MU MU Ann UConDecl dom stage Ann UConDecl dom stage AnnMaybeG UContext dom stage AnnMaybeG UContext dom stage
-conTypeArgs :: RefMonads w r => Reference w r MU MU Ann UConDecl dom stage Ann UConDecl dom stage AnnListG UTyVar dom stage AnnListG UTyVar dom stage
-funDepRhs :: RefMonads w r => Reference w r MU MU Ann UFunDep dom stage Ann UFunDep dom stage AnnListG UName dom stage AnnListG UName dom stage
-funDepLhs :: RefMonads w r => Reference w r MU MU Ann UFunDep dom stage Ann UFunDep dom stage AnnListG UName dom stage AnnListG UName dom stage
-funDeps :: RefMonads w r => Reference w r MU MU Ann UFunDeps dom stage Ann UFunDeps dom stage AnnListG UFunDep dom stage AnnListG UFunDep dom stage
-patSigType :: RefMonads w r => Reference w r MU MU Ann UPatternTypeSignature dom stage Ann UPatternTypeSignature dom stage Ann UType dom stage Ann UType dom stage
-patSigName :: RefMonads w r => Reference w r MU MU Ann UPatternTypeSignature dom stage Ann UPatternTypeSignature dom stage AnnListG UName dom stage AnnListG UName dom stage
-patOpposite :: RefMonads w r => Reference w r MU MU Ann UPatSynWhere dom stage Ann UPatSynWhere dom stage AnnListG UMatch dom stage AnnListG UMatch dom stage
-patSynRhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPatSynLhs dom stage Ann UPatSynLhs dom stage Ann UName dom stage Ann UName dom stage
-patSynOp :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPatSynLhs dom stage Ann UPatSynLhs dom stage Ann UOperator dom stage Ann UOperator dom stage
-patSynLhs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPatSynLhs dom stage Ann UPatSynLhs dom stage Ann UName dom stage Ann UName dom stage
-patName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPatSynLhs dom stage Ann UPatSynLhs dom stage Ann UName dom stage Ann UName dom stage
-patArgs :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPatSynLhs dom stage Ann UPatSynLhs dom stage AnnListG UName dom stage AnnListG UName dom stage
-patRhsOpposite :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UPatSynRhs dom stage Ann UPatSynRhs dom stage AnnMaybeG UPatSynWhere dom stage AnnMaybeG UPatSynWhere dom stage
-patRhsPat :: RefMonads w r => Reference w r MU MU Ann UPatSynRhs dom stage Ann UPatSynRhs dom stage Ann UPattern dom stage Ann UPattern dom stage
-patRhs :: RefMonads w r => Reference w r MU MU Ann UPatternSynonym dom stage Ann UPatternSynonym dom stage Ann UPatSynRhs dom stage Ann UPatSynRhs dom stage
-patLhs :: RefMonads w r => Reference w r MU MU Ann UPatternSynonym dom stage Ann UPatternSynonym dom stage Ann UPatSynLhs dom stage Ann UPatSynLhs dom stage
-gadtConResultType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UGadtConType dom stage Ann UGadtConType dom stage Ann UType dom stage Ann UType dom stage
-gadtConRecordFields :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UGadtConType dom stage Ann UGadtConType dom stage AnnListG UFieldDecl dom stage AnnListG UFieldDecl dom stage
-gadtConNormalType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UGadtConType dom stage Ann UGadtConType dom stage Ann UType dom stage Ann UType dom stage
-gadtConTypeCtx :: RefMonads w r => Reference w r MU MU Ann UGadtConDecl dom stage Ann UGadtConDecl dom stage AnnMaybeG UContext dom stage AnnMaybeG UContext dom stage
-gadtConTypeArgs :: RefMonads w r => Reference w r MU MU Ann UGadtConDecl dom stage Ann UGadtConDecl dom stage AnnListG UTyVar dom stage AnnListG UTyVar dom stage
-gadtConType :: RefMonads w r => Reference w r MU MU Ann UGadtConDecl dom stage Ann UGadtConDecl dom stage Ann UGadtConType dom stage Ann UGadtConType dom stage
-gadtConNames :: RefMonads w r => Reference w r MU MU Ann UGadtConDecl dom stage Ann UGadtConDecl dom stage AnnListG UName dom stage AnnListG UName dom stage
-injAnnRes :: RefMonads w r => Reference w r MU MU Ann UInjectivityAnn dom stage Ann UInjectivityAnn dom stage Ann UTyVar dom stage Ann UTyVar dom stage
-injAnnDeps :: RefMonads w r => Reference w r MU MU Ann UInjectivityAnn dom stage Ann UInjectivityAnn dom stage AnnListG UName dom stage AnnListG UName dom stage
-tfTypeVar :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTypeFamilySpec dom stage Ann UTypeFamilySpec dom stage Ann UTyVar dom stage Ann UTyVar dom stage
-tfSpecKind :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTypeFamilySpec dom stage Ann UTypeFamilySpec dom stage Ann UKindConstraint dom stage Ann UKindConstraint dom stage
-tfInjectivity :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTypeFamilySpec dom stage Ann UTypeFamilySpec dom stage Ann UInjectivityAnn dom stage Ann UInjectivityAnn dom stage
-tfSpec :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTypeFamily dom stage Ann UTypeFamily dom stage AnnMaybeG UTypeFamilySpec dom stage AnnMaybeG UTypeFamilySpec dom stage
-tfKind :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UTypeFamily dom stage Ann UTypeFamily dom stage AnnMaybeG UKindConstraint dom stage AnnMaybeG UKindConstraint dom stage
-tfHead :: RefMonads w r => Reference w r MU MU Ann UTypeFamily dom stage Ann UTypeFamily dom stage Ann UDeclHead dom stage Ann UDeclHead dom stage
-specializeInstanceType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage Ann UType dom stage Ann UType dom stage
-specializeInstance :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage Ann USpecializePragma dom stage Ann USpecializePragma dom stage
-instanceInline :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage Ann UInlinePragma dom stage Ann UInlinePragma dom stage
-instBodyTypeSig :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage Ann UTypeSignature dom stage Ann UTypeSignature dom stage
-instBodyTypeEqn :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage Ann UTypeEqn dom stage Ann UTypeEqn dom stage
-instBodyLhsType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage Ann UInstanceRule dom stage Ann UInstanceRule dom stage
-instBodyGadtCons :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage AnnListG UGadtConDecl dom stage AnnListG UGadtConDecl dom stage
-instBodyDerivings :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage AnnListG UDeriving dom stage AnnListG UDeriving dom stage
-instBodyDeclFunbind :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage Ann UValueBind dom stage Ann UValueBind dom stage
-instBodyDataNew :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage Ann UDataOrNewtypeKeyword dom stage Ann UDataOrNewtypeKeyword dom stage
-instBodyDataKind :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage AnnMaybeG UKindConstraint dom stage AnnMaybeG UKindConstraint dom stage
-instBodyDataCons :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UInstBodyDecl dom stage Ann UInstBodyDecl dom stage AnnListG UConDecl dom stage AnnListG UConDecl dom stage
-instBodyDecls :: RefMonads w r => Reference w r MU MU Ann UInstBody dom stage Ann UInstBody dom stage AnnListG UInstBodyDecl dom stage AnnListG UInstBodyDecl dom stage
-dhRight :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDeclHead dom stage Ann UDeclHead dom stage Ann UTyVar dom stage Ann UTyVar dom stage
-dhOperator :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDeclHead dom stage Ann UDeclHead dom stage Ann UOperator dom stage Ann UOperator dom stage
-dhName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDeclHead dom stage Ann UDeclHead dom stage Ann UName dom stage Ann UName dom stage
-dhLeft :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDeclHead dom stage Ann UDeclHead dom stage Ann UTyVar dom stage Ann UTyVar dom stage
-dhBody :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDeclHead dom stage Ann UDeclHead dom stage Ann UDeclHead dom stage Ann UDeclHead dom stage
-dhAppOperand :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDeclHead dom stage Ann UDeclHead dom stage Ann UTyVar dom stage Ann UTyVar dom stage
-dhAppFun :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDeclHead dom stage Ann UDeclHead dom stage Ann UDeclHead dom stage Ann UDeclHead dom stage
-pragmaFormula :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UClassElement dom stage Ann UClassElement dom stage Ann UMinimalFormula dom stage Ann UMinimalFormula dom stage
-clsInline :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UClassElement dom stage Ann UClassElement dom stage Ann UInlinePragma dom stage Ann UInlinePragma dom stage
-clsFixity :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UClassElement dom stage Ann UClassElement dom stage Ann UFixitySignature dom stage Ann UFixitySignature dom stage
-ceTypeSig :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UClassElement dom stage Ann UClassElement dom stage Ann UTypeSignature dom stage Ann UTypeSignature dom stage
-ceTypeFam :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UClassElement dom stage Ann UClassElement dom stage Ann UTypeFamily dom stage Ann UTypeFamily dom stage
-ceType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UClassElement dom stage Ann UClassElement dom stage Ann UType dom stage Ann UType dom stage
-ceName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UClassElement dom stage Ann UClassElement dom stage Ann UName dom stage Ann UName dom stage
-ceKind :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UClassElement dom stage Ann UClassElement dom stage Ann UType dom stage Ann UType dom stage
-ceHead :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UClassElement dom stage Ann UClassElement dom stage Ann UDeclHead dom stage Ann UDeclHead dom stage
-ceBind :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UClassElement dom stage Ann UClassElement dom stage Ann UValueBind dom stage Ann UValueBind dom stage
-cbElements :: RefMonads w r => Reference w r MU MU Ann UClassBody dom stage Ann UClassBody dom stage AnnListG UClassElement dom stage AnnListG UClassElement dom stage
-declValBind :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UValueBind dom stage Ann UValueBind dom stage
-declTypes :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnListG UType dom stage AnnListG UType dom stage
-declTypeSig :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UTypeSignature dom stage Ann UTypeSignature dom stage
-declTypeFamily :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UTypeFamily dom stage Ann UTypeFamily dom stage
-declType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UType dom stage Ann UType dom stage
-declSplice :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann USplice dom stage Ann USplice dom stage
-declSpec :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnMaybeG UTypeFamilySpec dom stage AnnMaybeG UTypeFamilySpec dom stage
-declSafety :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnMaybeG USafety dom stage AnnMaybeG USafety dom stage
-declRoles :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnListG URole dom stage AnnListG URole dom stage
-declRoleType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UQualifiedName dom stage Ann UQualifiedName dom stage
-declPragma :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UTopLevelPragma dom stage Ann UTopLevelPragma dom stage
-declPatTypeSig :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UPatternTypeSignature dom stage Ann UPatternTypeSignature dom stage
-declPatSyn :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UPatternSynonym dom stage Ann UPatternSynonym dom stage
-declOverlap :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnMaybeG UOverlapPragma dom stage AnnMaybeG UOverlapPragma dom stage
-declNewtype :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UDataOrNewtypeKeyword dom stage Ann UDataOrNewtypeKeyword dom stage
-declName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UName dom stage Ann UName dom stage
-declKind :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnMaybeG UKindConstraint dom stage AnnMaybeG UKindConstraint dom stage
-declInstance :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UInstanceRule dom stage Ann UInstanceRule dom stage
-declInstRule :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UInstanceRule dom stage Ann UInstanceRule dom stage
-declInstDecl :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnMaybeG UInstBody dom stage AnnMaybeG UInstBody dom stage
-declHead :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UDeclHead dom stage Ann UDeclHead dom stage
-declGadt :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnListG UGadtConDecl dom stage AnnListG UGadtConDecl dom stage
-declFunDeps :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnMaybeG UFunDeps dom stage AnnMaybeG UFunDeps dom stage
-declForeignType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UType dom stage Ann UType dom stage
-declFixity :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UFixitySignature dom stage Ann UFixitySignature dom stage
-declDeriving :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnListG UDeriving dom stage AnnListG UDeriving dom stage
-declDerivStrat :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnMaybeG UDeriveStrategy dom stage AnnMaybeG UDeriveStrategy dom stage
-declDecl :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnListG UTypeEqn dom stage AnnListG UTypeEqn dom stage
-declCtx :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnMaybeG UContext dom stage AnnMaybeG UContext dom stage
-declCons :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnListG UConDecl dom stage AnnListG UConDecl dom stage
-declCallConv :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UCallConv dom stage Ann UCallConv dom stage
-declBody :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage AnnMaybeG UClassBody dom stage AnnMaybeG UClassBody dom stage
-declAssignedType :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UDecl dom stage Ann UDecl dom stage Ann UType dom stage Ann UType dom stage
-langExt :: RefMonads w r => Reference w r MU MU Ann ULanguageExtension dom stage Ann ULanguageExtension dom stage String String
-moduleNameString :: RefMonads w r => Reference w r MU MU Ann UModuleName dom stage Ann UModuleName dom stage String String
-importRename :: RefMonads w r => Reference w r MU MU Ann UImportRenaming dom stage Ann UImportRenaming dom stage Ann UModuleName dom stage Ann UModuleName dom stage
-importSpecList :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UImportSpec dom stage Ann UImportSpec dom stage AnnListG UIESpec dom stage AnnListG UIESpec dom stage
-importSpecHiding :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UImportSpec dom stage Ann UImportSpec dom stage AnnListG UIESpec dom stage AnnListG UIESpec dom stage
-importSpec :: RefMonads w r => Reference w r MU MU Ann UImportDecl dom stage Ann UImportDecl dom stage AnnMaybeG UImportSpec dom stage AnnMaybeG UImportSpec dom stage
-importSource :: RefMonads w r => Reference w r MU MU Ann UImportDecl dom stage Ann UImportDecl dom stage AnnMaybeG UImportSource dom stage AnnMaybeG UImportSource dom stage
-importSafe :: RefMonads w r => Reference w r MU MU Ann UImportDecl dom stage Ann UImportDecl dom stage AnnMaybeG UImportSafe dom stage AnnMaybeG UImportSafe dom stage
-importQualified :: RefMonads w r => Reference w r MU MU Ann UImportDecl dom stage Ann UImportDecl dom stage AnnMaybeG UImportQualified dom stage AnnMaybeG UImportQualified dom stage
-importPkg :: RefMonads w r => Reference w r MU MU Ann UImportDecl dom stage Ann UImportDecl dom stage AnnMaybeG UStringNode dom stage AnnMaybeG UStringNode dom stage
-importModule :: RefMonads w r => Reference w r MU MU Ann UImportDecl dom stage Ann UImportDecl dom stage Ann UModuleName dom stage Ann UModuleName dom stage
-importAs :: RefMonads w r => Reference w r MU MU Ann UImportDecl dom stage Ann UImportDecl dom stage AnnMaybeG UImportRenaming dom stage AnnMaybeG UImportRenaming dom stage
-opStr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UFilePragma dom stage Ann UFilePragma dom stage Ann UStringNode dom stage Ann UStringNode dom stage
-lpPragmas :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UFilePragma dom stage Ann UFilePragma dom stage AnnListG ULanguageExtension dom stage AnnListG ULanguageExtension dom stage
-modWarningStr :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UModulePragma dom stage Ann UModulePragma dom stage AnnListG UStringNode dom stage AnnListG UStringNode dom stage
-modDeprecatedPragma :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UModulePragma dom stage Ann UModulePragma dom stage AnnListG UStringNode dom stage AnnListG UStringNode dom stage
-essList :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann USubSpec dom stage Ann USubSpec dom stage AnnListG UName dom stage AnnListG UName dom stage
-ieSubspec :: RefMonads w r => Reference w r MU MU Ann UIESpec dom stage Ann UIESpec dom stage AnnMaybeG USubSpec dom stage AnnMaybeG USubSpec dom stage
-ieName :: RefMonads w r => Reference w r MU MU Ann UIESpec dom stage Ann UIESpec dom stage Ann UName dom stage Ann UName dom stage
-ieModifier :: RefMonads w r => Reference w r MU MU Ann UIESpec dom stage Ann UIESpec dom stage AnnMaybeG UImportModifier dom stage AnnMaybeG UImportModifier dom stage
-exportModuleName :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExportSpec dom stage Ann UExportSpec dom stage Ann UModuleName dom stage Ann UModuleName dom stage
-exportDecl :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU Ann UExportSpec dom stage Ann UExportSpec dom stage Ann UIESpec dom stage Ann UIESpec dom stage
-espExports :: RefMonads w r => Reference w r MU MU Ann UExportSpecs dom stage Ann UExportSpecs dom stage AnnListG UExportSpec dom stage AnnListG UExportSpec dom stage
-mhPragma :: RefMonads w r => Reference w r MU MU Ann UModuleHead dom stage Ann UModuleHead dom stage AnnMaybeG UModulePragma dom stage AnnMaybeG UModulePragma dom stage
-mhName :: RefMonads w r => Reference w r MU MU Ann UModuleHead dom stage Ann UModuleHead dom stage Ann UModuleName dom stage Ann UModuleName dom stage
-mhExports :: RefMonads w r => Reference w r MU MU Ann UModuleHead dom stage Ann UModuleHead dom stage AnnMaybeG UExportSpecs dom stage AnnMaybeG UExportSpecs dom stage
-modImports :: RefMonads w r => Reference w r MU MU Ann UModule dom stage Ann UModule dom stage AnnListG UImportDecl dom stage AnnListG UImportDecl dom stage
-modHead :: RefMonads w r => Reference w r MU MU Ann UModule dom stage Ann UModule dom stage AnnMaybeG UModuleHead dom stage AnnMaybeG UModuleHead dom stage
-modDecl :: RefMonads w r => Reference w r MU MU Ann UModule dom stage Ann UModule dom stage AnnListG UDecl dom stage AnnListG UDecl dom stage
-filePragmas :: RefMonads w r => Reference w r MU MU Ann UModule dom stage Ann UModule dom stage AnnListG UFilePragma dom stage AnnListG UFilePragma dom stage
+class NamedElement (elem :: Type -> Type -> Type)
+elementName :: NamedElement elem => Simple Traversal (Ann elem dom st) (Ann UQualifiedName dom st)
+stringNodeStr :: () => Lens (Ann UStringNode dom stage) (Ann UStringNode dom stage) String String
+simpleNameStr :: () => Lens (Ann UNamePart dom stage) (Ann UNamePart dom stage) String String
+unqualifiedName :: () => Lens (Ann UQualifiedName dom stage) (Ann UQualifiedName dom stage) (Ann UNamePart dom stage) (Ann UNamePart dom stage)
+qualifiers :: () => Lens (Ann UQualifiedName dom stage) (Ann UQualifiedName dom stage) (AnnListG UNamePart dom stage) (AnnListG UNamePart dom stage)
+simpleName :: () => Lens (Ann UName dom stage) (Ann UName dom stage) (Ann UQualifiedName dom stage) (Ann UQualifiedName dom stage)
+operatorName :: () => Lens (Ann UOperator dom stage) (Ann UOperator dom stage) (Ann UQualifiedName dom stage) (Ann UQualifiedName dom stage)
+promotedStringValue :: () => Partial (Ann (UPromoted t) dom stage) (Ann (UPromoted t) dom stage) String String
+promotedIntValue :: () => Partial (Ann (UPromoted t) dom stage) (Ann (UPromoted t) dom stage) Integer Integer
+promotedElements :: () => Partial (Ann (UPromoted t) dom stage) (Ann (UPromoted t) dom stage) (AnnListG t dom stage) (AnnListG t dom stage)
+promotedConName :: () => Partial (Ann (UPromoted t) dom stage) (Ann (UPromoted t) dom stage) (Ann UName dom stage) (Ann UName dom stage)
+stringLitValue :: () => Partial (Ann ULiteral dom stage) (Ann ULiteral dom stage) String String
+intLitValue :: () => Partial (Ann ULiteral dom stage) (Ann ULiteral dom stage) Integer Integer
+fracLitValue :: () => Partial (Ann ULiteral dom stage) (Ann ULiteral dom stage) Rational Rational
+floatLitValue :: () => Partial (Ann ULiteral dom stage) (Ann ULiteral dom stage) Rational Rational
+charLitValue :: () => Partial (Ann ULiteral dom stage) (Ann ULiteral dom stage) Char Char
+bracketType :: () => Partial (Ann UBracket dom stage) (Ann UBracket dom stage) (Ann UType dom stage) (Ann UType dom stage)
+bracketPattern :: () => Partial (Ann UBracket dom stage) (Ann UBracket dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+bracketExpr :: () => Partial (Ann UBracket dom stage) (Ann UBracket dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+bracketDecl :: () => Partial (Ann UBracket dom stage) (Ann UBracket dom stage) (AnnListG UDecl dom stage) (AnnListG UDecl dom stage)
+qqString :: () => Lens (Ann QQString dom stage) (Ann QQString dom stage) String String
+qqExprName :: () => Lens (Ann UQuasiQuote dom stage) (Ann UQuasiQuote dom stage) (Ann UName dom stage) (Ann UName dom stage)
+qqExprBody :: () => Lens (Ann UQuasiQuote dom stage) (Ann UQuasiQuote dom stage) (Ann QQString dom stage) (Ann QQString dom stage)
+spliceId :: () => Partial (Ann USplice dom stage) (Ann USplice dom stage) (Ann UName dom stage) (Ann UName dom stage)
+spliceExpr :: () => Partial (Ann USplice dom stage) (Ann USplice dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+fieldPatternWildcard :: () => Partial (Ann UPatternField dom stage) (Ann UPatternField dom stage) (Ann UFieldWildcard dom stage) (Ann UFieldWildcard dom stage)
+fieldPatternName :: () => Partial (Ann UPatternField dom stage) (Ann UPatternField dom stage) (Ann UName dom stage) (Ann UName dom stage)
+fieldPattern :: () => Partial (Ann UPatternField dom stage) (Ann UPatternField dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+patternType :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann UType dom stage) (Ann UType dom stage)
+patternSumPlaceholdersBefore :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (AnnListG UUnboxedSumPlaceHolder dom stage) (AnnListG UUnboxedSumPlaceHolder dom stage)
+patternSumPlaceholdersAfter :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (AnnListG UUnboxedSumPlaceHolder dom stage) (AnnListG UUnboxedSumPlaceHolder dom stage)
+patternSplice :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann USplice dom stage) (Ann USplice dom stage)
+patternRhs :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+patternOperator :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann UOperator dom stage) (Ann UOperator dom stage)
+patternName :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann UName dom stage) (Ann UName dom stage)
+patternLiteral :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann ULiteral dom stage) (Ann ULiteral dom stage)
+patternLit :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann ULiteral dom stage) (Ann ULiteral dom stage)
+patternLhs :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+patternInner :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+patternFields :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (AnnListG UPatternField dom stage) (AnnListG UPatternField dom stage)
+patternExpr :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+patternElems :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (AnnListG UPattern dom stage) (AnnListG UPattern dom stage)
+patternArgs :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (AnnListG UPattern dom stage) (AnnListG UPattern dom stage)
+patQQ :: () => Partial (Ann UPattern dom stage) (Ann UPattern dom stage) (Ann UQuasiQuote dom stage) (Ann UQuasiQuote dom stage)
+cmdThen :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage)
+cmdStmts :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (AnnListG UCmdStmt dom stage) (AnnListG UCmdStmt dom stage)
+cmdRightCmd :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage)
+cmdRhs :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+cmdOperator :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UName dom stage) (Ann UName dom stage)
+cmdLhs :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+cmdLeftCmd :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage)
+cmdInnerCmds :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (AnnListG UCmd dom stage) (AnnListG UCmd dom stage)
+cmdInnerCmd :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage)
+cmdInner :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage)
+cmdExpr :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+cmdElse :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage)
+cmdBinds :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (AnnListG ULocalBind dom stage) (AnnListG ULocalBind dom stage)
+cmdBindings :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (AnnListG UPattern dom stage) (AnnListG UPattern dom stage)
+cmdArrowOp :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UArrowAppl dom stage) (Ann UArrowAppl dom stage)
+cmdApplied :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+cmdAlts :: () => Partial (Ann UCmd dom stage) (Ann UCmd dom stage) (AnnListG UCmdAlt dom stage) (AnnListG UCmdAlt dom stage)
+compStmts :: () => Lens (Ann UListCompBody dom stage) (Ann UListCompBody dom stage) (AnnListG UCompStmt dom stage) (AnnListG UCompStmt dom stage)
+usingExpr :: () => Partial (Ann UCompStmt dom stage) (Ann UCompStmt dom stage) (AnnMaybeG UExpr dom stage) (AnnMaybeG UExpr dom stage)
+thenExpr :: () => Partial (Ann UCompStmt dom stage) (Ann UCompStmt dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+compStmt :: () => Partial (Ann UCompStmt dom stage) (Ann UCompStmt dom stage) (Ann UStmt dom stage) (Ann UStmt dom stage)
+byExpr :: () => Partial (Ann UCompStmt dom stage) (Ann UCompStmt dom stage) (AnnMaybeG UExpr dom stage) (AnnMaybeG UExpr dom stage)
+stmtPattern :: () => Partial (Ann (UStmt' expr) dom stage) (Ann (UStmt' expr) dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+stmtExpr :: () => Partial (Ann (UStmt' expr) dom stage) (Ann (UStmt' expr) dom stage) (Ann expr dom stage) (Ann expr dom stage)
+stmtBinds :: () => Partial (Ann (UStmt' expr) dom stage) (Ann (UStmt' expr) dom stage) (AnnListG ULocalBind dom stage) (AnnListG ULocalBind dom stage)
+cmdStmtBinds :: () => Partial (Ann (UStmt' expr) dom stage) (Ann (UStmt' expr) dom stage) (AnnListG (UStmt' expr) dom stage) (AnnListG (UStmt' expr) dom stage)
+caseGuardStmts :: () => Lens (Ann (UGuardedCaseRhs' expr) dom stage) (Ann (UGuardedCaseRhs' expr) dom stage) (AnnListG URhsGuard dom stage) (AnnListG URhsGuard dom stage)
+caseGuardExpr :: () => Lens (Ann (UGuardedCaseRhs' expr) dom stage) (Ann (UGuardedCaseRhs' expr) dom stage) (Ann expr dom stage) (Ann expr dom stage)
+rhsCaseGuards :: () => Partial (Ann (UCaseRhs' expr) dom stage) (Ann (UCaseRhs' expr) dom stage) (AnnListG (UGuardedCaseRhs' expr) dom stage) (AnnListG (UGuardedCaseRhs' expr) dom stage)
+rhsCaseExpr :: () => Partial (Ann (UCaseRhs' expr) dom stage) (Ann (UCaseRhs' expr) dom stage) (Ann expr dom stage) (Ann expr dom stage)
+pragmaStr :: () => Partial (Ann UExprPragma dom stage) (Ann UExprPragma dom stage) (Ann UStringNode dom stage) (Ann UStringNode dom stage)
+pragmaSrcRange :: () => Partial (Ann UExprPragma dom stage) (Ann UExprPragma dom stage) (Ann USourceRange dom stage) (Ann USourceRange dom stage)
+tupSecExpr :: () => Partial (Ann UTupSecElem dom stage) (Ann UTupSecElem dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+fieldWildcard :: () => Partial (Ann UFieldUpdate dom stage) (Ann UFieldUpdate dom stage) (Ann UFieldWildcard dom stage) (Ann UFieldWildcard dom stage)
+fieldValue :: () => Partial (Ann UFieldUpdate dom stage) (Ann UFieldUpdate dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+fieldUpdateName :: () => Partial (Ann UFieldUpdate dom stage) (Ann UFieldUpdate dom stage) (Ann UName dom stage) (Ann UName dom stage)
+fieldName :: () => Partial (Ann UFieldUpdate dom stage) (Ann UFieldUpdate dom stage) (Ann UName dom stage) (Ann UName dom stage)
+altRhs :: () => Lens (Ann (UAlt' expr) dom stage) (Ann (UAlt' expr) dom stage) (Ann (UCaseRhs' expr) dom stage) (Ann (UCaseRhs' expr) dom stage)
+altPattern :: () => Lens (Ann (UAlt' expr) dom stage) (Ann (UAlt' expr) dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+altBinds :: () => Lens (Ann (UAlt' expr) dom stage) (Ann (UAlt' expr) dom stage) (AnnMaybeG ULocalBinds dom stage) (AnnMaybeG ULocalBinds dom stage)
+tupleSectionElems :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG UTupSecElem dom stage) (AnnListG UTupSecElem dom stage)
+tupleElems :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG UExpr dom stage) (AnnListG UExpr dom stage)
+quotedName :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UName dom stage) (Ann UName dom stage)
+procPattern :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+procExpr :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UCmd dom stage) (Ann UCmd dom stage)
+listElems :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG UExpr dom stage) (AnnListG UExpr dom stage)
+innerExpr :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+exprType :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UType dom stage) (Ann UType dom stage)
+exprThen :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+exprSumPlaceholdersBefore :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG UUnboxedSumPlaceHolder dom stage) (AnnListG UUnboxedSumPlaceHolder dom stage)
+exprSumPlaceholdersAfter :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG UUnboxedSumPlaceHolder dom stage) (AnnListG UUnboxedSumPlaceHolder dom stage)
+exprStmts :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG UStmt dom stage) (AnnListG UStmt dom stage)
+exprSplice :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann USplice dom stage) (Ann USplice dom stage)
+exprSig :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UType dom stage) (Ann UType dom stage)
+exprRhs :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+exprRecName :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UName dom stage) (Ann UName dom stage)
+exprRecFields :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG UFieldUpdate dom stage) (AnnListG UFieldUpdate dom stage)
+exprQQ :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UQuasiQuote dom stage) (Ann UQuasiQuote dom stage)
+exprPragma :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExprPragma dom stage) (Ann UExprPragma dom stage)
+exprOperator :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UOperator dom stage) (Ann UOperator dom stage)
+exprName :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UName dom stage) (Ann UName dom stage)
+exprLit :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann ULiteral dom stage) (Ann ULiteral dom stage)
+exprLhs :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+exprInner :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+exprIfAlts :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG UGuardedCaseRhs dom stage) (AnnListG UGuardedCaseRhs dom stage)
+exprFunBind :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG ULocalBind dom stage) (AnnListG ULocalBind dom stage)
+exprFun :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+exprElse :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+exprCond :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+exprCase :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+exprBracket :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UBracket dom stage) (Ann UBracket dom stage)
+exprBindings :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG UPattern dom stage) (AnnListG UPattern dom stage)
+exprArg :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+exprAlts :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG UAlt dom stage) (AnnListG UAlt dom stage)
+enumToFix :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+enumTo :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnMaybeG UExpr dom stage) (AnnMaybeG UExpr dom stage)
+enumThen :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnMaybeG UExpr dom stage) (AnnMaybeG UExpr dom stage)
+enumFrom :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+doKind :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UDoKind dom stage) (Ann UDoKind dom stage)
+compExpr :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+compBody :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (AnnListG UListCompBody dom stage) (AnnListG UListCompBody dom stage)
+arrowAppl :: () => Partial (Ann UExpr dom stage) (Ann UExpr dom stage) (Ann UArrowAppl dom stage) (Ann UArrowAppl dom stage)
+innerAsserts :: () => Partial (Ann UAssertion dom stage) (Ann UAssertion dom stage) (AnnListG UAssertion dom stage) (AnnListG UAssertion dom stage)
+assertTypes :: () => Partial (Ann UAssertion dom stage) (Ann UAssertion dom stage) (AnnListG UType dom stage) (AnnListG UType dom stage)
+assertRhs :: () => Partial (Ann UAssertion dom stage) (Ann UAssertion dom stage) (Ann UType dom stage) (Ann UType dom stage)
+assertOp :: () => Partial (Ann UAssertion dom stage) (Ann UAssertion dom stage) (Ann UOperator dom stage) (Ann UOperator dom stage)
+assertLhs :: () => Partial (Ann UAssertion dom stage) (Ann UAssertion dom stage) (Ann UType dom stage) (Ann UType dom stage)
+assertImplVar :: () => Partial (Ann UAssertion dom stage) (Ann UAssertion dom stage) (Ann UName dom stage) (Ann UName dom stage)
+assertImplType :: () => Partial (Ann UAssertion dom stage) (Ann UAssertion dom stage) (Ann UType dom stage) (Ann UType dom stage)
+assertClsName :: () => Partial (Ann UAssertion dom stage) (Ann UAssertion dom stage) (Ann UName dom stage) (Ann UName dom stage)
+contextAssertion :: () => Lens (Ann UContext dom stage) (Ann UContext dom stage) (Ann UAssertion dom stage) (Ann UAssertion dom stage)
+kindVar :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann UName dom stage) (Ann UName dom stage)
+kindType :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann UType dom stage) (Ann UType dom stage)
+kindRight :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage)
+kindRhs :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage)
+kindPromoted :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann (UPromoted UKind) dom stage) (Ann (UPromoted UKind) dom stage)
+kindParen :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage)
+kindLhs :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage)
+kindLeft :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage)
+kindElems :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (AnnListG UKind dom stage) (AnnListG UKind dom stage)
+kindElem :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage)
+kindAppOp :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann UOperator dom stage) (Ann UOperator dom stage)
+kindAppFun :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage)
+kindAppArg :: () => Partial (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage) (Ann UKind dom stage)
+typeWildcardName :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UName dom stage) (Ann UName dom stage)
+typeType :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage)
+typeRight :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage)
+typeResult :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage)
+typeQQ :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UQuasiQuote dom stage) (Ann UQuasiQuote dom stage)
+typeParam :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage)
+typeOperator :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UOperator dom stage) (Ann UOperator dom stage)
+typeName :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UName dom stage) (Ann UName dom stage)
+typeLeft :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage)
+typeKind :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UKind dom stage) (Ann UKind dom stage)
+typeInner :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage)
+typeElements :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (AnnListG UType dom stage) (AnnListG UType dom stage)
+typeElement :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage)
+typeCtx :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UContext dom stage) (Ann UContext dom stage)
+typeCon :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage)
+typeBounded :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (AnnListG UTyVar dom stage) (AnnListG UTyVar dom stage)
+typeArg :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage) (Ann UType dom stage)
+tsSplice :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann USplice dom stage) (Ann USplice dom stage)
+tpPromoted :: () => Partial (Ann UType dom stage) (Ann UType dom stage) (Ann (UPromoted UType) dom stage) (Ann (UPromoted UType) dom stage)
+tyVarName :: () => Lens (Ann UTyVar dom stage) (Ann UTyVar dom stage) (Ann UName dom stage) (Ann UName dom stage)
+tyVarKind :: () => Lens (Ann UTyVar dom stage) (Ann UTyVar dom stage) (AnnMaybeG UKindConstraint dom stage) (AnnMaybeG UKindConstraint dom stage)
+valBindRhs :: () => Partial (Ann UValueBind dom stage) (Ann UValueBind dom stage) (Ann URhs dom stage) (Ann URhs dom stage)
+valBindPat :: () => Partial (Ann UValueBind dom stage) (Ann UValueBind dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+valBindLocals :: () => Partial (Ann UValueBind dom stage) (Ann UValueBind dom stage) (AnnMaybeG ULocalBinds dom stage) (AnnMaybeG ULocalBinds dom stage)
+funBindMatches :: () => Partial (Ann UValueBind dom stage) (Ann UValueBind dom stage) (AnnListG UMatch dom stage) (AnnListG UMatch dom stage)
+kindConstr :: () => Lens (Ann UKindConstraint dom stage) (Ann UKindConstraint dom stage) (Ann UKind dom stage) (Ann UKind dom stage)
+matchLhsRhs :: () => Partial (Ann UMatchLhs dom stage) (Ann UMatchLhs dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+matchLhsOperator :: () => Partial (Ann UMatchLhs dom stage) (Ann UMatchLhs dom stage) (Ann UOperator dom stage) (Ann UOperator dom stage)
+matchLhsName :: () => Partial (Ann UMatchLhs dom stage) (Ann UMatchLhs dom stage) (Ann UName dom stage) (Ann UName dom stage)
+matchLhsLhs :: () => Partial (Ann UMatchLhs dom stage) (Ann UMatchLhs dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+matchLhsArgs :: () => Lens (Ann UMatchLhs dom stage) (Ann UMatchLhs dom stage) (AnnListG UPattern dom stage) (AnnListG UPattern dom stage)
+tsType :: () => Lens (Ann UTypeSignature dom stage) (Ann UTypeSignature dom stage) (Ann UType dom stage) (Ann UType dom stage)
+tsName :: () => Lens (Ann UTypeSignature dom stage) (Ann UTypeSignature dom stage) (AnnListG UName dom stage) (AnnListG UName dom stage)
+precedenceValue :: () => Lens (Ann Precedence dom stage) (Ann Precedence dom stage) Int Int
+fixityPrecedence :: () => Lens (Ann UFixitySignature dom stage) (Ann UFixitySignature dom stage) (AnnMaybeG Precedence dom stage) (AnnMaybeG Precedence dom stage)
+fixityOperators :: () => Lens (Ann UFixitySignature dom stage) (Ann UFixitySignature dom stage) (AnnListG UOperator dom stage) (AnnListG UOperator dom stage)
+fixityAssoc :: () => Lens (Ann UFixitySignature dom stage) (Ann UFixitySignature dom stage) (Ann Assoc dom stage) (Ann Assoc dom stage)
+localBinds :: () => Lens (Ann ULocalBinds dom stage) (Ann ULocalBinds dom stage) (AnnListG ULocalBind dom stage) (AnnListG ULocalBind dom stage)
+localVal :: () => Partial (Ann ULocalBind dom stage) (Ann ULocalBind dom stage) (Ann UValueBind dom stage) (Ann UValueBind dom stage)
+localSig :: () => Partial (Ann ULocalBind dom stage) (Ann ULocalBind dom stage) (Ann UTypeSignature dom stage) (Ann UTypeSignature dom stage)
+localInline :: () => Partial (Ann ULocalBind dom stage) (Ann ULocalBind dom stage) (Ann UInlinePragma dom stage) (Ann UInlinePragma dom stage)
+localFixity :: () => Partial (Ann ULocalBind dom stage) (Ann ULocalBind dom stage) (Ann UFixitySignature dom stage) (Ann UFixitySignature dom stage)
+guardRhs :: () => Partial (Ann URhsGuard dom stage) (Ann URhsGuard dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+guardPat :: () => Partial (Ann URhsGuard dom stage) (Ann URhsGuard dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+guardCheck :: () => Partial (Ann URhsGuard dom stage) (Ann URhsGuard dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+guardBinds :: () => Partial (Ann URhsGuard dom stage) (Ann URhsGuard dom stage) (AnnListG ULocalBind dom stage) (AnnListG ULocalBind dom stage)
+guardStmts :: () => Lens (Ann UGuardedRhs dom stage) (Ann UGuardedRhs dom stage) (AnnListG URhsGuard dom stage) (AnnListG URhsGuard dom stage)
+guardExpr :: () => Lens (Ann UGuardedRhs dom stage) (Ann UGuardedRhs dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+rhsGuards :: () => Partial (Ann URhs dom stage) (Ann URhs dom stage) (AnnListG UGuardedRhs dom stage) (AnnListG UGuardedRhs dom stage)
+rhsExpr :: () => Partial (Ann URhs dom stage) (Ann URhs dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+matchRhs :: () => Lens (Ann UMatch dom stage) (Ann UMatch dom stage) (Ann URhs dom stage) (Ann URhs dom stage)
+matchLhs :: () => Lens (Ann UMatch dom stage) (Ann UMatch dom stage) (Ann UMatchLhs dom stage) (Ann UMatchLhs dom stage)
+matchBinds :: () => Lens (Ann UMatch dom stage) (Ann UMatch dom stage) (AnnMaybeG ULocalBinds dom stage) (AnnMaybeG ULocalBinds dom stage)
+specializeType :: () => Lens (Ann USpecializePragma dom stage) (Ann USpecializePragma dom stage) (AnnListG UType dom stage) (AnnListG UType dom stage)
+specializeDef :: () => Lens (Ann USpecializePragma dom stage) (Ann USpecializePragma dom stage) (Ann UName dom stage) (Ann UName dom stage)
+pragmaPhase :: () => Lens (Ann USpecializePragma dom stage) (Ann USpecializePragma dom stage) (AnnMaybeG UPhaseControl dom stage) (AnnMaybeG UPhaseControl dom stage)
+numberInteger :: () => Lens (Ann Number dom stage) (Ann Number dom stage) Integer Integer
+srToLine :: () => Lens (Ann USourceRange dom stage) (Ann USourceRange dom stage) (Ann Number dom stage) (Ann Number dom stage)
+srToCol :: () => Lens (Ann USourceRange dom stage) (Ann USourceRange dom stage) (Ann Number dom stage) (Ann Number dom stage)
+srFromLine :: () => Lens (Ann USourceRange dom stage) (Ann USourceRange dom stage) (Ann Number dom stage) (Ann Number dom stage)
+srFromCol :: () => Lens (Ann USourceRange dom stage) (Ann USourceRange dom stage) (Ann Number dom stage) (Ann Number dom stage)
+srFileName :: () => Lens (Ann USourceRange dom stage) (Ann USourceRange dom stage) (Ann UStringNode dom stage) (Ann UStringNode dom stage)
+minimalOrs :: () => Partial (Ann UMinimalFormula dom stage) (Ann UMinimalFormula dom stage) (AnnListG UMinimalFormula dom stage) (AnnListG UMinimalFormula dom stage)
+minimalName :: () => Partial (Ann UMinimalFormula dom stage) (Ann UMinimalFormula dom stage) (Ann UName dom stage) (Ann UName dom stage)
+minimalInner :: () => Partial (Ann UMinimalFormula dom stage) (Ann UMinimalFormula dom stage) (Ann UMinimalFormula dom stage) (Ann UMinimalFormula dom stage)
+minimalAnds :: () => Partial (Ann UMinimalFormula dom stage) (Ann UMinimalFormula dom stage) (AnnListG UMinimalFormula dom stage) (AnnListG UMinimalFormula dom stage)
+annotateName :: () => Partial (Ann UAnnotationSubject dom stage) (Ann UAnnotationSubject dom stage) (Ann UName dom stage) (Ann UName dom stage)
+warnMessage :: () => Partial (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage) (AnnListG UStringNode dom stage) (AnnListG UStringNode dom stage)
+specializePragma :: () => Partial (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage) (Ann USpecializePragma dom stage) (Ann USpecializePragma dom stage)
+pragmaSignature :: () => Partial (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage) (AnnMaybeG UName dom stage) (AnnMaybeG UName dom stage)
+pragmaRule :: () => Partial (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage) (AnnListG URule dom stage) (AnnListG URule dom stage)
+pragmaObjects :: () => Partial (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage) (AnnListG UName dom stage) (AnnListG UName dom stage)
+pragmaLineNum :: () => Partial (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage) (Ann LineNumber dom stage) (Ann LineNumber dom stage)
+pragmaInline :: () => Partial (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage) (Ann UInlinePragma dom stage) (Ann UInlinePragma dom stage)
+pragmaFileName :: () => Partial (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage) (AnnMaybeG UStringNode dom stage) (AnnMaybeG UStringNode dom stage)
+deprMessage :: () => Partial (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage) (AnnListG UStringNode dom stage) (AnnListG UStringNode dom stage)
+annotationSubject :: () => Partial (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage) (Ann UAnnotationSubject dom stage) (Ann UAnnotationSubject dom stage)
+annotateExpr :: () => Partial (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+phaseNum :: () => Lens (Ann PhaseNumber dom stage) (Ann PhaseNumber dom stage) Integer Integer
+phaseUntil :: () => Lens (Ann UPhaseControl dom stage) (Ann UPhaseControl dom stage) (AnnMaybeG PhaseInvert dom stage) (AnnMaybeG PhaseInvert dom stage)
+phaseNumber :: () => Lens (Ann UPhaseControl dom stage) (Ann UPhaseControl dom stage) (AnnMaybeG PhaseNumber dom stage) (AnnMaybeG PhaseNumber dom stage)
+ruleVarType :: () => Partial (Ann URuleVar dom stage) (Ann URuleVar dom stage) (Ann UType dom stage) (Ann UType dom stage)
+ruleVarName :: () => Lens (Ann URuleVar dom stage) (Ann URuleVar dom stage) (Ann UName dom stage) (Ann UName dom stage)
+ruleRhs :: () => Lens (Ann URule dom stage) (Ann URule dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+rulePhase :: () => Lens (Ann URule dom stage) (Ann URule dom stage) (AnnMaybeG UPhaseControl dom stage) (AnnMaybeG UPhaseControl dom stage)
+ruleName :: () => Lens (Ann URule dom stage) (Ann URule dom stage) (Ann UStringNode dom stage) (Ann UStringNode dom stage)
+ruleLhs :: () => Lens (Ann URule dom stage) (Ann URule dom stage) (Ann UExpr dom stage) (Ann UExpr dom stage)
+ruleBounded :: () => Lens (Ann URule dom stage) (Ann URule dom stage) (AnnListG URuleVar dom stage) (AnnListG URuleVar dom stage)
+teRhs :: () => Lens (Ann UTypeEqn dom stage) (Ann UTypeEqn dom stage) (Ann UType dom stage) (Ann UType dom stage)
+teLhs :: () => Lens (Ann UTypeEqn dom stage) (Ann UTypeEqn dom stage) (Ann UType dom stage) (Ann UType dom stage)
+ihType :: () => Partial (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage) (Ann UType dom stage) (Ann UType dom stage)
+ihOperator :: () => Partial (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage) (Ann UOperator dom stage) (Ann UOperator dom stage)
+ihLeftOp :: () => Partial (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage) (Ann UType dom stage) (Ann UType dom stage)
+ihHead :: () => Partial (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage)
+ihFun :: () => Partial (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage)
+ihConName :: () => Partial (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage) (Ann UName dom stage) (Ann UName dom stage)
+irVars :: () => Lens (Ann UInstanceRule dom stage) (Ann UInstanceRule dom stage) (AnnMaybeG (AnnListG UTyVar) dom stage) (AnnMaybeG (AnnListG UTyVar) dom stage)
+irHead :: () => Lens (Ann UInstanceRule dom stage) (Ann UInstanceRule dom stage) (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage)
+irCtx :: () => Lens (Ann UInstanceRule dom stage) (Ann UInstanceRule dom stage) (AnnMaybeG UContext dom stage) (AnnMaybeG UContext dom stage)
+oneDerived :: () => Partial (Ann UDeriving dom stage) (Ann UDeriving dom stage) (Ann UInstanceHead dom stage) (Ann UInstanceHead dom stage)
+allDerived :: () => Partial (Ann UDeriving dom stage) (Ann UDeriving dom stage) (AnnListG UInstanceHead dom stage) (AnnListG UInstanceHead dom stage)
+deriveStrategy :: () => Lens (Ann UDeriving dom stage) (Ann UDeriving dom stage) (AnnMaybeG UDeriveStrategy dom stage) (AnnMaybeG UDeriveStrategy dom stage)
+fieldType :: () => Lens (Ann UFieldDecl dom stage) (Ann UFieldDecl dom stage) (Ann UType dom stage) (Ann UType dom stage)
+fieldNames :: () => Lens (Ann UFieldDecl dom stage) (Ann UFieldDecl dom stage) (AnnListG UName dom stage) (AnnListG UName dom stage)
+conDeclRhs :: () => Partial (Ann UConDecl dom stage) (Ann UConDecl dom stage) (Ann UType dom stage) (Ann UType dom stage)
+conDeclOp :: () => Partial (Ann UConDecl dom stage) (Ann UConDecl dom stage) (Ann UOperator dom stage) (Ann UOperator dom stage)
+conDeclName :: () => Partial (Ann UConDecl dom stage) (Ann UConDecl dom stage) (Ann UName dom stage) (Ann UName dom stage)
+conDeclLhs :: () => Partial (Ann UConDecl dom stage) (Ann UConDecl dom stage) (Ann UType dom stage) (Ann UType dom stage)
+conDeclFields :: () => Partial (Ann UConDecl dom stage) (Ann UConDecl dom stage) (AnnListG UFieldDecl dom stage) (AnnListG UFieldDecl dom stage)
+conDeclArgs :: () => Partial (Ann UConDecl dom stage) (Ann UConDecl dom stage) (AnnListG UType dom stage) (AnnListG UType dom stage)
+conTypeCtx :: () => Lens (Ann UConDecl dom stage) (Ann UConDecl dom stage) (AnnMaybeG UContext dom stage) (AnnMaybeG UContext dom stage)
+conTypeArgs :: () => Lens (Ann UConDecl dom stage) (Ann UConDecl dom stage) (AnnListG UTyVar dom stage) (AnnListG UTyVar dom stage)
+funDepRhs :: () => Lens (Ann UFunDep dom stage) (Ann UFunDep dom stage) (AnnListG UName dom stage) (AnnListG UName dom stage)
+funDepLhs :: () => Lens (Ann UFunDep dom stage) (Ann UFunDep dom stage) (AnnListG UName dom stage) (AnnListG UName dom stage)
+funDeps :: () => Lens (Ann UFunDeps dom stage) (Ann UFunDeps dom stage) (AnnListG UFunDep dom stage) (AnnListG UFunDep dom stage)
+patSigType :: () => Lens (Ann UPatternTypeSignature dom stage) (Ann UPatternTypeSignature dom stage) (Ann UType dom stage) (Ann UType dom stage)
+patSigName :: () => Lens (Ann UPatternTypeSignature dom stage) (Ann UPatternTypeSignature dom stage) (AnnListG UName dom stage) (AnnListG UName dom stage)
+patOpposite :: () => Lens (Ann UPatSynWhere dom stage) (Ann UPatSynWhere dom stage) (AnnListG UMatch dom stage) (AnnListG UMatch dom stage)
+patSynRhs :: () => Partial (Ann UPatSynLhs dom stage) (Ann UPatSynLhs dom stage) (Ann UName dom stage) (Ann UName dom stage)
+patSynOp :: () => Partial (Ann UPatSynLhs dom stage) (Ann UPatSynLhs dom stage) (Ann UOperator dom stage) (Ann UOperator dom stage)
+patSynLhs :: () => Partial (Ann UPatSynLhs dom stage) (Ann UPatSynLhs dom stage) (Ann UName dom stage) (Ann UName dom stage)
+patName :: () => Partial (Ann UPatSynLhs dom stage) (Ann UPatSynLhs dom stage) (Ann UName dom stage) (Ann UName dom stage)
+patArgs :: () => Partial (Ann UPatSynLhs dom stage) (Ann UPatSynLhs dom stage) (AnnListG UName dom stage) (AnnListG UName dom stage)
+patRhsOpposite :: () => Partial (Ann UPatSynRhs dom stage) (Ann UPatSynRhs dom stage) (AnnMaybeG UPatSynWhere dom stage) (AnnMaybeG UPatSynWhere dom stage)
+patRhsPat :: () => Lens (Ann UPatSynRhs dom stage) (Ann UPatSynRhs dom stage) (Ann UPattern dom stage) (Ann UPattern dom stage)
+patRhs :: () => Lens (Ann UPatternSynonym dom stage) (Ann UPatternSynonym dom stage) (Ann UPatSynRhs dom stage) (Ann UPatSynRhs dom stage)
+patLhs :: () => Lens (Ann UPatternSynonym dom stage) (Ann UPatternSynonym dom stage) (Ann UPatSynLhs dom stage) (Ann UPatSynLhs dom stage)
+gadtConResultType :: () => Partial (Ann UGadtConType dom stage) (Ann UGadtConType dom stage) (Ann UType dom stage) (Ann UType dom stage)
+gadtConRecordFields :: () => Partial (Ann UGadtConType dom stage) (Ann UGadtConType dom stage) (AnnListG UFieldDecl dom stage) (AnnListG UFieldDecl dom stage)
+gadtConNormalType :: () => Partial (Ann UGadtConType dom stage) (Ann UGadtConType dom stage) (Ann UType dom stage) (Ann UType dom stage)
+gadtConTypeCtx :: () => Lens (Ann UGadtConDecl dom stage) (Ann UGadtConDecl dom stage) (AnnMaybeG UContext dom stage) (AnnMaybeG UContext dom stage)
+gadtConTypeArgs :: () => Lens (Ann UGadtConDecl dom stage) (Ann UGadtConDecl dom stage) (AnnListG UTyVar dom stage) (AnnListG UTyVar dom stage)
+gadtConType :: () => Lens (Ann UGadtConDecl dom stage) (Ann UGadtConDecl dom stage) (Ann UGadtConType dom stage) (Ann UGadtConType dom stage)
+gadtConNames :: () => Lens (Ann UGadtConDecl dom stage) (Ann UGadtConDecl dom stage) (AnnListG UName dom stage) (AnnListG UName dom stage)
+injAnnRes :: () => Lens (Ann UInjectivityAnn dom stage) (Ann UInjectivityAnn dom stage) (Ann UTyVar dom stage) (Ann UTyVar dom stage)
+injAnnDeps :: () => Lens (Ann UInjectivityAnn dom stage) (Ann UInjectivityAnn dom stage) (AnnListG UName dom stage) (AnnListG UName dom stage)
+tfTypeVar :: () => Partial (Ann UTypeFamilySpec dom stage) (Ann UTypeFamilySpec dom stage) (Ann UTyVar dom stage) (Ann UTyVar dom stage)
+tfSpecKind :: () => Partial (Ann UTypeFamilySpec dom stage) (Ann UTypeFamilySpec dom stage) (Ann UKindConstraint dom stage) (Ann UKindConstraint dom stage)
+tfInjectivity :: () => Partial (Ann UTypeFamilySpec dom stage) (Ann UTypeFamilySpec dom stage) (Ann UInjectivityAnn dom stage) (Ann UInjectivityAnn dom stage)
+tfSpec :: () => Partial (Ann UTypeFamily dom stage) (Ann UTypeFamily dom stage) (AnnMaybeG UTypeFamilySpec dom stage) (AnnMaybeG UTypeFamilySpec dom stage)
+tfKind :: () => Partial (Ann UTypeFamily dom stage) (Ann UTypeFamily dom stage) (AnnMaybeG UKindConstraint dom stage) (AnnMaybeG UKindConstraint dom stage)
+tfHead :: () => Lens (Ann UTypeFamily dom stage) (Ann UTypeFamily dom stage) (Ann UDeclHead dom stage) (Ann UDeclHead dom stage)
+specializeInstanceType :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (Ann UType dom stage) (Ann UType dom stage)
+specializeInstance :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (Ann USpecializePragma dom stage) (Ann USpecializePragma dom stage)
+instanceInline :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (Ann UInlinePragma dom stage) (Ann UInlinePragma dom stage)
+instBodyTypeSig :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (Ann UTypeSignature dom stage) (Ann UTypeSignature dom stage)
+instBodyTypeEqn :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (Ann UTypeEqn dom stage) (Ann UTypeEqn dom stage)
+instBodyLhsType :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (Ann UInstanceRule dom stage) (Ann UInstanceRule dom stage)
+instBodyGadtCons :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (AnnListG UGadtConDecl dom stage) (AnnListG UGadtConDecl dom stage)
+instBodyDerivings :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (AnnListG UDeriving dom stage) (AnnListG UDeriving dom stage)
+instBodyDeclFunbind :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (Ann UValueBind dom stage) (Ann UValueBind dom stage)
+instBodyDataNew :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (Ann UDataOrNewtypeKeyword dom stage) (Ann UDataOrNewtypeKeyword dom stage)
+instBodyDataKind :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (AnnMaybeG UKindConstraint dom stage) (AnnMaybeG UKindConstraint dom stage)
+instBodyDataCons :: () => Partial (Ann UInstBodyDecl dom stage) (Ann UInstBodyDecl dom stage) (AnnListG UConDecl dom stage) (AnnListG UConDecl dom stage)
+instBodyDecls :: () => Lens (Ann UInstBody dom stage) (Ann UInstBody dom stage) (AnnListG UInstBodyDecl dom stage) (AnnListG UInstBodyDecl dom stage)
+dhRight :: () => Partial (Ann UDeclHead dom stage) (Ann UDeclHead dom stage) (Ann UTyVar dom stage) (Ann UTyVar dom stage)
+dhOperator :: () => Partial (Ann UDeclHead dom stage) (Ann UDeclHead dom stage) (Ann UOperator dom stage) (Ann UOperator dom stage)
+dhName :: () => Partial (Ann UDeclHead dom stage) (Ann UDeclHead dom stage) (Ann UName dom stage) (Ann UName dom stage)
+dhLeft :: () => Partial (Ann UDeclHead dom stage) (Ann UDeclHead dom stage) (Ann UTyVar dom stage) (Ann UTyVar dom stage)
+dhBody :: () => Partial (Ann UDeclHead dom stage) (Ann UDeclHead dom stage) (Ann UDeclHead dom stage) (Ann UDeclHead dom stage)
+dhAppOperand :: () => Partial (Ann UDeclHead dom stage) (Ann UDeclHead dom stage) (Ann UTyVar dom stage) (Ann UTyVar dom stage)
+dhAppFun :: () => Partial (Ann UDeclHead dom stage) (Ann UDeclHead dom stage) (Ann UDeclHead dom stage) (Ann UDeclHead dom stage)
+pragmaFormula :: () => Partial (Ann UClassElement dom stage) (Ann UClassElement dom stage) (Ann UMinimalFormula dom stage) (Ann UMinimalFormula dom stage)
+clsInline :: () => Partial (Ann UClassElement dom stage) (Ann UClassElement dom stage) (Ann UInlinePragma dom stage) (Ann UInlinePragma dom stage)
+clsFixity :: () => Partial (Ann UClassElement dom stage) (Ann UClassElement dom stage) (Ann UFixitySignature dom stage) (Ann UFixitySignature dom stage)
+ceTypeSig :: () => Partial (Ann UClassElement dom stage) (Ann UClassElement dom stage) (Ann UTypeSignature dom stage) (Ann UTypeSignature dom stage)
+ceTypeFam :: () => Partial (Ann UClassElement dom stage) (Ann UClassElement dom stage) (Ann UTypeFamily dom stage) (Ann UTypeFamily dom stage)
+ceType :: () => Partial (Ann UClassElement dom stage) (Ann UClassElement dom stage) (Ann UType dom stage) (Ann UType dom stage)
+ceName :: () => Partial (Ann UClassElement dom stage) (Ann UClassElement dom stage) (Ann UName dom stage) (Ann UName dom stage)
+ceKind :: () => Partial (Ann UClassElement dom stage) (Ann UClassElement dom stage) (Ann UType dom stage) (Ann UType dom stage)
+ceHead :: () => Partial (Ann UClassElement dom stage) (Ann UClassElement dom stage) (Ann UDeclHead dom stage) (Ann UDeclHead dom stage)
+ceBind :: () => Partial (Ann UClassElement dom stage) (Ann UClassElement dom stage) (Ann UValueBind dom stage) (Ann UValueBind dom stage)
+cbElements :: () => Lens (Ann UClassBody dom stage) (Ann UClassBody dom stage) (AnnListG UClassElement dom stage) (AnnListG UClassElement dom stage)
+declValBind :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UValueBind dom stage) (Ann UValueBind dom stage)
+declTypes :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnListG UType dom stage) (AnnListG UType dom stage)
+declTypeSig :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UTypeSignature dom stage) (Ann UTypeSignature dom stage)
+declTypeFamily :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UTypeFamily dom stage) (Ann UTypeFamily dom stage)
+declType :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UType dom stage) (Ann UType dom stage)
+declSplice :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann USplice dom stage) (Ann USplice dom stage)
+declSpec :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnMaybeG UTypeFamilySpec dom stage) (AnnMaybeG UTypeFamilySpec dom stage)
+declSafety :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnMaybeG USafety dom stage) (AnnMaybeG USafety dom stage)
+declRoles :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnListG URole dom stage) (AnnListG URole dom stage)
+declRoleType :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UQualifiedName dom stage) (Ann UQualifiedName dom stage)
+declPragma :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UTopLevelPragma dom stage) (Ann UTopLevelPragma dom stage)
+declPatTypeSig :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UPatternTypeSignature dom stage) (Ann UPatternTypeSignature dom stage)
+declPatSyn :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UPatternSynonym dom stage) (Ann UPatternSynonym dom stage)
+declOverlap :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnMaybeG UOverlapPragma dom stage) (AnnMaybeG UOverlapPragma dom stage)
+declNewtype :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UDataOrNewtypeKeyword dom stage) (Ann UDataOrNewtypeKeyword dom stage)
+declName :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UName dom stage) (Ann UName dom stage)
+declKind :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnMaybeG UKindConstraint dom stage) (AnnMaybeG UKindConstraint dom stage)
+declInstance :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UInstanceRule dom stage) (Ann UInstanceRule dom stage)
+declInstRule :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UInstanceRule dom stage) (Ann UInstanceRule dom stage)
+declInstDecl :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnMaybeG UInstBody dom stage) (AnnMaybeG UInstBody dom stage)
+declHead :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UDeclHead dom stage) (Ann UDeclHead dom stage)
+declGadt :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnListG UGadtConDecl dom stage) (AnnListG UGadtConDecl dom stage)
+declFunDeps :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnMaybeG UFunDeps dom stage) (AnnMaybeG UFunDeps dom stage)
+declForeignType :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UType dom stage) (Ann UType dom stage)
+declFixity :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UFixitySignature dom stage) (Ann UFixitySignature dom stage)
+declDeriving :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnListG UDeriving dom stage) (AnnListG UDeriving dom stage)
+declDerivStrat :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnMaybeG UDeriveStrategy dom stage) (AnnMaybeG UDeriveStrategy dom stage)
+declDecl :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnListG UTypeEqn dom stage) (AnnListG UTypeEqn dom stage)
+declCtx :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnMaybeG UContext dom stage) (AnnMaybeG UContext dom stage)
+declCons :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnListG UConDecl dom stage) (AnnListG UConDecl dom stage)
+declCallConv :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UCallConv dom stage) (Ann UCallConv dom stage)
+declBody :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (AnnMaybeG UClassBody dom stage) (AnnMaybeG UClassBody dom stage)
+declAssignedType :: () => Partial (Ann UDecl dom stage) (Ann UDecl dom stage) (Ann UType dom stage) (Ann UType dom stage)
+langExt :: () => Lens (Ann ULanguageExtension dom stage) (Ann ULanguageExtension dom stage) String String
+moduleNameString :: () => Lens (Ann UModuleName dom stage) (Ann UModuleName dom stage) String String
+importRename :: () => Lens (Ann UImportRenaming dom stage) (Ann UImportRenaming dom stage) (Ann UModuleName dom stage) (Ann UModuleName dom stage)
+importSpecList :: () => Partial (Ann UImportSpec dom stage) (Ann UImportSpec dom stage) (AnnListG UIESpec dom stage) (AnnListG UIESpec dom stage)
+importSpecHiding :: () => Partial (Ann UImportSpec dom stage) (Ann UImportSpec dom stage) (AnnListG UIESpec dom stage) (AnnListG UIESpec dom stage)
+importSpec :: () => Lens (Ann UImportDecl dom stage) (Ann UImportDecl dom stage) (AnnMaybeG UImportSpec dom stage) (AnnMaybeG UImportSpec dom stage)
+importSource :: () => Lens (Ann UImportDecl dom stage) (Ann UImportDecl dom stage) (AnnMaybeG UImportSource dom stage) (AnnMaybeG UImportSource dom stage)
+importSafe :: () => Lens (Ann UImportDecl dom stage) (Ann UImportDecl dom stage) (AnnMaybeG UImportSafe dom stage) (AnnMaybeG UImportSafe dom stage)
+importQualified :: () => Lens (Ann UImportDecl dom stage) (Ann UImportDecl dom stage) (AnnMaybeG UImportQualified dom stage) (AnnMaybeG UImportQualified dom stage)
+importPkg :: () => Lens (Ann UImportDecl dom stage) (Ann UImportDecl dom stage) (AnnMaybeG UStringNode dom stage) (AnnMaybeG UStringNode dom stage)
+importModule :: () => Lens (Ann UImportDecl dom stage) (Ann UImportDecl dom stage) (Ann UModuleName dom stage) (Ann UModuleName dom stage)
+importAs :: () => Lens (Ann UImportDecl dom stage) (Ann UImportDecl dom stage) (AnnMaybeG UImportRenaming dom stage) (AnnMaybeG UImportRenaming dom stage)
+opStr :: () => Partial (Ann UFilePragma dom stage) (Ann UFilePragma dom stage) (Ann UStringNode dom stage) (Ann UStringNode dom stage)
+lpPragmas :: () => Partial (Ann UFilePragma dom stage) (Ann UFilePragma dom stage) (AnnListG ULanguageExtension dom stage) (AnnListG ULanguageExtension dom stage)
+modWarningStr :: () => Partial (Ann UModulePragma dom stage) (Ann UModulePragma dom stage) (AnnListG UStringNode dom stage) (AnnListG UStringNode dom stage)
+modDeprecatedPragma :: () => Partial (Ann UModulePragma dom stage) (Ann UModulePragma dom stage) (AnnListG UStringNode dom stage) (AnnListG UStringNode dom stage)
+essList :: () => Partial (Ann USubSpec dom stage) (Ann USubSpec dom stage) (AnnListG UName dom stage) (AnnListG UName dom stage)
+ieSubspec :: () => Lens (Ann UIESpec dom stage) (Ann UIESpec dom stage) (AnnMaybeG USubSpec dom stage) (AnnMaybeG USubSpec dom stage)
+ieName :: () => Lens (Ann UIESpec dom stage) (Ann UIESpec dom stage) (Ann UName dom stage) (Ann UName dom stage)
+ieModifier :: () => Lens (Ann UIESpec dom stage) (Ann UIESpec dom stage) (AnnMaybeG UImportModifier dom stage) (AnnMaybeG UImportModifier dom stage)
+exportModuleName :: () => Partial (Ann UExportSpec dom stage) (Ann UExportSpec dom stage) (Ann UModuleName dom stage) (Ann UModuleName dom stage)
+exportDecl :: () => Partial (Ann UExportSpec dom stage) (Ann UExportSpec dom stage) (Ann UIESpec dom stage) (Ann UIESpec dom stage)
+espExports :: () => Lens (Ann UExportSpecs dom stage) (Ann UExportSpecs dom stage) (AnnListG UExportSpec dom stage) (AnnListG UExportSpec dom stage)
+mhPragma :: () => Lens (Ann UModuleHead dom stage) (Ann UModuleHead dom stage) (AnnMaybeG UModulePragma dom stage) (AnnMaybeG UModulePragma dom stage)
+mhName :: () => Lens (Ann UModuleHead dom stage) (Ann UModuleHead dom stage) (Ann UModuleName dom stage) (Ann UModuleName dom stage)
+mhExports :: () => Lens (Ann UModuleHead dom stage) (Ann UModuleHead dom stage) (AnnMaybeG UExportSpecs dom stage) (AnnMaybeG UExportSpecs dom stage)
+modImports :: () => Lens (Ann UModule dom stage) (Ann UModule dom stage) (AnnListG UImportDecl dom stage) (AnnListG UImportDecl dom stage)
+modHead :: () => Lens (Ann UModule dom stage) (Ann UModule dom stage) (AnnMaybeG UModuleHead dom stage) (AnnMaybeG UModuleHead dom stage)
+modDecl :: () => Lens (Ann UModule dom stage) (Ann UModule dom stage) (AnnListG UDecl dom stage) (AnnListG UDecl dom stage)
+filePragmas :: () => Lens (Ann UModule dom stage) (Ann UModule dom stage) (AnnListG UFilePragma dom stage) (AnnListG UFilePragma dom stage)
 semanticsLitType :: () => Ann ULiteral IdDom st -> Type
 
 -- | Domains that have semantic information for names
@@ -1737,7 +1745,7 @@ semanticsTransMods :: HasImportInfo' si => si -> [Module]
 type HasImplicitFieldsInfo dom = (Domain dom, HasImplicitFieldsInfo' SemanticInfo dom UFieldWildcard)
 class HasImplicitFieldsInfo' si
 semanticsImplicitFlds :: HasImplicitFieldsInfo' si => si -> [(Name, Name)]
-type HasNoSemanticInfo dom (si :: * -> * -> *) = SemanticInfo dom si ~ NoSemanticInfo
+type HasNoSemanticInfo dom (si :: Type -> Type -> Type) = SemanticInfo dom si ~ NoSemanticInfo
 
 -- | Gets the class and family instances from a module.
 getInstances :: GhcMonad m => [Module] -> m ([ClsInst], [FamInst])
@@ -1792,20 +1800,20 @@ sourceTemplateText :: Lens SourceTemplateTextElem SourceTemplateTextElem String 
 sourceTemplateTextRange :: Partial SourceTemplateElem SourceTemplateElem SrcSpan SrcSpan
 sourceTemplateTextElem :: Partial SourceTemplateElem SourceTemplateElem [SourceTemplateTextElem] [SourceTemplateTextElem]
 isStayingText :: SourceTemplateTextElem -> Bool
-srcTmpOptMinimalIndent :: Simple Lens OptionalInfo SrcTemplateStage Int
-srcTmpOptAfter :: Simple Lens OptionalInfo SrcTemplateStage String
-srcTmpOptBefore :: Simple Lens OptionalInfo SrcTemplateStage String
-sourceTemplateOptRange :: Simple Lens OptionalInfo SrcTemplateStage SrcSpan
-srcTmpListMinimalIndent :: Simple Lens ListInfo SrcTemplateStage Int
-srcTmpSeparators :: Simple Lens ListInfo SrcTemplateStage [([SourceTemplateTextElem], SrcSpan)]
-srcTmpIndented :: Simple Lens ListInfo SrcTemplateStage Maybe [Bool]
-srcTmpDefaultSeparator :: Simple Lens ListInfo SrcTemplateStage String
-srcTmpListAfter :: Simple Lens ListInfo SrcTemplateStage String
-srcTmpListBefore :: Simple Lens ListInfo SrcTemplateStage String
-sourceTemplateListRange :: Simple Lens ListInfo SrcTemplateStage SrcSpan
-sourceTemplateMinimalIndent :: Simple Lens SpanInfo SrcTemplateStage Int
-sourceTemplateNodeElems :: Simple Lens SpanInfo SrcTemplateStage [SourceTemplateElem]
-sourceTemplateNodeRange :: Simple Lens SpanInfo SrcTemplateStage SrcSpan
+srcTmpOptMinimalIndent :: Simple Lens (OptionalInfo SrcTemplateStage) Int
+srcTmpOptAfter :: Simple Lens (OptionalInfo SrcTemplateStage) String
+srcTmpOptBefore :: Simple Lens (OptionalInfo SrcTemplateStage) String
+sourceTemplateOptRange :: Simple Lens (OptionalInfo SrcTemplateStage) SrcSpan
+srcTmpListMinimalIndent :: Simple Lens (ListInfo SrcTemplateStage) Int
+srcTmpSeparators :: Simple Lens (ListInfo SrcTemplateStage) [([SourceTemplateTextElem], SrcSpan)]
+srcTmpIndented :: Simple Lens (ListInfo SrcTemplateStage) (Maybe [Bool])
+srcTmpDefaultSeparator :: Simple Lens (ListInfo SrcTemplateStage) String
+srcTmpListAfter :: Simple Lens (ListInfo SrcTemplateStage) String
+srcTmpListBefore :: Simple Lens (ListInfo SrcTemplateStage) String
+sourceTemplateListRange :: Simple Lens (ListInfo SrcTemplateStage) SrcSpan
+sourceTemplateMinimalIndent :: Simple Lens (SpanInfo SrcTemplateStage) Int
+sourceTemplateNodeElems :: Simple Lens (SpanInfo SrcTemplateStage) [SourceTemplateElem]
+sourceTemplateNodeRange :: Simple Lens (SpanInfo SrcTemplateStage) SrcSpan
 
 -- | An element of a source template for a singleton AST node.
 data SourceTemplateElem
@@ -1847,685 +1855,1003 @@ getPragmaComments :: Map SrcSpan [Located AnnotationComment] -> Map String [Loca
 getNormalComments :: Map SrcSpan [Located AnnotationComment] -> Map SrcSpan [Located AnnotationComment]
 
 -- | Forall types (<tt> forall x y . type </tt>)
+pattern ForallType :: () => () => TyVarList -> Type -> Type
 
 -- | Type with a context (<tt> C a =&gt; type </tt>)
+pattern CtxType :: () => () => Context -> Type -> Type
 
 -- | Function types (<tt> a -&gt; b </tt>)
+pattern FunctionType :: () => () => Type -> Type -> Type
 
 -- | Tuple types (<tt> (a,b) </tt>)
+pattern TupleType :: () => () => TypeList -> Type
 
 -- | Unboxed tuple types (<tt> (#a,b#) </tt>)
+pattern UnboxedTupleType :: () => () => TypeList -> Type
 
 -- | List type with special syntax (<tt> [a] </tt>)
+pattern ListType :: () => () => Type -> Type
 
 -- | Parallel array type (<tt> [:a:] </tt>)
+pattern ParArrayType :: () => () => Type -> Type
 
 -- | Type application (<tt> F a </tt>)
+pattern TypeApp :: () => () => Type -> Type -> Type
 
 -- | Infix type constructor (<tt> (a &lt;: b) </tt>)
+pattern InfixTypeApp :: () => () => Type -> Operator -> Type -> Type
 
 -- | Type surrounded by parentheses (<tt> (T a) </tt>)
+pattern ParenType :: () => () => Type -> Type
 
 -- | Type variable or constructor (<tt> a </tt>)
+pattern VarType :: () => () => Name -> Type
 
 -- | Type with explicit kind signature (<tt> a :: * </tt>)
+pattern KindedType :: () => () => Type -> Kind -> Type
 
 -- | Strict type marked with <tt>!</tt>.
+pattern BangType :: () => () => Type -> Type
 
 -- | Lazy type marked with <tt>~</tt>. (Should only be used if
 --   <tt>Strict</tt> or <tt>StrictData</tt> language extension is used)
+pattern LazyType :: () => () => Type -> Type
 
 -- | Strict type marked with UNPACK pragma. (Usually contains the bang
 --   mark.)
+pattern UnpackType :: () => () => Type -> Type
 
 -- | Strict type marked with NOUNPACK pragma. (Usually contains the bang
 --   mark.)
+pattern NoUnpackType :: () => () => Type -> Type
 
 -- | A wildcard type (<tt> _ </tt>) with <tt>-XPartialTypeSignatures</tt>
+pattern WildcardType :: () => () => Type
 
 -- | A named wildcard type (<tt> _t </tt>) with
 --   <tt>-XPartialTypeSignatures</tt>
+pattern NamedWildcardType :: () => () => Name -> Type
 
 -- | A Template Haskell splice type (<tt> $(genType) </tt>).
+pattern SpliceType :: () => () => Splice -> Type
 
 -- | A Template Haskell splice type (<tt> $(genType) </tt>).
+pattern QuasiQuoteType :: () => () => QuasiQuote -> Type
 
 -- | Numeric value promoted to the type level.
+pattern PromotedIntType :: () => () => Integer -> Type
 
 -- | String value promoted to the type level.
+pattern PromotedStringType :: () => () => String -> Type
 
 -- | A data constructor value promoted to the type level.
+pattern PromotedConType :: () => () => Name -> Type
 
 -- | A list of elements as a type.
+pattern PromotedListType :: () => () => TypeList -> Type
 
 -- | A tuple of elements as a type.
+pattern PromotedTupleType :: () => () => TypeList -> Type
 
 -- | Kind of the unit value <tt>()</tt>.
+pattern PromotedUnitType :: () => () => Type
 
 -- | An unboxed sum type.
+pattern UnboxedSumType :: () => () => TypeList -> Type
 
 -- | Type variable declaration
+pattern TyVarDecl :: () => () => Name -> TyVar
 
 -- | Kinded type variable declaration (<tt> v :: * </tt>)
+pattern KindedTyVarDecl :: () => () => Name -> Kind -> TyVar
 
 -- | A context of assertions (<tt> C a =&gt; ... </tt>)
+pattern Context :: () => () => Assertion -> Context
 
 -- | Class assertion (<tt>Cls x</tt>)
+pattern ClassAssert :: () => () => Name -> TypeList -> Assertion
 
 -- | Infix class assertion, also contains type equations (<tt> a ~ X y
 --   </tt>)
+pattern InfixAssert :: () => () => Type -> Operator -> Type -> Assertion
 
 -- | Assertion for implicit parameter binding (<tt> ?cmp :: a -&gt; a -&gt;
 --   Bool </tt>)
+pattern ImplicitAssert :: () => () => Name -> Type -> Assertion
 
 -- | A list of assertions (<tt> (Eq a, Show a) </tt>)
+pattern TupleAssert :: () => () => [Assertion] -> Assertion
 
 -- | A simple name splice: <tt>$generateX</tt>
+pattern IdSplice :: () => () => Name -> Splice
 
 -- | A splice with parentheses: <tt>$(generate input)</tt>
+pattern ParenSplice :: () => () => Expr -> Splice
 
 -- | Template haskell quasi-quotation: <tt>[quoter|str]</tt>
+pattern QuasiQuote :: () => () => Name -> String -> QuasiQuote
 
 -- | Expression bracket (<tt> [| x + y |] </tt>)
+pattern ExprBracket :: () => () => Expr -> Bracket
 
 -- | Pattern bracket (<tt> [p| Point x y |] </tt>)
+pattern PatternBracket :: () => () => Pattern -> Bracket
 
 -- | Type bracket (<tt> [t| (Int,Int) |] </tt>)
+pattern TypeBracket :: () => () => Type -> Bracket
 
 -- | Declaration bracket (<tt> [d| f :: Int -&gt; Int; f x = x*x |] </tt>)
+pattern DeclsBracket :: () => () => DeclList -> Bracket
 
 -- | An expression for a variable or a data constructor (<tt> a </tt>)
+pattern Var :: () => () => Name -> Expr
 
 -- | A literal expression (<tt> 42 </tt>)
+pattern Lit :: () => () => Literal -> Expr
 
 -- | An infix operator application (<tt> a + b </tt>)
+pattern InfixApp :: () => () => Expr -> Operator -> Expr -> Expr
 
 -- | Prefix operator application (<tt> -x </tt>)
+pattern PrefixApp :: () => () => Operator -> Expr -> Expr
 
 -- | Function application (<tt> f 4 </tt>)
+pattern App :: () => () => Expr -> Expr -> Expr
 
 -- | Lambda expression (<tt> \a b -&gt; a + b </tt>)
+pattern Lambda :: () => () => PatternList -> Expr -> Expr
 
 -- | Local binding (<tt> let x = 2; y = 3 in e x y </tt>)
+pattern Let :: () => () => LocalBindList -> Expr -> Expr
 
 -- | If expression (<tt> if a then b else c </tt>)
+pattern If :: () => () => Expr -> Expr -> Expr -> Expr
 
 -- | Multi way if expressions with <tt>MultiWayIf</tt> extension (<tt> if |
 --   guard1 -&gt; expr1; guard2 -&gt; expr2 </tt>)
+pattern MultiIf :: () => () => GuardedCaseRhsList -> Expr
 
 -- | Pattern matching expression (<tt> case expr of pat1 -&gt; expr1; pat2
 --   -&gt; expr2 </tt>)
+pattern Case :: () => () => Expr -> AltList -> Expr
 
 -- | Do-notation expressions (<tt> do x &lt;- act1; act2 </tt>)
+pattern Do :: () => () => StmtList -> Expr
 
 -- | MDo-notation expressions (<tt> mdo x &lt;- act1; act2 </tt>)
+pattern MDo :: () => () => StmtList -> Expr
+pattern ParArrayComp :: () => () => Expr -> ListCompBodyList -> Expr
 
 -- | Tuple expression (<tt> (e1, e2, e3) </tt>)
+pattern Tuple :: () => () => ExprList -> Expr
 
 -- | Unboxed tuple expression (<tt> (# e1, e2, e3 #) </tt>)
+pattern UnboxedTuple :: () => () => ExprList -> Expr
 
 -- | Tuple section, enabled with <tt>TupleSections</tt> (<tt> (a,,b)
 --   </tt>). One of the elements must be missing.
+pattern TupleSection :: () => () => TupSecElemList -> Expr
 
 -- | Unboxed tuple section enabled with <tt>TupleSections</tt> (<tt> ()
 --   </tt>). One of the elements must be missing.
+pattern UnboxedTupleSection :: () => () => TupSecElemList -> Expr
 
 -- | List expression: <tt>[1,2,3]</tt>
+pattern List :: () => () => ExprList -> Expr
 
 -- | Parallel array expression: <tt>[: 1,2,3 :]</tt>
+pattern ParArray :: () => () => ExprList -> Expr
 
 -- | Parenthesized expression: <tt>( a + b )</tt>
+pattern Paren :: () => () => Expr -> Expr
 
 -- | Left operator section: <tt>(1+)</tt>
+pattern LeftSection :: () => () => Expr -> Operator -> Expr
 
 -- | Right operator section: <tt>(+1)</tt>
+pattern RightSection :: () => () => Operator -> Expr -> Expr
 
 -- | Record value construction: <tt>Point { x = 3, y = -2 }</tt>
+pattern RecCon :: () => () => Name -> FieldUpdateList -> Expr
 
 -- | Record value update: <tt>p1 { x = 3, y = -2 }</tt>
+pattern RecUpdate :: () => () => Expr -> FieldUpdateList -> Expr
 
 -- | Enumeration expression (<tt> [1,3..10] </tt>)
+pattern Enum :: () => () => Expr -> MaybeExpr -> MaybeExpr -> Expr
 
 -- | Parallel array enumeration (<tt> [: 1,3 .. 10 :] </tt>)
+pattern ParArrayEnum :: () => () => Expr -> MaybeExpr -> Expr -> Expr
 
 -- | List comprehension (<tt> [ (x, y) | x &lt;- xs | y &lt;- ys ] </tt>)
+pattern ListComp :: () => () => Expr -> ListCompBodyList -> Expr
 
 -- | Parallel array comprehensions <tt> [: (x, y) | x &lt;- xs , y &lt;- ys
 --   :] </tt> enabled by <tt>ParallelArrays</tt>
+pattern ParArrayListComp :: () => () => Expr -> ListCompBodyList -> Expr
 
 -- | Explicit type signature (<tt> x :: Int </tt>)
+pattern TypeSig :: () => () => Expr -> Type -> Expr
 
 -- | Explicit type application (<tt> show @Integer (read "5") </tt>)
+pattern ExplicitTypeApp :: () => () => Expr -> Type -> Expr
 
 -- | <tt>'x</tt> for template haskell reifying of expressions
+pattern VarQuote :: () => () => Name -> Expr
 
 -- | <tt>''T</tt> for template haskell reifying of types
+pattern TypeQuote :: () => () => Name -> Expr
 
 -- | Template haskell bracket expression
+pattern BracketExpr :: () => () => Bracket -> Expr
 
 -- | Template haskell splice expression, for example: <tt>$(gen a)</tt> or
 --   <tt>$x</tt>
+pattern SpliceExpr :: () => () => Splice -> Expr
 
 -- | Template haskell quasi-quotation: <tt>[$quoter|str]</tt>
+pattern QuasiQuoteExpr :: () => () => QuasiQuote -> Expr
 
 -- | Template haskell quasi-quotation: <tt>[$quoter|str]</tt>
+pattern ExprPragma :: () => () => ExprPragma -> Expr -> Expr
 
 -- | Arrow definition: <tt>proc a -&gt; f -&lt; a+1</tt>
+pattern Proc :: () => () => Pattern -> Cmd -> Expr
 
 -- | Arrow definition: <tt>proc a -&gt; f -&lt; a+1</tt>
+pattern ArrowApp :: () => () => Expr -> ArrowApp -> Expr -> Expr
 
 -- | Lambda case ( <tt>case 0 -&gt; 1; 1 -&gt; 2</tt> )
+pattern LambdaCase :: () => () => AltList -> Expr
 
 -- | Static pointer expression (<tt> static e </tt>). The inner expression
 --   must be closed (cannot have variables bound outside)
+pattern StaticPointer :: () => () => Expr -> Expr
 
 -- | Update of a field (<tt> x = 1 </tt>)
+pattern NormalFieldUpdate :: () => () => Name -> Expr -> FieldUpdate
 
 -- | Update the field to the value of the same name (<tt> x </tt>)
+pattern FieldPun :: () => () => Name -> FieldUpdate
 
 -- | Update the fields of the bounded names to their values (<tt> ..
 --   </tt>). Must be the last initializer. Cannot be used in a record
 --   update expression.
+pattern FieldWildcard :: () => () => FieldWildcard -> FieldUpdate
 
 -- | An existing element in a tuple section
+pattern TupSecPresent :: () => () => Expr -> TupSecElem
 
 -- | A missing element in a tuple section
+pattern TupSecMissing :: () => () => TupSecElem
 
 -- | Clause of case expression (<tt> Just x -&gt; x + 1 </tt>)
+pattern Alt :: () => () => Pattern -> CaseRhs -> MaybeLocalBinds -> Alt
 
 -- | Unguarded right-hand side a pattern match (<tt> -&gt; 3 </tt>)
+pattern CaseRhs :: () => () => Expr -> CaseRhs
 
 -- | Guarded right-hand sides of a pattern match (<tt> | x == 1 -&gt; 3; |
 --   otherwise -&gt; 4 </tt>)
+pattern GuardedCaseRhss :: () => () => GuardedCaseRhsList -> CaseRhs
 
 -- | A guarded right-hand side of pattern matches binding (<tt> | x &gt; 3
 --   -&gt; 2 </tt>)
+pattern GuardedCaseRhs :: () => () => RhsGuardList -> Expr -> GuardedCaseRhs
 
 -- | A <tt>CORE</tt> pragma for adding notes to expressions.
+pattern CorePragma :: () => () => String -> ExprPragma
 
 -- | An <tt>SCC</tt> pragma for defining cost centers for profiling
+pattern SccPragma :: () => () => String -> ExprPragma
 
 -- | A pragma that describes if an expression was generated from a code
 --   fragment by an external tool (<tt> {--} </tt>)
+pattern GeneratedPragma :: () => () => SourceRange -> ExprPragma
 
 -- | In-AST source ranges (for generated pragmas)
+pattern SourceRange :: () => () => String -> Integer -> Integer -> Integer -> Integer -> SourceRange
 
 -- | An arrow application command (<tt> f -&lt; x + 1 </tt>)
+pattern ArrowAppCmd :: () => () => Expr -> ArrowApp -> Expr -> Cmd
 
 -- | A form command (<tt> (|untilA (increment -&lt; x+y) (within 0.5 -&lt;
 --   x)|) </tt>)
+pattern ArrowFormCmd :: () => () => Expr -> CmdList -> Cmd
 
 -- | A function application command
+pattern AppCmd :: () => () => Cmd -> Expr -> Cmd
 
 -- | An infix command application
+pattern InfixCmd :: () => () => Cmd -> Name -> Cmd -> Cmd
 
 -- | An infix command application
+pattern LambdaCmd :: () => () => PatternList -> Cmd -> Cmd
 
 -- | A parenthesized command
+pattern ParenCmd :: () => () => Cmd -> Cmd
 
 -- | A pattern match command
+pattern CaseCmd :: () => () => Expr -> CmdAltList -> Cmd
 
 -- | An if command (<tt> if f x y then g -&lt; x+1 else h -&lt; y+2 </tt>)
+pattern IfCmd :: () => () => Expr -> Cmd -> Cmd -> Cmd
 
 -- | A local binding command (<tt> let z = x+y </tt>)
+pattern LetCmd :: () => () => LocalBindList -> Cmd -> Cmd
 
 -- | A local binding command (<tt> let z = x+y </tt>)
+pattern DoCmd :: () => () => CmdStmtList -> Cmd
 
 -- | Left arrow application: <tt>-&lt;</tt>
+pattern LeftAppl :: () => () => ArrowApp
 
 -- | Right arrow application: <tt>&gt;-</tt>
+pattern RightAppl :: () => () => ArrowApp
 
 -- | Left arrow high application: <tt>-&lt;&lt;</tt>
+pattern LeftHighApp :: () => () => ArrowApp
 
 -- | Right arrow high application: <tt>&gt;&gt;-</tt>
+pattern RightHighApp :: () => () => ArrowApp
 
 -- | A hole expression <tt>_</tt>
+pattern Hole :: () => () => Expr
 
 -- | Binding statement (<tt> x &lt;- action </tt>)
+pattern BindStmt :: () => () => Pattern -> Expr -> Stmt
 
 -- | Non-binding statement (<tt> action </tt>)
+pattern ExprStmt :: () => () => Expr -> Stmt
 
 -- | Let statement (<tt> let x = 3; y = 4 </tt>)
+pattern LetStmt :: () => () => LocalBindList -> Stmt
 
 -- | A recursive binding statement with (<tt> rec b &lt;- f a c; c &lt;- f
 --   b a </tt>)
+pattern RecStmt :: () => () => StmtList -> Stmt
+pattern DoKeyword :: () => () => DoKind
+pattern MDoKeyword :: () => () => DoKind
 
 -- | Body of a list comprehension: (<tt> | x &lt;- [1..10] </tt>)
+pattern ListCompBody :: () => () => CompStmtList -> ListCompBody
 
 -- | Normal monadic statement of a list comprehension
+pattern CompStmt :: () => () => Stmt -> CompStmt
 
 -- | Then statements by <tt>TransformListComp</tt> (<tt> then sortWith by
 --   (x + y) </tt>)
+pattern ThenStmt :: () => () => Expr -> MaybeExpr -> CompStmt
 
 -- | Grouping statements by <tt>TransformListComp</tt> (<tt> then group by
 --   (x + y) using groupWith </tt>)
+pattern GroupStmt :: () => () => MaybeExpr -> MaybeExpr -> CompStmt
 
 -- | Binding statement command (<tt> x &lt;- action </tt>)
+pattern BindStmtCmd :: () => () => Pattern -> Cmd -> CmdStmt
 
 -- | Non-binding statement command (<tt> action </tt>)
+pattern ExprStmtCmd :: () => () => Cmd -> CmdStmt
 
 -- | Let statement command (<tt> let x = 3; y = 4 </tt>)
+pattern LetStmtCmd :: () => () => LocalBindList -> CmdStmt
 
 -- | A recursive binding statement command with (<tt> rec b &lt;- f a c; c
 --   &lt;- f b a </tt>)
+pattern RecStmtCmd :: () => () => CmdStmtList -> CmdStmt
 
 -- | Pattern name binding
+pattern VarPat :: () => () => Name -> Pattern
 
 -- | Literal pattern
+pattern LitPat :: () => () => Literal -> Pattern
 
 -- | Infix constructor application pattern (<tt> a :+: b </tt>)
+pattern InfixAppPat :: () => () => Pattern -> Operator -> Pattern -> Pattern
 
 -- | Constructor application pattern (<tt> Point x y </tt>)
+pattern AppPat :: () => () => Name -> PatternList -> Pattern
 
 -- | Tuple pattern (<tt> (x,y) </tt>)
+pattern TuplePat :: () => () => PatternList -> Pattern
 
 -- | Unboxed tuple pattern (<tt> (# x, y #) </tt>)
+pattern UnboxTuplePat :: () => () => PatternList -> Pattern
 
 -- | List pattern (<tt> [1,2,a,x] </tt>)
+pattern ListPat :: () => () => PatternList -> Pattern
 
 -- | Parallel array pattern (<tt> [:1,2,a,x:] </tt>)
+pattern ParArrayPat :: () => () => PatternList -> Pattern
 
 -- | Parenthesised patterns
+pattern ParenPat :: () => () => Pattern -> Pattern
 
 -- | Record pattern (<tt> Point { x = 3, y } </tt>)
+pattern RecPat :: () => () => Name -> PatternFieldList -> Pattern
 
 -- | As-pattern (explicit name binding) (<tt> ls@(hd:_) </tt>)
+pattern AsPat :: () => () => Name -> Pattern -> Pattern
 
 -- | Wildcard pattern: (<tt> _ </tt>)
+pattern WildPat :: () => () => Pattern
 
 -- | Irrefutable pattern (<tt> ~(x:_) </tt>)
+pattern IrrefutablePat :: () => () => Pattern -> Pattern
 
 -- | Bang pattern (<tt> !x </tt>)
+pattern BangPat :: () => () => Pattern -> Pattern
 
 -- | Pattern with explicit type signature (<tt> x :: Int </tt>)
+pattern TypeSigPat :: () => () => Pattern -> Type -> Pattern
 
 -- | View pattern (<tt> f -&gt; Just 1 </tt>)
+pattern ViewPat :: () => () => Expr -> Pattern -> Pattern
 
 -- | Splice patterns: <tt>$(generateX inp)</tt>
+pattern SplicePat :: () => () => Splice -> Pattern
 
 -- | Quasi-quoted patterns: <tt>[| 1 + 2 |]</tt>
+pattern QuasiQuotePat :: () => () => QuasiQuote -> Pattern
+pattern NPlusKPat :: () => () => Name -> Literal -> Pattern
 
 -- | Named field pattern (<tt> p = Point 3 2 </tt>)
+pattern FieldPattern :: () => () => Name -> Pattern -> PatternField
 
 -- | Named field pun (<tt> p </tt>)
+pattern FieldPunPattern :: () => () => Name -> PatternField
 
 -- | Wildcard field pattern (<tt> .. </tt>)
+pattern FieldWildcardPattern :: () => () => FieldWildcard -> PatternField
 
 -- | A normal operator used as an operator.
+pattern NormalOp :: () => () => QualifiedName -> Operator
 
 -- | A normal name used as an operator with backticks: <tt> a `mod` b </tt>
+pattern BacktickOp :: () => () => QualifiedName -> Operator
 
 -- | A normal, non-operator name.
+pattern NormalName :: () => () => QualifiedName -> Name
 
 -- | Parenthesized name: <tt> foldl (+) 0 </tt>
+pattern ParenName :: () => () => QualifiedName -> Name
 
 -- | Creates an implicit name: <tt> ?var </tt>
+pattern ImplicitName :: () => () => QualifiedName -> Name
 
 -- | Program elements formatted as string literals (import packages, pragma
 --   texts)
+pattern StringNode :: () => () => String -> StringNode
 
 -- | Possibly qualified name.
+pattern QualifiedName :: () => () => NamePartList -> NamePart -> QualifiedName
 
 -- | Parts of a qualified name.
+pattern NamePart :: () => () => String -> NamePart
 
 -- | The representation of a haskell module, that is a separate compilation
 --   unit. It may or may not have a header.
+pattern Module :: () => () => FilePragmaList -> MaybeModuleHead -> ImportDeclList -> DeclList -> Module
 
 -- | Module declaration with name and (optional) exports
+pattern ModuleHead :: () => () => ModuleName -> MaybeModulePragma -> MaybeExportSpecs -> ModuleHead
 
 -- | A list of export specifications surrounded by parentheses
+pattern ExportSpecs :: () => () => ExportSpecList -> ExportSpecs
 
 -- | Export a name and related names
+pattern ExportSpec :: () => () => IESpec -> ExportSpec
 
 -- | The export of an imported module (<tt> module A </tt>)
+pattern ModuleExport :: () => () => ModuleName -> ExportSpec
 
 -- | Marks a name to be imported or exported with related names
 --   (subspecifier)
+pattern IESpec :: () => () => MaybeImportModifier -> Name -> MaybeSubSpec -> IESpec
 
 -- | <tt>(..)</tt>: a class exported with all of its methods, or a datatype
 --   exported with all of its constructors.
+pattern SubAll :: () => () => SubSpec
 
 -- | <tt>(a,b,c)</tt>: a class exported with some of its methods, or a
 --   datatype exported with some of its constructors.
+pattern SubList :: () => () => NameList -> SubSpec
+pattern ImportDecl :: () => () => MaybeImportSource -> MaybeImportQualified -> MaybeImportSafe -> MaybeStringNode -> ModuleName -> MaybeImportRenaming -> MaybeImportSpec -> ImportDecl
+pattern ImportRenaming :: () => () => ModuleName -> ImportRenaming
+pattern ImportSpecList :: () => () => IESpecList -> ImportSpec
+pattern ImportHidingList :: () => () => IESpecList -> ImportSpec
+pattern ModuleName :: () => () => String -> ModuleName
 
 -- | <tt>LANGUAGE</tt> pragma, listing the enabled language extensions in
 --   that file
+pattern LanguagePragma :: () => () => LanguageExtensionList -> FilePragma
 
 -- | <tt>OPTIONS</tt> pragma, possibly qualified with a tool, e.g.
 --   OPTIONS_GHC
+pattern OptionsPragma :: () => () => String -> FilePragma
 
 -- | The name of the enabled language extension, for example (<tt>
 --   LambdaCase </tt>)
+pattern LanguageExtension :: () => () => String -> LanguageExtension
 
 -- | A warning pragma attached to the module
+pattern ModuleWarningPragma :: () => () => StringNodeList -> ModulePragma
 
 -- | A deprecated pragma attached to the module
+pattern ModuleDeprecatedPragma :: () => () => StringNodeList -> ModulePragma
 
 -- | Character literal: <tt><tt>c</tt></tt>
+pattern CharLit :: () => () => Char -> Literal
 
 -- | String literal: <tt>"abc"</tt>
+pattern StringLit :: () => () => String -> Literal
 
 -- | Integer literal: <tt>12</tt>
+pattern IntLit :: () => () => Integer -> Literal
 
 -- | Fractional literal: <tt>3.14</tt>
+pattern FracLit :: () => () => Rational -> Literal
 
 -- | Primitive integer literal (of type <tt>Int#</tt>): <tt>32#</tt>
+pattern PrimIntLit :: () => () => Integer -> Literal
 
 -- | Primitive word literal (of type <tt>Word#</tt>): <tt>32##</tt>
+pattern PrimWordLit :: () => () => Integer -> Literal
 
 -- | Primitive float literal (of type <tt>Float#</tt>): <tt>3.14#</tt>
+pattern PrimFloatLit :: () => () => Rational -> Literal
 
 -- | Primitive double literal (of type <tt>Double#</tt>): <tt>3.14##</tt>
+pattern PrimDoubleLit :: () => () => Rational -> Literal
 
 -- | Primitive character literal (of type <tt>Char#</tt>):
 --   <tt><tt>c</tt>#</tt>
+pattern PrimCharLit :: () => () => Char -> Literal
 
 -- | Primitive string literal (of type <tt>Addr#</tt>): <tt>"xxx"#</tt>
+pattern PrimStringLit :: () => () => String -> Literal
 
 -- | Kind constraint (<tt> :: * -&gt; * </tt>)
+pattern KindConstraint :: () => () => Kind -> KindConstraint
 
 -- | <tt>*</tt>, the kind of types
+pattern StarKind :: () => () => Kind
 
 -- | <tt>#</tt>, the kind of unboxed types
+pattern UnboxKind :: () => () => Kind
 
 -- | <tt>-&gt;</tt>, the kind of type constructor
+pattern FunKind :: () => () => Kind -> Kind -> Kind
 
 -- | A parenthesised kind
+pattern ParenKind :: () => () => Kind -> Kind
 
 -- | Kind variable (using <tt>PolyKinds</tt> extension)
+pattern VarKind :: () => () => Name -> Kind
 
 -- | Kind application (<tt> k1 k2 </tt>)
+pattern AppKind :: () => () => Kind -> Kind -> Kind
 
 -- | A list kind (<tt> [k] </tt>)
+pattern ListKind :: () => () => Kind -> Kind
 
 -- | Numeric value promoted to the kind level.
+pattern IntKind :: () => () => Integer -> Kind
 
 -- | String value promoted to the kind level.
+pattern StringKind :: () => () => String -> Kind
 
 -- | A data constructor value promoted to the kind level.
+pattern ConKind :: () => () => Name -> Kind
 
 -- | A list of elements as a kind.
+pattern ListKindPromoted :: () => () => KindList -> Kind
 
 -- | A tuple of elements as a kind.
+pattern TupleKind :: () => () => KindList -> Kind
 
 -- | Kind of the unit value <tt>()</tt>.
+pattern UnitKind :: () => () => Kind
 
 -- | A type synonym ( <tt>type String = [Char]</tt> )
+pattern TypeDecl :: () => () => DeclHead -> Type -> Decl
 
 -- | Standalone deriving declaration (<tt> deriving instance X T </tt>)
+pattern StandaloneDeriving :: () => () => Maybe DeriveStrategy -> Maybe OverlapPragma -> InstanceRule -> Decl
 
 -- | Fixity declaration (<tt> infixl 5 +, - </tt>)
+pattern FixityDecl :: () => () => FixitySignature -> Decl
 
 -- | Default types (<tt> default (T1, T2) </tt>)
+pattern DefaultDecl :: () => () => TypeList -> Decl
 
 -- | Type signature declaration (<tt> f :: Int -&gt; Int </tt>)
+pattern TypeSigDecl :: () => () => TypeSignature -> Decl
 
 -- | Function or value binding (<tt> f x = 12 </tt>)
+pattern ValueBinding :: () => () => ValueBind -> Decl
 
 -- | A Template Haskell splice declaration (<tt> $(generateDecls) </tt>)
+pattern SpliceDecl :: () => () => Splice -> Decl
 
 -- | A data or newtype declaration. Empty data type declarations without
 --   where keyword are always belong to DataDecl.
+pattern DataDecl :: () => () => DataOrNewtypeKeyword -> MaybeContext -> DeclHead -> ConDeclList -> DerivingList -> Decl
 
 -- | A GADT-style data or newtype declaration.
+pattern GADTDataDecl :: () => () => DataOrNewtypeKeyword -> MaybeContext -> DeclHead -> MaybeKindConstraint -> AnnList UGadtConDecl -> DerivingList -> Decl
 
 -- | GADT constructor declaration (<tt> D1 :: Int -&gt; T String </tt>)
+pattern GadtConDecl :: () => () => NameList -> Type -> GadtConDecl
 
 -- | GADT constructor declaration with record syntax (<tt> D1 :: { val ::
 --   Int } -&gt; T String </tt>)
+pattern GadtRecordConDecl :: () => () => NameList -> FieldDeclList -> Type -> GadtConDecl
 
 -- | Ordinary data constructor (<tt> C t1 t2 </tt>)
+pattern ConDecl :: () => () => Name -> TypeList -> ConDecl
 
 -- | Creates a record data constructor (<tt> Point { x :: Double, y ::
 --   Double } </tt>)
+pattern RecordConDecl :: () => () => Name -> FieldDeclList -> ConDecl
 
 -- | Infix data constructor (<tt> t1 :+: t2 </tt>)
+pattern InfixConDecl :: () => () => Type -> Operator -> Type -> ConDecl
 
 -- | Field declaration (<tt> fld :: Int </tt>)
+pattern FieldDecl :: () => () => NameList -> Type -> FieldDecl
 
 -- | A deriving clause without parentheses (<tt> deriving Show </tt>.
+pattern DerivingOne :: () => () => InstanceHead -> Deriving
 
 -- | A deriving clause without parentheses, with/witohut strategy (<tt>
 --   deriving stock Show </tt>.
+pattern DerivingOne' :: () => () => MaybeDeriveStrategy -> InstanceHead -> Deriving
 
 -- | A deriving clause with parentheses <tt> deriving (Show, Eq) </tt>)
+pattern DerivingMulti :: () => () => InstanceHeadList -> Deriving
 
 -- | A deriving clause with parentheses, with/witohut strategy (<tt>
 --   deriving stock (Show, Eq) </tt>.
+pattern DerivingMulti' :: () => () => MaybeDeriveStrategy -> InstanceHeadList -> Deriving
+pattern DataKeyword :: () => () => DataOrNewtypeKeyword
+pattern NewtypeKeyword :: () => () => DataOrNewtypeKeyword
 
 -- | A list of functional dependencies: <tt> | a -&gt; b, c -&gt; d </tt>
 --   separated by commas
+pattern FunDeps :: () => () => FunDepList -> FunDeps
 
 -- | A functional dependency, given on the form <tt>l1 ... ln -&gt; r1 ...
 --   rn</tt>
+pattern FunDep :: () => () => NameList -> NameList -> FunDep
 
 -- | Type class declaration (<tt> class X a [where f = ...] </tt>)
+pattern ClassDecl :: () => () => MaybeContext -> DeclHead -> MaybeFunDeps -> MaybeClassBody -> Decl
 
 -- | The list of declarations that can appear in a typeclass
+pattern ClassBody :: () => () => ClassElementList -> ClassBody
 
 -- | Type signature: <tt> f :: A -&gt; B </tt> as a class member
+pattern ClassElemSig :: () => () => TypeSignature -> ClassElement
 
 -- | Default binding: <tt> f x = "aaa" </tt> as a class member
+pattern ClassElemDef :: () => () => ValueBind -> ClassElement
 
 -- | Declaration of an associated type synonym: <tt> type T x :: * </tt> in
 --   a class
+pattern ClassElemTypeFam :: () => () => DeclHead -> MaybeTypeFamilySpec -> ClassElement
 
 -- | Declaration of an associated data synonym: <tt> data T x :: * </tt> in
 --   a class
+pattern ClassElemDataFam :: () => () => DeclHead -> MaybeKindConstraint -> ClassElement
 
 -- | Default choice for type synonym: <tt> type T x = TE </tt> or <tt> type
 --   instance T x = TE </tt> in a class
+pattern ClsDefaultType :: () => () => DeclHead -> Type -> ClassElement
 
 -- | Default signature (by using <tt>DefaultSignatures</tt>): <tt> default
 --   enum :: (Generic a, GEnum (Rep a)) =&gt; [a] </tt>
+pattern ClsDefaultSig :: () => () => Name -> Type -> ClassElement
 
 -- | Minimal pragma: <tt> {-# MINIMAL (==) | (/=) #-} </tt> in a class
+pattern ClsMinimal :: () => () => MinimalFormula -> ClassElement
+pattern MinimalName :: () => () => Name -> MinimalFormula
+pattern MinimalParen :: () => () => MinimalFormula -> MinimalFormula
 
 -- | One of the minimal formulas are needed (<tt> min1 | min2 </tt>)
+pattern MinimalOr :: () => () => MinimalFormulaList -> MinimalFormula
 
 -- | Both of the minimal formulas are needed (<tt> min1 , min2 </tt>)
+pattern MinimalAnd :: () => () => MinimalFormulaList -> MinimalFormula
 
 -- | Type or class name as a declaration head
+pattern NameDeclHead :: () => () => Name -> DeclHead
 
 -- | Parenthesized type as a declaration head
+pattern ParenDeclHead :: () => () => DeclHead -> DeclHead
 
 -- | Type application as a declaration head
+pattern DeclHeadApp :: () => () => DeclHead -> TyVar -> DeclHead
 
 -- | Infix type application as a declaration head
+pattern InfixDeclHead :: () => () => TyVar -> Operator -> TyVar -> DeclHead
 
 -- | Instance declaration (<tt> instance X T [where f = ...] </tt>)
+pattern InstanceDecl :: () => () => InstanceRule -> MaybeInstBody -> Decl
 
 -- | Instance body is the implementation of the class functions (<tt> where
 --   a x = 1; b x = 2 </tt>)
+pattern InstanceBody :: () => () => InstBodyDeclList -> InstBody
 
 -- | A normal value binding (<tt> f x = 12 </tt>) inside a class instance
+pattern InstanceBind :: () => () => ValueBind -> InstBodyDecl
 
 -- | Type signature in instance definition with <tt>InstanceSigs</tt>
+pattern InstanceTypeSig :: () => () => TypeSignature -> InstBodyDecl
 
 -- | An associated type definition (<tt> type A X = B </tt>) in a class
 --   instance
+pattern InstanceTypeFamilyDef :: () => () => TypeEqn -> InstBodyDecl
 
 -- | An associated data definition (<tt> data A X = B Int | C </tt>) in a
 --   class instance
+pattern InstanceDataFamilyDef :: () => () => DataOrNewtypeKeyword -> InstanceRule -> ConDeclList -> DerivingList -> InstBodyDecl
 
 -- | An associated data definition as a GADT (<tt> data A X where B :: Int
 --   -&gt; A X </tt>) in a class instance
+pattern InstanceDataFamilyGADTDef :: () => () => DataOrNewtypeKeyword -> InstanceRule -> MaybeKindConstraint -> AnnList UGadtConDecl -> DerivingList -> InstBodyDecl
 
 -- | Specialize instance pragma in a class instance (no phase selection is
 --   allowed)
+pattern InstanceSpecializePragma :: () => () => Type -> InstBodyDecl
 
 -- | Instance head as an instance rule (<tt> X a =&gt; Y a </tt>)
+pattern InstanceRule :: () => () => AnnMaybe (AnnListG UTyVar) -> MaybeContext -> InstanceHead -> InstanceRule
 
 -- | Type or class name as an instance head
+pattern InstanceHead :: () => () => Name -> InstanceHead
 
 -- | Infix application of the type/class name to the left operand as an
 --   instance head
+pattern InfixInstanceHead :: () => () => Type -> Operator -> InstanceHead
 
 -- | Parenthesized instance head
+pattern ParenInstanceHead :: () => () => InstanceHead -> InstanceHead
 
 -- | Type application as an instance head
+pattern AppInstanceHead :: () => () => InstanceHead -> Type -> InstanceHead
 
 -- | <tt>OVERLAP</tt> pragma
+pattern EnableOverlap :: () => () => OverlapPragma
 
 -- | <tt>NO_OVERLAP</tt> pragma
+pattern DisableOverlap :: () => () => OverlapPragma
 
 -- | <tt>OVERLAPPABLE</tt> pragma
+pattern Overlappable :: () => () => OverlapPragma
 
 -- | <tt>OVERLAPPING</tt> pragma
+pattern Overlapping :: () => () => OverlapPragma
 
 -- | <tt>OVERLAPS</tt> pragma
+pattern Overlaps :: () => () => OverlapPragma
 
 -- | <tt>INCOHERENT</tt> pragma
+pattern IncoherentOverlap :: () => () => OverlapPragma
 
 -- | Role annotations (<tt> type role Ptr representational </tt>)
+pattern RoleDecl :: () => () => QualifiedName -> RoleList -> Decl
+pattern NominalRole :: () => () => Role
+pattern RepresentationalRole :: () => () => Role
+pattern PhantomRole :: () => () => Role
 
 -- | Foreign import (<tt> foreign import foo :: Int -&gt; IO Int </tt>)
+pattern ForeignImport :: () => () => CallConv -> MaybeSafety -> Name -> Type -> Decl
 
 -- | Foreign export (<tt> foreign export ccall foo :: Int -&gt; IO Int
 --   </tt>)
+pattern ForeignExport :: () => () => CallConv -> Name -> Type -> Decl
 
 -- | Specifies <tt>stdcall</tt> calling convention for foreign
 --   import/export.
+pattern StdCall :: () => () => CallConv
 
 -- | Specifies <tt>ccall</tt> calling convention for foreign import/export.
+pattern CCall :: () => () => CallConv
 
 -- | Specifies <tt>capi</tt> calling convention for foreign import/export.
+pattern CApi :: () => () => CallConv
 
 -- | Specifies that the given foreign import is <tt>unsafe</tt>.
+pattern Unsafe :: () => () => Safety
 
 -- | Pattern synonyms (<tt> pattern Arrow t1 t2 = App "-&gt;" [t1, t2]
 --   </tt>)
+pattern PatternSynonym :: () => () => PatSynLhs -> PatSynRhs -> Decl
 
 -- | A left hand side with a constructor name and arguments (<tt> Arrow t1
 --   t2 </tt>)
+pattern ConPatSyn :: () => () => Name -> NameList -> PatSynLhs
 
 -- | An infix pattern synonym left-hand side (<tt> t1 :+: t2 </tt>)
+pattern InfixPatSyn :: () => () => Name -> Operator -> Name -> PatSynLhs
 
 -- | A record-style pattern synonym left-hand side (<tt> Arrow { arrowFrom,
 --   arrowTo } </tt>)
+pattern RecordPatSyn :: () => () => Name -> NameList -> PatSynLhs
 
 -- | An automatically two-way pattern synonym (<tt> = App "Int" [] </tt>)
+pattern SymmetricPatSyn :: () => () => Pattern -> PatSynRhs
 
 -- | A pattern synonym that can be only used for pattenr matching but not
 --   for combining (<tt> &lt;- App "Int" [] </tt>)
+pattern OneWayPatSyn :: () => () => Pattern -> PatSynRhs
 
 -- | A pattern synonym with the other direction explicitly specified (<tt>
 --   &lt;- App "Int" [] where Int = App "Int" [] </tt>)
+pattern TwoWayPatSyn :: () => () => Pattern -> MatchList -> PatSynRhs
 
 -- | Pattern type signature declaration (<tt> pattern Succ :: Int -&gt; Int
 --   </tt>)
+pattern PatternSignatureDecl :: () => () => PatternSignature -> Decl
+pattern PatternSignature :: () => () => NameList -> Type -> PatternSignature
 
 -- | Type family declaration (<tt> type family A a :: * -&gt; * </tt>)
+pattern TypeFamily :: () => () => DeclHead -> MaybeTypeFamilySpec -> Decl
 
 -- | Data family declaration (<tt> data family A a :: * -&gt; * </tt>)
+pattern DataFamily :: () => () => DeclHead -> MaybeKindConstraint -> Decl
 
 -- | Type family instance declaration (<tt> type instance Fam T = AssignedT
 --   </tt>)
+pattern TypeInstance :: () => () => InstanceRule -> Type -> Decl
 
 -- | Data instance declaration (<tt> data instance Fam T = Con1 | Con2
 --   </tt>)
+pattern DataInstance :: () => () => DataOrNewtypeKeyword -> InstanceRule -> ConDeclList -> DerivingList -> Decl
 
 -- | GADT-style data instance declaration (<tt> data instance Fam T where
 --   ... </tt>)
+pattern GadtDataInstance :: () => () => DataOrNewtypeKeyword -> InstanceRule -> MaybeKindConstraint -> GadtConDeclList -> Decl
 
 -- | A closed type family declaration
+pattern ClosedTypeFamily :: () => () => DeclHead -> MaybeTypeFamilySpec -> TypeEqnList -> Decl
 
 -- | Specifies the kind of a type family (<tt> :: * -&gt; * </tt>)
+pattern TypeFamilyKindSpec :: () => () => KindConstraint -> TypeFamilySpec
 
 -- | Specifies the injectivity of a type family (<tt> = r | r -&gt; a
 --   </tt>)
+pattern TypeFamilyInjectivitySpec :: () => () => TyVar -> NameList -> TypeFamilySpec
 
 -- | Type equations as found in closed type families (<tt> T A = S </tt>)
+pattern TypeEqn :: () => () => Type -> Type -> TypeEqn
 
 -- | Top-level pragmas
+pattern PragmaDecl :: () => () => TopLevelPragma -> Decl
 
 -- | A pragma that introduces source rewrite rules (<tt> {-# RULES
 --   "map/map" [2] forall f g xs. map f (map g xs) = map (f.g) xs #-}
 --   </tt>)
+pattern RulePragma :: () => () => RuleList -> TopLevelPragma
 
 -- | A pragma that marks definitions as deprecated (<tt> {-# DEPRECATED f
 --   "f will be replaced by g" #-} </tt>)
+pattern DeprPragma :: () => () => NameList -> String -> TopLevelPragma
 
 -- | A pragma that marks definitions as deprecated (<tt> {-# WARNING
 --   unsafePerformIO "you should know what you are doing" #-} </tt>)
+pattern WarningPragma :: () => () => NameList -> String -> TopLevelPragma
 
 -- | A pragma that annotates a definition with an arbitrary value (<tt> {-#
 --   ANN f 42 #-} </tt>)
+pattern AnnPragma :: () => () => AnnotationSubject -> Expr -> TopLevelPragma
 
 -- | A pragma that marks a function for inlining to the compiler (<tt> {-#
 --   INLINE thenUs #-} </tt>)
+pattern InlinePragma :: () => () => MaybeConlikeAnnot -> MaybePhaseControl -> Name -> TopLevelPragma
 
 -- | A pragma that forbids a function from being inlined by the compiler
 --   (<tt> {-# NOINLINE f #-} </tt>)
+pattern NoInlinePragma :: () => () => Name -> TopLevelPragma
 
 -- | A pragma that marks a function that it may be inlined by the compiler
 --   (<tt> {-# INLINABLE thenUs #-} </tt>)
+pattern InlinablePragma :: () => () => MaybePhaseControl -> Name -> TopLevelPragma
 
 -- | A pragma for maintaining line numbers in generated sources (<tt> {-#
 --   LINE 123 "somefile" #-} </tt>)
+pattern LinePragma :: () => () => Int -> MaybeStringNode -> TopLevelPragma
 
 -- | A pragma that tells the compiler that a polymorph function should be
 --   optimized for a given type (<tt> {-# SPECIALISE f :: Int -&gt; b -&gt;
 --   b #-} </tt>)
+pattern SpecializePragma :: () => () => MaybePhaseControl -> Name -> TypeList -> TopLevelPragma
 
 -- | Marks that the pragma should be applied from a given compile phase
 --   (<tt> [2] </tt>)
+pattern PhaseControlFrom :: () => () => Integer -> PhaseControl
 
 -- | Marks that the pragma should be applied until a given compile phase
 --   (<tt> [~2] </tt>)
+pattern PhaseControlUntil :: () => () => Integer -> PhaseControl
 
 -- | A rewrite rule (<tt> "map/map" forall f g xs. map f (map g xs) = map
 --   (f.g) xs </tt>)
+pattern RewriteRule :: () => () => String -> MaybePhaseControl -> RuleVarList -> Expr -> Expr -> Rule
 
 -- | The definition with the given name is annotated
+pattern NameAnnotation :: () => () => Name -> AnnotationSubject
 
 -- | A type with the given name is annotated
+pattern TypeAnnotation :: () => () => Name -> AnnotationSubject
 
 -- | The whole module is annotated
+pattern ModuleAnnotation :: () => () => AnnotationSubject
 
 -- | A <tt>CONLIKE</tt> modifier for an <tt>INLINE</tt> pragma.
+pattern ConlikeAnnotation :: () => () => ConlikeAnnot
 
 -- | Non-function binding (<tt> v = "12" </tt>)
+pattern SimpleBind :: () => () => Pattern -> Rhs -> MaybeLocalBinds -> ValueBind
 
 -- | Function binding (<tt> f 0 = 1; f x = x </tt>). All matches must have
 --   the same name.
+pattern FunctionBind :: () => () => MatchList -> ValueBind
 
 -- | Clause of function binding
+pattern Match :: () => () => MatchLhs -> Rhs -> MaybeLocalBinds -> Match
 
 -- | A match lhs with the function name and parameter names (<tt> f a b
 --   </tt>)
+pattern MatchLhs :: () => () => Name -> PatternList -> MatchLhs
 
 -- | An infix match lhs for an operator (<tt> a + b </tt>)
+pattern InfixLhs :: () => () => Pattern -> Operator -> Pattern -> PatternList -> MatchLhs
 
 -- | Local bindings attached to a declaration (<tt> where x = 42 </tt>)
+pattern LocalBinds :: () => () => LocalBindList -> LocalBinds
 
 -- | A local binding for a value
+pattern LocalValBind :: () => () => ValueBind -> LocalBind
 
 -- | A local type signature
+pattern LocalTypeSig :: () => () => TypeSignature -> LocalBind
 
 -- | A local fixity declaration
+pattern LocalFixity :: () => () => FixitySignature -> LocalBind
 
 -- | A type signature (<tt> f :: Int -&gt; Int </tt>)
+pattern TypeSignature :: () => () => NameList -> Type -> TypeSignature
 
 -- | A left-associative fixity declaration (<tt> infixl 5 +, - </tt>).
+pattern InfixL :: () => () => OperatorList -> FixitySignature
 
 -- | A right-associative fixity declaration (<tt> infixr 5 +, - </tt>).
+pattern InfixR :: () => () => OperatorList -> FixitySignature
 
 -- | A non-associative fixity declaration (<tt> infix 5 +, - </tt>).
+pattern Infix :: () => () => OperatorList -> FixitySignature
 
 -- | An unguarded right-hand-side (<tt> = 3 </tt>)
+pattern UnguardedRhs :: () => () => Expr -> Rhs
 
 -- | An unguarded right-hand-side (<tt> | x == 1 = 3; | otherwise = 4
 --   </tt>)
+pattern GuardedRhss :: () => () => GuardedRhsList -> Rhs
 
 -- | A guarded right-hand side of a value binding (<tt> | x &gt; 3 = 2
 --   </tt>)
+pattern GuardedRhs :: () => () => RhsGuardList -> Expr -> GuardedRhs
 
 -- | A bind statement in a pattern guard (<tt> Just v &lt;- x </tt>)
+pattern GuardBind :: () => () => Pattern -> Expr -> RhsGuard
 
 -- | A let statement in a pattern guard (<tt> let x = 3 </tt>)
+pattern GuardLet :: () => () => LocalBindList -> RhsGuard
 
 -- | An expression to check for a pattern guard
+pattern GuardCheck :: () => () => Expr -> RhsGuard
 
 -- | Creates an expression to check for a pattern guard
 mkGuardCheck :: Expr -> RhsGuard
@@ -3565,8 +3891,8 @@ mkParenSplice :: Expr -> Splice
 
 -- | A simple name splice: <tt>$generateX</tt>
 mkIdSplice :: Name -> Splice
-type AnnList (node :: * -> * -> *) = AnnListG node IdDom SrcTemplateStage
-type AnnMaybe (node :: * -> * -> *) = AnnMaybeG node IdDom SrcTemplateStage
+type AnnList (node :: Type -> Type -> Type) = AnnListG node IdDom SrcTemplateStage
+type AnnMaybe (node :: Type -> Type -> Type) = AnnMaybeG node IdDom SrcTemplateStage
 
 -- | The representation of a haskell module, that is a separate compilation
 --   unit. It may or may not have a header.
@@ -4264,13 +4590,13 @@ readSrcLoc :: String -> RealSrcLoc
 
 -- | The signature and behavior of one refactoring that can be executed.
 data RefactoringChoice
-NamingRefactoring :: String -> RealSrcSpan -> String -> Refactoring -> RefactoringChoice
+NamingRefactoring :: String -> (RealSrcSpan -> String -> Refactoring) -> RefactoringChoice
 [refactoringName] :: RefactoringChoice -> String
 [namingRefactoring] :: RefactoringChoice -> RealSrcSpan -> String -> Refactoring
-NamingRefactoringIndent :: String -> RealSrcSpan -> String -> Maybe String -> Refactoring -> RefactoringChoice
+NamingRefactoringIndent :: String -> (RealSrcSpan -> String -> Maybe String -> Refactoring) -> RefactoringChoice
 [refactoringName] :: RefactoringChoice -> String
 [namingRefactoringIndent] :: RefactoringChoice -> RealSrcSpan -> String -> Maybe String -> Refactoring
-SelectionRefactoring :: String -> RealSrcSpan -> Refactoring -> RefactoringChoice
+SelectionRefactoring :: String -> (RealSrcSpan -> Refactoring) -> RefactoringChoice
 [refactoringName] :: RefactoringChoice -> String
 [selectionRefactoring] :: RefactoringChoice -> RealSrcSpan -> Refactoring
 ModuleRefactoring :: String -> Refactoring -> RefactoringChoice
@@ -4296,10 +4622,10 @@ Marker :: SrcSpan -> Severity -> String -> Marker
 [severity] :: Marker -> Severity
 [message] :: Marker -> String
 data QueryChoice
-LocationQuery :: String -> RealSrcSpan -> ModuleDom -> [ModuleDom] -> QueryMonad QueryValue -> QueryChoice
+LocationQuery :: String -> (RealSrcSpan -> ModuleDom -> [ModuleDom] -> QueryMonad QueryValue) -> QueryChoice
 [queryName] :: QueryChoice -> String
 [locationQuery] :: QueryChoice -> RealSrcSpan -> ModuleDom -> [ModuleDom] -> QueryMonad QueryValue
-GlobalQuery :: String -> ModuleDom -> [ModuleDom] -> QueryMonad QueryValue -> QueryChoice
+GlobalQuery :: String -> (ModuleDom -> [ModuleDom] -> QueryMonad QueryValue) -> QueryChoice
 [queryName] :: QueryChoice -> String
 [globalQuery] :: QueryChoice -> ModuleDom -> [ModuleDom] -> QueryMonad QueryValue
 data QueryValue
@@ -4427,11 +4753,11 @@ coAxiomFromTyThing :: TyThing -> Maybe (CoAxiom Branched)
 hasTyVarHead :: Type -> Bool
 
 -- | An element of the AST keeping extra information.
-data Ann (elem :: * -> * -> *) dom stage
+data Ann (elem :: Type -> Type -> Type) dom stage
 class HasSourceInfo e where {
-    type family SourceInfoType e :: *;
+    type family SourceInfoType e :: Type;
 }
-srcInfo :: HasSourceInfo e => Simple Lens e SourceInfoType e
+srcInfo :: HasSourceInfo e => Simple Lens e (SourceInfoType e)
 
 -- | Extracts or modifies the concrete range corresponding to a given
 --   source info. In case of lists and optional elements, it may not
@@ -4439,11 +4765,11 @@ srcInfo :: HasSourceInfo e => Simple Lens e SourceInfoType e
 class HasRange a
 getRange :: HasRange a => a -> SrcSpan
 setRange :: HasRange a => SrcSpan -> a -> a
-annListElems :: RefMonads w r => Reference w r MU MU AnnListG elem dom stage AnnListG elem dom stage [Ann elem dom stage] [Ann elem dom stage]
-annListAnnot :: RefMonads w r => Reference w r MU MU AnnListG elem dom stage AnnListG elem dom stage NodeInfo SemanticInfo dom AnnListG elem ListInfo stage NodeInfo SemanticInfo dom AnnListG elem ListInfo stage
-annList :: (RefMonads w r, MonadPlus r, Morph Maybe r, Morph [] r) => Reference w r MU MU AnnListG e d s AnnListG e d s Ann e d s Ann e d s
-annJust :: (Functor w, Applicative w, Monad w, Functor r, Applicative r, MonadPlus r, Morph Maybe r) => Reference w r MU MU AnnMaybeG e d s AnnMaybeG e d s Ann e d s Ann e d s
-annMaybe :: RefMonads w r => Reference w r MU MU AnnMaybeG elem dom stage AnnMaybeG elem dom stage Maybe Ann elem dom stage Maybe Ann elem dom stage
+annListElems :: () => Lens (AnnListG elem dom stage) (AnnListG elem dom stage) [Ann elem dom stage] [Ann elem dom stage]
+annListAnnot :: () => Lens (AnnListG elem dom stage) (AnnListG elem dom stage) (NodeInfo (SemanticInfo dom (AnnListG elem)) (ListInfo stage)) (NodeInfo (SemanticInfo dom (AnnListG elem)) (ListInfo stage))
+annList :: () => Traversal (AnnListG e d s) (AnnListG e d s) (Ann e d s) (Ann e d s)
+annJust :: () => Partial (AnnMaybeG e d s) (AnnMaybeG e d s) (Ann e d s) (Ann e d s)
+annMaybe :: () => Lens (AnnMaybeG elem dom stage) (AnnMaybeG elem dom stage) (Maybe (Ann elem dom stage)) (Maybe (Ann elem dom stage))
 isAnnNothing :: () => AnnMaybeG e d s -> Bool
 
 -- | A semantic domain for the AST. The semantic domain maps semantic
@@ -4472,21 +4798,21 @@ shortShowSpanWithFile :: SrcSpan -> String
 data SrcTemplateStage
 
 -- | A class for traversing source information in an AST
-class SourceInfoTraversal (a :: * -> * -> *)
-sourceInfoTraverseUp :: (SourceInfoTraversal a, Monad f) => SourceInfoTrf f st1 st2 -> f () -> f () -> a dom st1 -> f a dom st2
-sourceInfoTraverseDown :: (SourceInfoTraversal a, Monad f) => SourceInfoTrf f st1 st2 -> f () -> f () -> a dom st1 -> f a dom st2
-sourceInfoTraverse :: (SourceInfoTraversal a, Monad f) => SourceInfoTrf f st1 st2 -> a dom st1 -> f a dom st2
-sourceTemplateNodeRange :: Simple Lens SpanInfo SrcTemplateStage SrcSpan
-sourceTemplateNodeElems :: Simple Lens SpanInfo SrcTemplateStage [SourceTemplateElem]
-sourceTemplateListRange :: Simple Lens ListInfo SrcTemplateStage SrcSpan
-srcTmpListBefore :: Simple Lens ListInfo SrcTemplateStage String
-srcTmpListAfter :: Simple Lens ListInfo SrcTemplateStage String
-srcTmpDefaultSeparator :: Simple Lens ListInfo SrcTemplateStage String
-srcTmpIndented :: Simple Lens ListInfo SrcTemplateStage Maybe [Bool]
-srcTmpSeparators :: Simple Lens ListInfo SrcTemplateStage [([SourceTemplateTextElem], SrcSpan)]
-sourceTemplateOptRange :: Simple Lens OptionalInfo SrcTemplateStage SrcSpan
-srcTmpOptBefore :: Simple Lens OptionalInfo SrcTemplateStage String
-srcTmpOptAfter :: Simple Lens OptionalInfo SrcTemplateStage String
+class SourceInfoTraversal (a :: Type -> Type -> Type)
+sourceInfoTraverseUp :: (SourceInfoTraversal a, Monad f) => SourceInfoTrf f st1 st2 -> f () -> f () -> a dom st1 -> f (a dom st2)
+sourceInfoTraverseDown :: (SourceInfoTraversal a, Monad f) => SourceInfoTrf f st1 st2 -> f () -> f () -> a dom st1 -> f (a dom st2)
+sourceInfoTraverse :: (SourceInfoTraversal a, Monad f) => SourceInfoTrf f st1 st2 -> a dom st1 -> f (a dom st2)
+sourceTemplateNodeRange :: Simple Lens (SpanInfo SrcTemplateStage) SrcSpan
+sourceTemplateNodeElems :: Simple Lens (SpanInfo SrcTemplateStage) [SourceTemplateElem]
+sourceTemplateListRange :: Simple Lens (ListInfo SrcTemplateStage) SrcSpan
+srcTmpListBefore :: Simple Lens (ListInfo SrcTemplateStage) String
+srcTmpListAfter :: Simple Lens (ListInfo SrcTemplateStage) String
+srcTmpDefaultSeparator :: Simple Lens (ListInfo SrcTemplateStage) String
+srcTmpIndented :: Simple Lens (ListInfo SrcTemplateStage) (Maybe [Bool])
+srcTmpSeparators :: Simple Lens (ListInfo SrcTemplateStage) [([SourceTemplateTextElem], SrcSpan)]
+sourceTemplateOptRange :: Simple Lens (OptionalInfo SrcTemplateStage) SrcSpan
+srcTmpOptBefore :: Simple Lens (OptionalInfo SrcTemplateStage) String
+srcTmpOptAfter :: Simple Lens (OptionalInfo SrcTemplateStage) String
 data SourceTemplateTextElem
 NormalText :: String -> SourceTemplateTextElem
 [_sourceTemplateText] :: SourceTemplateTextElem -> String
@@ -4499,7 +4825,7 @@ UnsupportedExtension :: String -> UnsupportedExtension
 data SpliceInsertionProblem
 SpliceInsertionProblem :: SrcSpan -> String -> SpliceInsertionProblem
 data ConvertionProblem
-ConvertionProblem :: SrcSpan -> String -> ConvertionProblem
+ConvertionProblem :: CallStack -> SrcSpan -> String -> ConvertionProblem
 UnrootedConvertionProblem :: String -> ConvertionProblem
 data TransformationProblem
 TransformationProblem :: String -> TransformationProblem

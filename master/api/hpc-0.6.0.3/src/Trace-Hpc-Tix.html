@@ -21,13 +21,13 @@
 <a name="line-12"></a>
 <a name="line-13"></a><span class='hs-comment'>-- | Datatypes and file-access routines for the tick data file</span>
 <a name="line-14"></a><span class='hs-comment'>-- (@.tix@) used by Hpc.</span>
-<a name="line-15"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Trace</span><span class='hs-varop'>.</span><span class='hs-conid'>Hpc</span><span class='hs-varop'>.</span><span class='hs-conid'>Tix</span><span class='hs-layout'>(</span><span class='hs-conid'>Tix</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>TixModule</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span>
+<a name="line-15"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Trace.Hpc.Tix</span><span class='hs-layout'>(</span><span class='hs-conid'>Tix</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>TixModule</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span>
 <a name="line-16"></a>                     <span class='hs-varid'>tixModuleName</span><span class='hs-layout'>,</span> <span class='hs-varid'>tixModuleHash</span><span class='hs-layout'>,</span> <span class='hs-varid'>tixModuleTixs</span><span class='hs-layout'>,</span>
 <a name="line-17"></a>                     <span class='hs-varid'>readTix</span><span class='hs-layout'>,</span> <span class='hs-varid'>writeTix</span><span class='hs-layout'>,</span> <span class='hs-varid'>getTixFileName</span><span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-18"></a>
-<a name="line-19"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>FilePath</span> <span class='hs-layout'>(</span><span class='hs-varid'>replaceExtension</span><span class='hs-layout'>)</span>
+<a name="line-19"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System.FilePath</span> <span class='hs-layout'>(</span><span class='hs-varid'>replaceExtension</span><span class='hs-layout'>)</span>
 <a name="line-20"></a>
-<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Trace</span><span class='hs-varop'>.</span><span class='hs-conid'>Hpc</span><span class='hs-varop'>.</span><span class='hs-conid'>Util</span> <span class='hs-layout'>(</span><span class='hs-conid'>Hash</span><span class='hs-layout'>,</span> <span class='hs-varid'>catchIO</span><span class='hs-layout'>)</span>
+<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Trace.Hpc.Util</span> <span class='hs-layout'>(</span><span class='hs-conid'>Hash</span><span class='hs-layout'>,</span> <span class='hs-varid'>catchIO</span><span class='hs-layout'>)</span>
 <a name="line-22"></a>
 <a name="line-23"></a><a name="Tix"></a><span class='hs-comment'>-- | 'Tix' is the storage format for our dynamic information about</span>
 <a name="line-24"></a><a name="Tix"></a><span class='hs-comment'>-- what boxes are ticked.</span>

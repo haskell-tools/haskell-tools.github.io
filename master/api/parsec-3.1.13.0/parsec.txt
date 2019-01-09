@@ -158,7 +158,7 @@ sysUnExpectError :: String -> SourcePos -> Reply s u a
 --   are the three parsers used to generate error messages. Of these, only
 --   (<a>&lt;?&gt;</a>) is commonly used. For an example of the use of
 --   <tt>unexpected</tt>, see the definition of <a>notFollowedBy</a>.
-unexpected :: (Stream s m t) => String -> ParsecT s u m a
+unexpected :: Stream s m t => String -> ParsecT s u m a
 
 -- | ParserT monad transformer and Parser type
 --   
@@ -182,7 +182,7 @@ data Consumed a
 Consumed :: a -> Consumed a
 Empty :: !a -> Consumed a
 data Reply s u a
-Ok :: a -> !(State s u) -> ParseError -> Reply s u a
+Ok :: a -> !State s u -> ParseError -> Reply s u a
 Error :: ParseError -> Reply s u a
 data State s u
 State :: s -> !SourcePos -> !u -> State s u
@@ -214,7 +214,7 @@ parserPlus :: ParsecT s u m a -> ParsecT s u m a -> ParsecT s u m a
 --   message is: '...: expecting expression'. Without the
 --   <tt>(&lt;?&gt;)</tt> combinator, the message would be like '...:
 --   expecting "let" or letter', which is less friendly.
-(<?>) :: (ParsecT s u m a) -> String -> (ParsecT s u m a)
+(<?>) :: ParsecT s u m a -> String -> ParsecT s u m a
 infix 0 <?>
 
 -- | This combinator implements choice. The parser <tt>p &lt;|&gt; q</tt>
@@ -229,7 +229,7 @@ infix 0 <?>
 --   is 1). This non-backtracking behaviour allows for both an efficient
 --   implementation of the parser combinators and the generation of good
 --   error messages.
-(<|>) :: (ParsecT s u m a) -> (ParsecT s u m a) -> (ParsecT s u m a)
+(<|>) :: ParsecT s u m a -> ParsecT s u m a -> ParsecT s u m a
 infixr 1 <|>
 
 -- | A synonym for <tt>&lt;?&gt;</tt>, but as a function instead of an
@@ -241,7 +241,7 @@ labels :: ParsecT s u m a -> [String] -> ParsecT s u m a
 --   
 --   If <tt>p</tt> fails and consumes some input, so does
 --   <tt>lookAhead</tt>. Combine with <a>try</a> if this is undesirable.
-lookAhead :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m a
+lookAhead :: Stream s m t => ParsecT s u m a -> ParsecT s u m a
 
 -- | An instance of <tt>Stream</tt> has stream type <tt>s</tt>, underlying
 --   monad <tt>m</tt> and token type <tt>t</tt> determined by the stream
@@ -314,7 +314,7 @@ try :: ParsecT s u m a -> ParsecT s u m a
 --       posFromTok (pos,t)  = pos
 --       testTok (pos,t)     = if x == t then Just t else Nothing
 --   </pre>
-token :: (Stream s Identity t) => (t -> String) -> (t -> SourcePos) -> (t -> Maybe a) -> Parsec s u a
+token :: Stream s Identity t => (t -> String) -> (t -> SourcePos) -> (t -> Maybe a) -> Parsec s u a
 
 -- | The parser <tt>tokenPrim showTok nextPos testTok</tt> accepts a token
 --   <tt>t</tt> with result <tt>x</tt> when the function <tt>testTok t</tt>
@@ -335,8 +335,8 @@ token :: (Stream s Identity t) => (t -> String) -> (t -> SourcePos) -> (t -> May
 --       testChar x        = if x == c then Just x else Nothing
 --       nextPos pos x xs  = updatePosChar pos x
 --   </pre>
-tokenPrim :: (Stream s m t) => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> (t -> Maybe a) -> ParsecT s u m a
-tokenPrimEx :: (Stream s m t) => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> Maybe (SourcePos -> t -> s -> u -> u) -> (t -> Maybe a) -> ParsecT s u m a
+tokenPrim :: Stream s m t => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> (t -> Maybe a) -> ParsecT s u m a
+tokenPrimEx :: Stream s m t => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> Maybe (SourcePos -> t -> s -> u -> u) -> (t -> Maybe a) -> ParsecT s u m a
 
 -- | <tt>many p</tt> applies the parser <tt>p</tt> <i>zero</i> or more
 --   times. Returns a list of the returned values of <tt>p</tt>.
@@ -357,8 +357,8 @@ many :: ParsecT s u m a -> ParsecT s u m [a]
 --   </pre>
 skipMany :: ParsecT s u m a -> ParsecT s u m ()
 manyAccum :: (a -> [a] -> [a]) -> ParsecT s u m a -> ParsecT s u m [a]
-runPT :: (Stream s m t) => ParsecT s u m a -> u -> SourceName -> s -> m (Either ParseError a)
-runP :: (Stream s Identity t) => Parsec s u a -> u -> SourceName -> s -> Either ParseError a
+runPT :: Stream s m t => ParsecT s u m a -> u -> SourceName -> s -> m (Either ParseError a)
+runP :: Stream s Identity t => Parsec s u a -> u -> SourceName -> s -> Either ParseError a
 
 -- | The most general way to run a parser. <tt>runParserT p state filePath
 --   input</tt> runs parser <tt>p</tt> on the input list of tokens
@@ -367,7 +367,7 @@ runP :: (Stream s Identity t) => Parsec s u a -> u -> SourceName -> s -> Either 
 --   error messages and may be the empty string. Returns a computation in
 --   the underlying monad <tt>m</tt> that return either a <a>ParseError</a>
 --   (<a>Left</a>) or a value of type <tt>a</tt> (<a>Right</a>).
-runParserT :: (Stream s m t) => ParsecT s u m a -> u -> SourceName -> s -> m (Either ParseError a)
+runParserT :: Stream s m t => ParsecT s u m a -> u -> SourceName -> s -> m (Either ParseError a)
 
 -- | The most general way to run a parser over the Identity monad.
 --   <tt>runParser p state filePath input</tt> runs parser <tt>p</tt> on
@@ -383,7 +383,7 @@ runParserT :: (Stream s m t) => ParsecT s u m a -> u -> SourceName -> s -> m (Ei
 --         ; return (runParser p () fname input)
 --         }
 --   </pre>
-runParser :: (Stream s Identity t) => Parsec s u a -> u -> SourceName -> s -> Either ParseError a
+runParser :: Stream s Identity t => Parsec s u a -> u -> SourceName -> s -> Either ParseError a
 
 -- | <tt>parse p filePath input</tt> runs a parser <tt>p</tt> over Identity
 --   without user state. The <tt>filePath</tt> is only used in error
@@ -398,7 +398,7 @@ runParser :: (Stream s Identity t) => Parsec s u a -> u -> SourceName -> s -> Ei
 --   
 --   numbers = commaSep integer
 --   </pre>
-parse :: (Stream s Identity t) => Parsec s () a -> SourceName -> s -> Either ParseError a
+parse :: Stream s Identity t => Parsec s () a -> SourceName -> s -> Either ParseError a
 
 -- | The expression <tt>parseTest p input</tt> applies a parser <tt>p</tt>
 --   against input <tt>input</tt> and prints the result to stdout. Used for
@@ -406,35 +406,35 @@ parse :: (Stream s Identity t) => Parsec s () a -> SourceName -> s -> Either Par
 parseTest :: (Stream s Identity t, Show a) => Parsec s () a -> s -> IO ()
 
 -- | Returns the current source position. See also <a>SourcePos</a>.
-getPosition :: (Monad m) => ParsecT s u m SourcePos
+getPosition :: Monad m => ParsecT s u m SourcePos
 
 -- | Returns the current input
-getInput :: (Monad m) => ParsecT s u m s
+getInput :: Monad m => ParsecT s u m s
 
 -- | <tt>setPosition pos</tt> sets the current source position to
 --   <tt>pos</tt>.
-setPosition :: (Monad m) => SourcePos -> ParsecT s u m ()
+setPosition :: Monad m => SourcePos -> ParsecT s u m ()
 
 -- | <tt>setInput input</tt> continues parsing with <tt>input</tt>. The
 --   <a>getInput</a> and <tt>setInput</tt> functions can for example be
 --   used to deal with #include files.
-setInput :: (Monad m) => s -> ParsecT s u m ()
+setInput :: Monad m => s -> ParsecT s u m ()
 
 -- | Returns the full parser state as a <a>State</a> record.
-getParserState :: (Monad m) => ParsecT s u m (State s u)
+getParserState :: Monad m => ParsecT s u m (State s u)
 
 -- | <tt>setParserState st</tt> set the full parser state to <tt>st</tt>.
-setParserState :: (Monad m) => State s u -> ParsecT s u m (State s u)
+setParserState :: Monad m => State s u -> ParsecT s u m (State s u)
 
 -- | <tt>updateParserState f</tt> applies function <tt>f</tt> to the parser
 --   state.
 updateParserState :: (State s u -> State s u) -> ParsecT s u m (State s u)
 
 -- | Returns the current user state.
-getState :: (Monad m) => ParsecT s u m u
+getState :: Monad m => ParsecT s u m u
 
 -- | <tt>putState st</tt> set the user state to <tt>st</tt>.
-putState :: (Monad m) => u -> ParsecT s u m ()
+putState :: Monad m => u -> ParsecT s u m ()
 
 -- | <tt>modifyState f</tt> applies function <tt>f</tt> to the user state.
 --   Suppose that we want to count identifiers in a source, we could use
@@ -446,13 +446,13 @@ putState :: (Monad m) => u -> ParsecT s u m ()
 --             ; return (Id x)
 --             }
 --   </pre>
-modifyState :: (Monad m) => (u -> u) -> ParsecT s u m ()
+modifyState :: Monad m => (u -> u) -> ParsecT s u m ()
 
 -- | An alias for putState for backwards compatibility.
-setState :: (Monad m) => u -> ParsecT s u m ()
+setState :: Monad m => u -> ParsecT s u m ()
 
 -- | An alias for modifyState for backwards compatibility.
-updateState :: (Monad m) => (u -> u) -> ParsecT s u m ()
+updateState :: Monad m => (u -> u) -> ParsecT s u m ()
 instance GHC.Base.Monad m => Text.Parsec.Prim.Stream [tok] m tok
 instance GHC.Base.Monad m => Text.Parsec.Prim.Stream Data.ByteString.Lazy.Internal.ByteString m GHC.Types.Char
 instance GHC.Base.Monad m => Text.Parsec.Prim.Stream Data.ByteString.Internal.ByteString m GHC.Types.Char
@@ -485,13 +485,13 @@ module Text.Parsec.Combinator
 -- | <tt>choice ps</tt> tries to apply the parsers in the list <tt>ps</tt>
 --   in order, until one of them succeeds. Returns the value of the
 --   succeeding parser.
-choice :: (Stream s m t) => [ParsecT s u m a] -> ParsecT s u m a
+choice :: Stream s m t => [ParsecT s u m a] -> ParsecT s u m a
 
 -- | <tt>count n p</tt> parses <tt>n</tt> occurrences of <tt>p</tt>. If
 --   <tt>n</tt> is smaller or equal to zero, the parser equals to
 --   <tt>return []</tt>. Returns a list of <tt>n</tt> values returned by
 --   <tt>p</tt>.
-count :: (Stream s m t) => Int -> ParsecT s u m a -> ParsecT s u m [a]
+count :: Stream s m t => Int -> ParsecT s u m a -> ParsecT s u m [a]
 
 -- | <tt>between open close p</tt> parses <tt>open</tt>, followed by
 --   <tt>p</tt> and <tt>close</tt>. Returns the value returned by
@@ -500,7 +500,7 @@ count :: (Stream s m t) => Int -> ParsecT s u m a -> ParsecT s u m [a]
 --   <pre>
 --   braces  = between (symbol "{") (symbol "}")
 --   </pre>
-between :: (Stream s m t) => ParsecT s u m open -> ParsecT s u m close -> ParsecT s u m a -> ParsecT s u m a
+between :: Stream s m t => ParsecT s u m open -> ParsecT s u m close -> ParsecT s u m a -> ParsecT s u m a
 
 -- | <tt>option x p</tt> tries to apply parser <tt>p</tt>. If <tt>p</tt>
 --   fails without consuming input, it returns the value <tt>x</tt>,
@@ -511,21 +511,21 @@ between :: (Stream s m t) => ParsecT s u m open -> ParsecT s u m close -> Parsec
 --                           ; return (digitToInt d)
 --                           })
 --   </pre>
-option :: (Stream s m t) => a -> ParsecT s u m a -> ParsecT s u m a
+option :: Stream s m t => a -> ParsecT s u m a -> ParsecT s u m a
 
 -- | <tt>optionMaybe p</tt> tries to apply parser <tt>p</tt>. If <tt>p</tt>
 --   fails without consuming input, it return <a>Nothing</a>, otherwise it
 --   returns <a>Just</a> the value returned by <tt>p</tt>.
-optionMaybe :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (Maybe a)
+optionMaybe :: Stream s m t => ParsecT s u m a -> ParsecT s u m (Maybe a)
 
 -- | <tt>optional p</tt> tries to apply parser <tt>p</tt>. It will parse
 --   <tt>p</tt> or nothing. It only fails if <tt>p</tt> fails after
 --   consuming input. It discards the result of <tt>p</tt>.
-optional :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m ()
+optional :: Stream s m t => ParsecT s u m a -> ParsecT s u m ()
 
 -- | <tt>skipMany1 p</tt> applies the parser <tt>p</tt> <i>one</i> or more
 --   times, skipping its result.
-skipMany1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m ()
+skipMany1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m ()
 
 -- | <tt>many1 p</tt> applies the parser <tt>p</tt> <i>one</i> or more
 --   times. Returns a list of the returned values of <tt>p</tt>.
@@ -533,7 +533,7 @@ skipMany1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m ()
 --   <pre>
 --   word  = many1 letter
 --   </pre>
-many1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m [a]
+many1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m [a]
 
 -- | <tt>sepBy p sep</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>sep</tt>. Returns a list of values
@@ -542,12 +542,12 @@ many1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m [a]
 --   <pre>
 --   commaSep p  = p `sepBy` (symbol ",")
 --   </pre>
-sepBy :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepBy :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>sepBy1 p sep</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>sep</tt>. Returns a list of values
 --   returned by <tt>p</tt>.
-sepBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepBy1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>endBy p sep</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated and ended by <tt>sep</tt>. Returns a list of
@@ -556,12 +556,12 @@ sepBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u 
 --   <pre>
 --   cStatements  = cStatement `endBy` semi
 --   </pre>
-endBy :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+endBy :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>endBy1 p sep</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated and ended by <tt>sep</tt>. Returns a list of
 --   values returned by <tt>p</tt>.
-endBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+endBy1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>sepEndBy p sep</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated and optionally ended by <tt>sep</tt>, ie.
@@ -571,19 +571,19 @@ endBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u 
 --   <pre>
 --   haskellStatements  = haskellStatement `sepEndBy` semi
 --   </pre>
-sepEndBy :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepEndBy :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>sepEndBy1 p sep</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated and optionally ended by <tt>sep</tt>. Returns a
 --   list of values returned by <tt>p</tt>.
-sepEndBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepEndBy1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>chainl p op x</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>op</tt>. Returns a value obtained by a
 --   <i>left</i> associative application of all functions returned by
 --   <tt>op</tt> to the values returned by <tt>p</tt>. If there are zero
 --   occurrences of <tt>p</tt>, the value <tt>x</tt> is returned.
-chainl :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
+chainl :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
 
 -- | <tt>chainl1 p op</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>op</tt> Returns a value obtained by a
@@ -603,20 +603,20 @@ chainl :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a 
 --   addop   =   do{ symbol "+"; return (+) }
 --           &lt;|&gt; do{ symbol "-"; return (-) }
 --   </pre>
-chainl1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
+chainl1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
 
 -- | <tt>chainr p op x</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>op</tt> Returns a value obtained by a
 --   <i>right</i> associative application of all functions returned by
 --   <tt>op</tt> to the values returned by <tt>p</tt>. If there are no
 --   occurrences of <tt>p</tt>, the value <tt>x</tt> is returned.
-chainr :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
+chainr :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
 
 -- | <tt>chainr1 p op x</tt> parses <i>one</i> or more occurrences of |p|,
 --   separated by <tt>op</tt> Returns a value obtained by a <i>right</i>
 --   associative application of all functions returned by <tt>op</tt> to
 --   the values returned by <tt>p</tt>.
-chainr1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
+chainr1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
 
 -- | This parser only succeeds at the end of the input. This is not a
 --   primitive parser but it is defined using <a>notFollowedBy</a>.
@@ -665,13 +665,13 @@ notFollowedBy :: (Stream s m t, Show a) => ParsecT s u m a -> ParsecT s u m ()
 --   
 --   Note the overlapping parsers <tt>anyChar</tt> and <tt>string
 --   "--&gt;"</tt>, and therefore the use of the <a>try</a> combinator.
-manyTill :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
+manyTill :: Stream s m t => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
 
 -- | <tt>lookAhead p</tt> parses <tt>p</tt> without consuming any input.
 --   
 --   If <tt>p</tt> fails and consumes some input, so does
 --   <tt>lookAhead</tt>. Combine with <a>try</a> if this is undesirable.
-lookAhead :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m a
+lookAhead :: Stream s m t => ParsecT s u m a -> ParsecT s u m a
 
 -- | The parser <tt>anyToken</tt> accepts any kind of token. It is for
 --   example used to implement <a>eof</a>. Returns the accepted token.
@@ -721,9 +721,9 @@ AssocRight :: Assoc
 --   <tt>a</tt>. An operator is either binary infix or unary prefix or
 --   postfix. A binary operator has also an associated associativity.
 data Operator s u m a
-Infix :: (ParsecT s u m (a -> a -> a)) -> Assoc -> Operator s u m a
-Prefix :: (ParsecT s u m (a -> a)) -> Operator s u m a
-Postfix :: (ParsecT s u m (a -> a)) -> Operator s u m a
+Infix :: ParsecT s u m (a -> a -> a) -> Assoc -> Operator s u m a
+Prefix :: ParsecT s u m (a -> a) -> Operator s u m a
+Postfix :: ParsecT s u m (a -> a) -> Operator s u m a
 
 -- | An <tt>OperatorTable s u m a</tt> is a list of <tt>Operator s u m
 --   a</tt> lists. The list is ordered in descending precedence. All
@@ -763,7 +763,7 @@ type OperatorTable s u m a = [[Operator s u m a]]
 --   prefix  name fun       = Prefix (do{ reservedOp name; return fun })
 --   postfix name fun       = Postfix (do{ reservedOp name; return fun })
 --   </pre>
-buildExpressionParser :: (Stream s m t) => OperatorTable s u m a -> ParsecT s u m a -> ParsecT s u m a
+buildExpressionParser :: Stream s m t => OperatorTable s u m a -> ParsecT s u m a -> ParsecT s u m a
 
 
 -- | Commonly used character parsers.
@@ -776,7 +776,7 @@ module Text.Parsec.Char
 --   <pre>
 --   vowel  = oneOf "aeiou"
 --   </pre>
-oneOf :: (Stream s m Char) => [Char] -> ParsecT s u m Char
+oneOf :: Stream s m Char => [Char] -> ParsecT s u m Char
 
 -- | As the dual of <a>oneOf</a>, <tt>noneOf cs</tt> succeeds if the
 --   current character <i>not</i> in the supplied list of characters
@@ -785,22 +785,22 @@ oneOf :: (Stream s m Char) => [Char] -> ParsecT s u m Char
 --   <pre>
 --   consonant = noneOf "aeiou"
 --   </pre>
-noneOf :: (Stream s m Char) => [Char] -> ParsecT s u m Char
+noneOf :: Stream s m Char => [Char] -> ParsecT s u m Char
 
 -- | Skips <i>zero</i> or more white space characters. See also
 --   <a>skipMany</a>.
-spaces :: (Stream s m Char) => ParsecT s u m ()
+spaces :: Stream s m Char => ParsecT s u m ()
 
 -- | Parses a white space character (any character which satisfies
 --   <a>isSpace</a>) Returns the parsed character.
-space :: (Stream s m Char) => ParsecT s u m Char
+space :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a newline character ('\n'). Returns a newline character.
-newline :: (Stream s m Char) => ParsecT s u m Char
+newline :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a carriage return character ('\r') followed by a newline
 --   character ('\n'). Returns a newline character.
-crlf :: (Stream s m Char) => ParsecT s u m Char
+crlf :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a CRLF (see <a>crlf</a>) or LF (see <a>newline</a>)
 --   end-of-line. Returns a newline character ('\n').
@@ -808,37 +808,37 @@ crlf :: (Stream s m Char) => ParsecT s u m Char
 --   <pre>
 --   endOfLine = newline &lt;|&gt; crlf
 --   </pre>
-endOfLine :: (Stream s m Char) => ParsecT s u m Char
+endOfLine :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a tab character ('\t'). Returns a tab character.
-tab :: (Stream s m Char) => ParsecT s u m Char
+tab :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses an upper case letter (according to <a>isUpper</a>). Returns the
 --   parsed character.
-upper :: (Stream s m Char) => ParsecT s u m Char
+upper :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a lower case character (according to <a>isLower</a>). Returns
 --   the parsed character.
-lower :: (Stream s m Char) => ParsecT s u m Char
+lower :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a letter or digit (a character between '0' and '9') according
 --   to <a>isAlphaNum</a>. Returns the parsed character.
-alphaNum :: (Stream s m Char => ParsecT s u m Char)
+alphaNum :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a letter (an upper case or lower case character according to
 --   <a>isAlpha</a>). Returns the parsed character.
-letter :: (Stream s m Char) => ParsecT s u m Char
+letter :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a digit. Returns the parsed character.
-digit :: (Stream s m Char) => ParsecT s u m Char
+digit :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a hexadecimal digit (a digit or a letter between 'a' and 'f' or
 --   'A' and 'F'). Returns the parsed character.
-hexDigit :: (Stream s m Char) => ParsecT s u m Char
+hexDigit :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses an octal digit (a character between '0' and '7'). Returns the
 --   parsed character.
-octDigit :: (Stream s m Char) => ParsecT s u m Char
+octDigit :: Stream s m Char => ParsecT s u m Char
 
 -- | <tt>char c</tt> parses a single character <tt>c</tt>. Returns the
 --   parsed character (i.e. <tt>c</tt>).
@@ -846,15 +846,15 @@ octDigit :: (Stream s m Char) => ParsecT s u m Char
 --   <pre>
 --   semiColon  = char ';'
 --   </pre>
-char :: (Stream s m Char) => Char -> ParsecT s u m Char
+char :: Stream s m Char => Char -> ParsecT s u m Char
 
 -- | This parser succeeds for any character. Returns the parsed character.
-anyChar :: (Stream s m Char) => ParsecT s u m Char
+anyChar :: Stream s m Char => ParsecT s u m Char
 
 -- | The parser <tt>satisfy f</tt> succeeds for any character for which the
 --   supplied function <tt>f</tt> returns <a>True</a>. Returns the
 --   character that is actually parsed.
-satisfy :: (Stream s m Char) => (Char -> Bool) -> ParsecT s u m Char
+satisfy :: Stream s m Char => (Char -> Bool) -> ParsecT s u m Char
 
 -- | <tt>string s</tt> parses a sequence of characters given by <tt>s</tt>.
 --   Returns the parsed string (i.e. <tt>s</tt>).
@@ -863,7 +863,7 @@ satisfy :: (Stream s m Char) => (Char -> Bool) -> ParsecT s u m Char
 --   divOrMod    =   string "div"
 --               &lt;|&gt; string "mod"
 --   </pre>
-string :: (Stream s m Char) => String -> ParsecT s u m String
+string :: Stream s m Char => String -> ParsecT s u m String
 
 
 -- | Convinience definitions for working with lazy <a>ByteString</a>s.
@@ -952,7 +952,7 @@ type Parsec s u = ParsecT s u Identity
 --       posFromTok (pos,t)  = pos
 --       testTok (pos,t)     = if x == t then Just t else Nothing
 --   </pre>
-token :: (Stream s Identity t) => (t -> String) -> (t -> SourcePos) -> (t -> Maybe a) -> Parsec s u a
+token :: Stream s Identity t => (t -> String) -> (t -> SourcePos) -> (t -> Maybe a) -> Parsec s u a
 tokens :: (Stream s m t, Eq t) => ([t] -> String) -> (SourcePos -> [t] -> SourcePos) -> [t] -> ParsecT s u m [t]
 
 -- | The most general way to run a parser. <tt>runParserT p state filePath
@@ -962,7 +962,7 @@ tokens :: (Stream s m t, Eq t) => ([t] -> String) -> (SourcePos -> [t] -> Source
 --   error messages and may be the empty string. Returns a computation in
 --   the underlying monad <tt>m</tt> that return either a <a>ParseError</a>
 --   (<a>Left</a>) or a value of type <tt>a</tt> (<a>Right</a>).
-runParserT :: (Stream s m t) => ParsecT s u m a -> u -> SourceName -> s -> m (Either ParseError a)
+runParserT :: Stream s m t => ParsecT s u m a -> u -> SourceName -> s -> m (Either ParseError a)
 
 -- | The most general way to run a parser over the Identity monad.
 --   <tt>runParser p state filePath input</tt> runs parser <tt>p</tt> on
@@ -978,7 +978,7 @@ runParserT :: (Stream s m t) => ParsecT s u m a -> u -> SourceName -> s -> m (Ei
 --         ; return (runParser p () fname input)
 --         }
 --   </pre>
-runParser :: (Stream s Identity t) => Parsec s u a -> u -> SourceName -> s -> Either ParseError a
+runParser :: Stream s Identity t => Parsec s u a -> u -> SourceName -> s -> Either ParseError a
 
 -- | <tt>parse p filePath input</tt> runs a parser <tt>p</tt> over Identity
 --   without user state. The <tt>filePath</tt> is only used in error
@@ -993,7 +993,7 @@ runParser :: (Stream s Identity t) => Parsec s u a -> u -> SourceName -> s -> Ei
 --   
 --   numbers = commaSep integer
 --   </pre>
-parse :: (Stream s Identity t) => Parsec s () a -> SourceName -> s -> Either ParseError a
+parse :: Stream s Identity t => Parsec s () a -> SourceName -> s -> Either ParseError a
 
 -- | The expression <tt>parseTest p input</tt> applies a parser <tt>p</tt>
 --   against input <tt>input</tt> and prints the result to stdout. Used for
@@ -1001,16 +1001,16 @@ parse :: (Stream s Identity t) => Parsec s () a -> SourceName -> s -> Either Par
 parseTest :: (Stream s Identity t, Show a) => Parsec s () a -> s -> IO ()
 
 -- | Returns the current source position. See also <a>SourcePos</a>.
-getPosition :: (Monad m) => ParsecT s u m SourcePos
+getPosition :: Monad m => ParsecT s u m SourcePos
 
 -- | Returns the current input
-getInput :: (Monad m) => ParsecT s u m s
+getInput :: Monad m => ParsecT s u m s
 
 -- | Returns the current user state.
-getState :: (Monad m) => ParsecT s u m u
+getState :: Monad m => ParsecT s u m u
 
 -- | <tt>putState st</tt> set the user state to <tt>st</tt>.
-putState :: (Monad m) => u -> ParsecT s u m ()
+putState :: Monad m => u -> ParsecT s u m ()
 
 -- | <tt>modifyState f</tt> applies function <tt>f</tt> to the user state.
 --   Suppose that we want to count identifiers in a source, we could use
@@ -1022,7 +1022,7 @@ putState :: (Monad m) => u -> ParsecT s u m ()
 --             ; return (Id x)
 --             }
 --   </pre>
-modifyState :: (Monad m) => (u -> u) -> ParsecT s u m ()
+modifyState :: Monad m => (u -> u) -> ParsecT s u m ()
 
 -- | This combinator implements choice. The parser <tt>p &lt;|&gt; q</tt>
 --   first applies <tt>p</tt>. If it succeeds, the value of <tt>p</tt> is
@@ -1036,7 +1036,7 @@ modifyState :: (Monad m) => (u -> u) -> ParsecT s u m ()
 --   is 1). This non-backtracking behaviour allows for both an efficient
 --   implementation of the parser combinators and the generation of good
 --   error messages.
-(<|>) :: (ParsecT s u m a) -> (ParsecT s u m a) -> (ParsecT s u m a)
+(<|>) :: ParsecT s u m a -> ParsecT s u m a -> ParsecT s u m a
 infixr 1 <|>
 
 -- | The parser <tt>p &lt;?&gt; msg</tt> behaves as parser <tt>p</tt>, but
@@ -1051,7 +1051,7 @@ infixr 1 <|>
 --   message is: '...: expecting expression'. Without the
 --   <tt>(&lt;?&gt;)</tt> combinator, the message would be like '...:
 --   expecting "let" or letter', which is less friendly.
-(<?>) :: (ParsecT s u m a) -> String -> (ParsecT s u m a)
+(<?>) :: ParsecT s u m a -> String -> ParsecT s u m a
 infix 0 <?>
 
 -- | A synonym for <tt>&lt;?&gt;</tt>, but as a function instead of an
@@ -1103,12 +1103,12 @@ try :: ParsecT s u m a -> ParsecT s u m a
 --   are the three parsers used to generate error messages. Of these, only
 --   (<a>&lt;?&gt;</a>) is commonly used. For an example of the use of
 --   <tt>unexpected</tt>, see the definition of <a>notFollowedBy</a>.
-unexpected :: (Stream s m t) => String -> ParsecT s u m a
+unexpected :: Stream s m t => String -> ParsecT s u m a
 
 -- | <tt>choice ps</tt> tries to apply the parsers in the list <tt>ps</tt>
 --   in order, until one of them succeeds. Returns the value of the
 --   succeeding parser.
-choice :: (Stream s m t) => [ParsecT s u m a] -> ParsecT s u m a
+choice :: Stream s m t => [ParsecT s u m a] -> ParsecT s u m a
 
 -- | <tt>many p</tt> applies the parser <tt>p</tt> <i>zero</i> or more
 --   times. Returns a list of the returned values of <tt>p</tt>.
@@ -1127,7 +1127,7 @@ many :: ParsecT s u m a -> ParsecT s u m [a]
 --   <pre>
 --   word  = many1 letter
 --   </pre>
-many1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m [a]
+many1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m [a]
 
 -- | <tt>skipMany p</tt> applies the parser <tt>p</tt> <i>zero</i> or more
 --   times, skipping its result.
@@ -1139,13 +1139,13 @@ skipMany :: ParsecT s u m a -> ParsecT s u m ()
 
 -- | <tt>skipMany1 p</tt> applies the parser <tt>p</tt> <i>one</i> or more
 --   times, skipping its result.
-skipMany1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m ()
+skipMany1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m ()
 
 -- | <tt>count n p</tt> parses <tt>n</tt> occurrences of <tt>p</tt>. If
 --   <tt>n</tt> is smaller or equal to zero, the parser equals to
 --   <tt>return []</tt>. Returns a list of <tt>n</tt> values returned by
 --   <tt>p</tt>.
-count :: (Stream s m t) => Int -> ParsecT s u m a -> ParsecT s u m [a]
+count :: Stream s m t => Int -> ParsecT s u m a -> ParsecT s u m [a]
 
 -- | <tt>between open close p</tt> parses <tt>open</tt>, followed by
 --   <tt>p</tt> and <tt>close</tt>. Returns the value returned by
@@ -1154,7 +1154,7 @@ count :: (Stream s m t) => Int -> ParsecT s u m a -> ParsecT s u m [a]
 --   <pre>
 --   braces  = between (symbol "{") (symbol "}")
 --   </pre>
-between :: (Stream s m t) => ParsecT s u m open -> ParsecT s u m close -> ParsecT s u m a -> ParsecT s u m a
+between :: Stream s m t => ParsecT s u m open -> ParsecT s u m close -> ParsecT s u m a -> ParsecT s u m a
 
 -- | <tt>option x p</tt> tries to apply parser <tt>p</tt>. If <tt>p</tt>
 --   fails without consuming input, it returns the value <tt>x</tt>,
@@ -1165,17 +1165,17 @@ between :: (Stream s m t) => ParsecT s u m open -> ParsecT s u m close -> Parsec
 --                           ; return (digitToInt d)
 --                           })
 --   </pre>
-option :: (Stream s m t) => a -> ParsecT s u m a -> ParsecT s u m a
+option :: Stream s m t => a -> ParsecT s u m a -> ParsecT s u m a
 
 -- | <tt>optionMaybe p</tt> tries to apply parser <tt>p</tt>. If <tt>p</tt>
 --   fails without consuming input, it return <a>Nothing</a>, otherwise it
 --   returns <a>Just</a> the value returned by <tt>p</tt>.
-optionMaybe :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (Maybe a)
+optionMaybe :: Stream s m t => ParsecT s u m a -> ParsecT s u m (Maybe a)
 
 -- | <tt>optional p</tt> tries to apply parser <tt>p</tt>. It will parse
 --   <tt>p</tt> or nothing. It only fails if <tt>p</tt> fails after
 --   consuming input. It discards the result of <tt>p</tt>.
-optional :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m ()
+optional :: Stream s m t => ParsecT s u m a -> ParsecT s u m ()
 
 -- | <tt>sepBy p sep</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>sep</tt>. Returns a list of values
@@ -1184,12 +1184,12 @@ optional :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m ()
 --   <pre>
 --   commaSep p  = p `sepBy` (symbol ",")
 --   </pre>
-sepBy :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepBy :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>sepBy1 p sep</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>sep</tt>. Returns a list of values
 --   returned by <tt>p</tt>.
-sepBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepBy1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>endBy p sep</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated and ended by <tt>sep</tt>. Returns a list of
@@ -1198,12 +1198,12 @@ sepBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u 
 --   <pre>
 --   cStatements  = cStatement `endBy` semi
 --   </pre>
-endBy :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+endBy :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>endBy1 p sep</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated and ended by <tt>sep</tt>. Returns a list of
 --   values returned by <tt>p</tt>.
-endBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+endBy1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>sepEndBy p sep</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated and optionally ended by <tt>sep</tt>, ie.
@@ -1213,19 +1213,19 @@ endBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u 
 --   <pre>
 --   haskellStatements  = haskellStatement `sepEndBy` semi
 --   </pre>
-sepEndBy :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepEndBy :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>sepEndBy1 p sep</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated and optionally ended by <tt>sep</tt>. Returns a
 --   list of values returned by <tt>p</tt>.
-sepEndBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepEndBy1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>chainl p op x</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>op</tt>. Returns a value obtained by a
 --   <i>left</i> associative application of all functions returned by
 --   <tt>op</tt> to the values returned by <tt>p</tt>. If there are zero
 --   occurrences of <tt>p</tt>, the value <tt>x</tt> is returned.
-chainl :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
+chainl :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
 
 -- | <tt>chainl1 p op</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>op</tt> Returns a value obtained by a
@@ -1245,20 +1245,20 @@ chainl :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a 
 --   addop   =   do{ symbol "+"; return (+) }
 --           &lt;|&gt; do{ symbol "-"; return (-) }
 --   </pre>
-chainl1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
+chainl1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
 
 -- | <tt>chainr p op x</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>op</tt> Returns a value obtained by a
 --   <i>right</i> associative application of all functions returned by
 --   <tt>op</tt> to the values returned by <tt>p</tt>. If there are no
 --   occurrences of <tt>p</tt>, the value <tt>x</tt> is returned.
-chainr :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
+chainr :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
 
 -- | <tt>chainr1 p op x</tt> parses <i>one</i> or more occurrences of |p|,
 --   separated by <tt>op</tt> Returns a value obtained by a <i>right</i>
 --   associative application of all functions returned by <tt>op</tt> to
 --   the values returned by <tt>p</tt>.
-chainr1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
+chainr1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
 
 -- | This parser only succeeds at the end of the input. This is not a
 --   primitive parser but it is defined using <a>notFollowedBy</a>.
@@ -1307,13 +1307,13 @@ notFollowedBy :: (Stream s m t, Show a) => ParsecT s u m a -> ParsecT s u m ()
 --   
 --   Note the overlapping parsers <tt>anyChar</tt> and <tt>string
 --   "--&gt;"</tt>, and therefore the use of the <a>try</a> combinator.
-manyTill :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
+manyTill :: Stream s m t => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
 
 -- | <tt>lookAhead p</tt> parses <tt>p</tt> without consuming any input.
 --   
 --   If <tt>p</tt> fails and consumes some input, so does
 --   <tt>lookAhead</tt>. Combine with <a>try</a> if this is undesirable.
-lookAhead :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m a
+lookAhead :: Stream s m t => ParsecT s u m a -> ParsecT s u m a
 
 -- | The parser <tt>anyToken</tt> accepts any kind of token. It is for
 --   example used to implement <a>eof</a>. Returns the accepted token.
@@ -1410,18 +1410,18 @@ manyAccum :: (a -> [a] -> [a]) -> ParsecT s u m a -> ParsecT s u m [a]
 --       testChar x        = if x == c then Just x else Nothing
 --       nextPos pos x xs  = updatePosChar pos x
 --   </pre>
-tokenPrim :: (Stream s m t) => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> (t -> Maybe a) -> ParsecT s u m a
-tokenPrimEx :: (Stream s m t) => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> Maybe (SourcePos -> t -> s -> u -> u) -> (t -> Maybe a) -> ParsecT s u m a
-runPT :: (Stream s m t) => ParsecT s u m a -> u -> SourceName -> s -> m (Either ParseError a)
+tokenPrim :: Stream s m t => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> (t -> Maybe a) -> ParsecT s u m a
+tokenPrimEx :: Stream s m t => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> Maybe (SourcePos -> t -> s -> u -> u) -> (t -> Maybe a) -> ParsecT s u m a
+runPT :: Stream s m t => ParsecT s u m a -> u -> SourceName -> s -> m (Either ParseError a)
 unknownError :: State s u -> ParseError
 sysUnExpectError :: String -> SourcePos -> Reply s u a
 mergeErrorReply :: ParseError -> Reply s u a -> Reply s u a
 
 -- | Returns the full parser state as a <a>State</a> record.
-getParserState :: (Monad m) => ParsecT s u m (State s u)
+getParserState :: Monad m => ParsecT s u m (State s u)
 
 -- | <tt>setParserState st</tt> set the full parser state to <tt>st</tt>.
-setParserState :: (Monad m) => State s u -> ParsecT s u m (State s u)
+setParserState :: Monad m => State s u -> ParsecT s u m (State s u)
 
 -- | <tt>updateParserState f</tt> applies function <tt>f</tt> to the parser
 --   state.
@@ -1448,12 +1448,12 @@ runParsecT :: Monad m => ParsecT s u m a -> State s u -> m (Consumed (m (Reply s
 -- | Low-level creation of the ParsecT type. You really shouldn't have to
 --   do this.
 mkPT :: Monad m => (State s u -> m (Consumed (m (Reply s u a)))) -> ParsecT s u m a
-runP :: (Stream s Identity t) => Parsec s u a -> u -> SourceName -> s -> Either ParseError a
+runP :: Stream s Identity t => Parsec s u a -> u -> SourceName -> s -> Either ParseError a
 data Consumed a
 Consumed :: a -> Consumed a
 Empty :: !a -> Consumed a
 data Reply s u a
-Ok :: a -> !(State s u) -> ParseError -> Reply s u a
+Ok :: a -> !State s u -> ParseError -> Reply s u a
 Error :: ParseError -> Reply s u a
 data State s u
 State :: s -> !SourcePos -> !u -> State s u
@@ -1463,18 +1463,18 @@ State :: s -> !SourcePos -> !u -> State s u
 
 -- | <tt>setPosition pos</tt> sets the current source position to
 --   <tt>pos</tt>.
-setPosition :: (Monad m) => SourcePos -> ParsecT s u m ()
+setPosition :: Monad m => SourcePos -> ParsecT s u m ()
 
 -- | <tt>setInput input</tt> continues parsing with <tt>input</tt>. The
 --   <a>getInput</a> and <tt>setInput</tt> functions can for example be
 --   used to deal with #include files.
-setInput :: (Monad m) => s -> ParsecT s u m ()
+setInput :: Monad m => s -> ParsecT s u m ()
 
 -- | An alias for putState for backwards compatibility.
-setState :: (Monad m) => u -> ParsecT s u m ()
+setState :: Monad m => u -> ParsecT s u m ()
 
 -- | An alias for modifyState for backwards compatibility.
-updateState :: (Monad m) => (u -> u) -> ParsecT s u m ()
+updateState :: Monad m => (u -> u) -> ParsecT s u m ()
 parsecMap :: (a -> b) -> ParsecT s u m a -> ParsecT s u m b
 parserReturn :: a -> ParsecT s u m a
 parserBind :: ParsecT s u m a -> (a -> ParsecT s u m b) -> ParsecT s u m b
@@ -1522,14 +1522,14 @@ data StreamPermParser s st a
 --         where
 --           tuple a b c  = (a,b,c)
 --   </pre>
-permute :: (Stream s Identity tok) => StreamPermParser s st a -> Parsec s st a
+permute :: Stream s Identity tok => StreamPermParser s st a -> Parsec s st a
 
 -- | The expression <tt>perm &lt;||&gt; p</tt> adds parser <tt>p</tt> to
 --   the permutation parser <tt>perm</tt>. The parser <tt>p</tt> is not
 --   allowed to accept empty input - use the optional combinator
 --   (<a>&lt;|?&gt;</a>) instead. Returns a new permutation parser that
 --   includes <tt>p</tt>.
-(<||>) :: (Stream s Identity tok) => StreamPermParser s st (a -> b) -> Parsec s st a -> StreamPermParser s st b
+(<||>) :: Stream s Identity tok => StreamPermParser s st (a -> b) -> Parsec s st a -> StreamPermParser s st b
 infixl 1 <||>
 
 -- | The expression <tt>f &lt;$$&gt; p</tt> creates a fresh permutation
@@ -1546,7 +1546,7 @@ infixl 1 <||>
 --   followed by the parsers. The function <tt>f</tt> gets its parameters
 --   in the order in which the parsers are specified, but actual input can
 --   be in any order.
-(<$$>) :: (Stream s Identity tok) => (a -> b) -> Parsec s st a -> StreamPermParser s st b
+(<$$>) :: Stream s Identity tok => (a -> b) -> Parsec s st a -> StreamPermParser s st b
 infixl 2 <$$>
 
 -- | The expression <tt>perm &lt;||&gt; (x,p)</tt> adds parser <tt>p</tt>
@@ -1554,7 +1554,7 @@ infixl 2 <$$>
 --   optional - if it can not be applied, the default value <tt>x</tt> will
 --   be used instead. Returns a new permutation parser that includes the
 --   optional parser <tt>p</tt>.
-(<|?>) :: (Stream s Identity tok) => StreamPermParser s st (a -> b) -> (a, Parsec s st a) -> StreamPermParser s st b
+(<|?>) :: Stream s Identity tok => StreamPermParser s st (a -> b) -> (a, Parsec s st a) -> StreamPermParser s st b
 infixl 1 <|?>
 
 -- | The expression <tt>f &lt;$?&gt; (x,p)</tt> creates a fresh permutation
@@ -1562,7 +1562,7 @@ infixl 1 <|?>
 --   permutation parser is the function <tt>f</tt> applied to the return
 --   value of <tt>p</tt>. The parser <tt>p</tt> is optional - if it can not
 --   be applied, the default value <tt>x</tt> will be used instead.
-(<$?>) :: (Stream s Identity tok) => (a -> b) -> (a, Parsec s st a) -> StreamPermParser s st b
+(<$?>) :: Stream s Identity tok => (a -> b) -> (a, Parsec s st a) -> StreamPermParser s st b
 infixl 2 <$?>
 
 
@@ -1655,7 +1655,7 @@ type TokenParser st = GenTokenParser String st Identity
 -- | The type of the record that holds lexical parsers that work on
 --   <tt>s</tt> streams with state <tt>u</tt> over a monad <tt>m</tt>.
 data GenTokenParser s u m
-TokenParser :: ParsecT s u m String -> String -> ParsecT s u m () -> ParsecT s u m String -> String -> ParsecT s u m () -> ParsecT s u m Char -> ParsecT s u m String -> ParsecT s u m Integer -> ParsecT s u m Integer -> ParsecT s u m Double -> ParsecT s u m (Either Integer Double) -> ParsecT s u m Integer -> ParsecT s u m Integer -> ParsecT s u m Integer -> String -> ParsecT s u m String -> forall a. ParsecT s u m a -> ParsecT s u m a -> ParsecT s u m () -> forall a. ParsecT s u m a -> ParsecT s u m a -> forall a. ParsecT s u m a -> ParsecT s u m a -> forall a. ParsecT s u m a -> ParsecT s u m a -> forall a. ParsecT s u m a -> ParsecT s u m a -> forall a. ParsecT s u m a -> ParsecT s u m a -> ParsecT s u m String -> ParsecT s u m String -> ParsecT s u m String -> ParsecT s u m String -> forall a. ParsecT s u m a -> ParsecT s u m [a] -> forall a. ParsecT s u m a -> ParsecT s u m [a] -> forall a. ParsecT s u m a -> ParsecT s u m [a] -> forall a. ParsecT s u m a -> ParsecT s u m [a] -> GenTokenParser s u m
+TokenParser :: ParsecT s u m String -> (String -> ParsecT s u m ()) -> ParsecT s u m String -> (String -> ParsecT s u m ()) -> ParsecT s u m Char -> ParsecT s u m String -> ParsecT s u m Integer -> ParsecT s u m Integer -> ParsecT s u m Double -> ParsecT s u m (Either Integer Double) -> ParsecT s u m Integer -> ParsecT s u m Integer -> ParsecT s u m Integer -> (String -> ParsecT s u m String) -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> ParsecT s u m () -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> ParsecT s u m String -> ParsecT s u m String -> ParsecT s u m String -> ParsecT s u m String -> (forall a. ParsecT s u m a -> ParsecT s u m [a]) -> (forall a. ParsecT s u m a -> ParsecT s u m [a]) -> (forall a. ParsecT s u m a -> ParsecT s u m [a]) -> (forall a. ParsecT s u m a -> ParsecT s u m [a]) -> GenTokenParser s u m
 
 -- | This lexeme parser parses a legal identifier. Returns the identifier
 --   string. This parser will fail on identifiers that are reserved words.
@@ -1851,7 +1851,7 @@ TokenParser :: ParsecT s u m String -> String -> ParsecT s u m () -> ParsecT s u
 --   reserved    = P.reserved lexer
 --   ...
 --   </pre>
-makeTokenParser :: (Stream s m Char) => GenLanguageDef s u m -> GenTokenParser s u m
+makeTokenParser :: Stream s m Char => GenLanguageDef s u m -> GenTokenParser s u m
 
 
 -- | A helper module that defines some language definitions that can be
@@ -1899,44 +1899,44 @@ type CharParser st = GenParser Char st
 
 -- | Skips <i>zero</i> or more white space characters. See also
 --   <a>skipMany</a>.
-spaces :: (Stream s m Char) => ParsecT s u m ()
+spaces :: Stream s m Char => ParsecT s u m ()
 
 -- | Parses a white space character (any character which satisfies
 --   <a>isSpace</a>) Returns the parsed character.
-space :: (Stream s m Char) => ParsecT s u m Char
+space :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a newline character ('\n'). Returns a newline character.
-newline :: (Stream s m Char) => ParsecT s u m Char
+newline :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a tab character ('\t'). Returns a tab character.
-tab :: (Stream s m Char) => ParsecT s u m Char
+tab :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses an upper case letter (according to <a>isUpper</a>). Returns the
 --   parsed character.
-upper :: (Stream s m Char) => ParsecT s u m Char
+upper :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a lower case character (according to <a>isLower</a>). Returns
 --   the parsed character.
-lower :: (Stream s m Char) => ParsecT s u m Char
+lower :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a letter or digit (a character between '0' and '9') according
 --   to <a>isAlphaNum</a>. Returns the parsed character.
-alphaNum :: (Stream s m Char => ParsecT s u m Char)
+alphaNum :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a letter (an upper case or lower case character according to
 --   <a>isAlpha</a>). Returns the parsed character.
-letter :: (Stream s m Char) => ParsecT s u m Char
+letter :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a digit. Returns the parsed character.
-digit :: (Stream s m Char) => ParsecT s u m Char
+digit :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses a hexadecimal digit (a digit or a letter between 'a' and 'f' or
 --   'A' and 'F'). Returns the parsed character.
-hexDigit :: (Stream s m Char) => ParsecT s u m Char
+hexDigit :: Stream s m Char => ParsecT s u m Char
 
 -- | Parses an octal digit (a character between '0' and '7'). Returns the
 --   parsed character.
-octDigit :: (Stream s m Char) => ParsecT s u m Char
+octDigit :: Stream s m Char => ParsecT s u m Char
 
 -- | <tt>char c</tt> parses a single character <tt>c</tt>. Returns the
 --   parsed character (i.e. <tt>c</tt>).
@@ -1944,7 +1944,7 @@ octDigit :: (Stream s m Char) => ParsecT s u m Char
 --   <pre>
 --   semiColon  = char ';'
 --   </pre>
-char :: (Stream s m Char) => Char -> ParsecT s u m Char
+char :: Stream s m Char => Char -> ParsecT s u m Char
 
 -- | <tt>string s</tt> parses a sequence of characters given by <tt>s</tt>.
 --   Returns the parsed string (i.e. <tt>s</tt>).
@@ -1953,10 +1953,10 @@ char :: (Stream s m Char) => Char -> ParsecT s u m Char
 --   divOrMod    =   string "div"
 --               &lt;|&gt; string "mod"
 --   </pre>
-string :: (Stream s m Char) => String -> ParsecT s u m String
+string :: Stream s m Char => String -> ParsecT s u m String
 
 -- | This parser succeeds for any character. Returns the parsed character.
-anyChar :: (Stream s m Char) => ParsecT s u m Char
+anyChar :: Stream s m Char => ParsecT s u m Char
 
 -- | <tt>oneOf cs</tt> succeeds if the current character is in the supplied
 --   list of characters <tt>cs</tt>. Returns the parsed character. See also
@@ -1965,7 +1965,7 @@ anyChar :: (Stream s m Char) => ParsecT s u m Char
 --   <pre>
 --   vowel  = oneOf "aeiou"
 --   </pre>
-oneOf :: (Stream s m Char) => [Char] -> ParsecT s u m Char
+oneOf :: Stream s m Char => [Char] -> ParsecT s u m Char
 
 -- | As the dual of <a>oneOf</a>, <tt>noneOf cs</tt> succeeds if the
 --   current character <i>not</i> in the supplied list of characters
@@ -1974,12 +1974,12 @@ oneOf :: (Stream s m Char) => [Char] -> ParsecT s u m Char
 --   <pre>
 --   consonant = noneOf "aeiou"
 --   </pre>
-noneOf :: (Stream s m Char) => [Char] -> ParsecT s u m Char
+noneOf :: Stream s m Char => [Char] -> ParsecT s u m Char
 
 -- | The parser <tt>satisfy f</tt> succeeds for any character for which the
 --   supplied function <tt>f</tt> returns <a>True</a>. Returns the
 --   character that is actually parsed.
-satisfy :: (Stream s m Char) => (Char -> Bool) -> ParsecT s u m Char
+satisfy :: Stream s m Char => (Char -> Bool) -> ParsecT s u m Char
 
 
 -- | Parsec compatibility module
@@ -1988,13 +1988,13 @@ module Text.ParserCombinators.Parsec.Combinator
 -- | <tt>choice ps</tt> tries to apply the parsers in the list <tt>ps</tt>
 --   in order, until one of them succeeds. Returns the value of the
 --   succeeding parser.
-choice :: (Stream s m t) => [ParsecT s u m a] -> ParsecT s u m a
+choice :: Stream s m t => [ParsecT s u m a] -> ParsecT s u m a
 
 -- | <tt>count n p</tt> parses <tt>n</tt> occurrences of <tt>p</tt>. If
 --   <tt>n</tt> is smaller or equal to zero, the parser equals to
 --   <tt>return []</tt>. Returns a list of <tt>n</tt> values returned by
 --   <tt>p</tt>.
-count :: (Stream s m t) => Int -> ParsecT s u m a -> ParsecT s u m [a]
+count :: Stream s m t => Int -> ParsecT s u m a -> ParsecT s u m [a]
 
 -- | <tt>between open close p</tt> parses <tt>open</tt>, followed by
 --   <tt>p</tt> and <tt>close</tt>. Returns the value returned by
@@ -2003,7 +2003,7 @@ count :: (Stream s m t) => Int -> ParsecT s u m a -> ParsecT s u m [a]
 --   <pre>
 --   braces  = between (symbol "{") (symbol "}")
 --   </pre>
-between :: (Stream s m t) => ParsecT s u m open -> ParsecT s u m close -> ParsecT s u m a -> ParsecT s u m a
+between :: Stream s m t => ParsecT s u m open -> ParsecT s u m close -> ParsecT s u m a -> ParsecT s u m a
 
 -- | <tt>option x p</tt> tries to apply parser <tt>p</tt>. If <tt>p</tt>
 --   fails without consuming input, it returns the value <tt>x</tt>,
@@ -2014,21 +2014,21 @@ between :: (Stream s m t) => ParsecT s u m open -> ParsecT s u m close -> Parsec
 --                           ; return (digitToInt d)
 --                           })
 --   </pre>
-option :: (Stream s m t) => a -> ParsecT s u m a -> ParsecT s u m a
+option :: Stream s m t => a -> ParsecT s u m a -> ParsecT s u m a
 
 -- | <tt>optionMaybe p</tt> tries to apply parser <tt>p</tt>. If <tt>p</tt>
 --   fails without consuming input, it return <a>Nothing</a>, otherwise it
 --   returns <a>Just</a> the value returned by <tt>p</tt>.
-optionMaybe :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (Maybe a)
+optionMaybe :: Stream s m t => ParsecT s u m a -> ParsecT s u m (Maybe a)
 
 -- | <tt>optional p</tt> tries to apply parser <tt>p</tt>. It will parse
 --   <tt>p</tt> or nothing. It only fails if <tt>p</tt> fails after
 --   consuming input. It discards the result of <tt>p</tt>.
-optional :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m ()
+optional :: Stream s m t => ParsecT s u m a -> ParsecT s u m ()
 
 -- | <tt>skipMany1 p</tt> applies the parser <tt>p</tt> <i>one</i> or more
 --   times, skipping its result.
-skipMany1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m ()
+skipMany1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m ()
 
 -- | <tt>many1 p</tt> applies the parser <tt>p</tt> <i>one</i> or more
 --   times. Returns a list of the returned values of <tt>p</tt>.
@@ -2036,7 +2036,7 @@ skipMany1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m ()
 --   <pre>
 --   word  = many1 letter
 --   </pre>
-many1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m [a]
+many1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m [a]
 
 -- | <tt>sepBy p sep</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>sep</tt>. Returns a list of values
@@ -2045,12 +2045,12 @@ many1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m [a]
 --   <pre>
 --   commaSep p  = p `sepBy` (symbol ",")
 --   </pre>
-sepBy :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepBy :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>sepBy1 p sep</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>sep</tt>. Returns a list of values
 --   returned by <tt>p</tt>.
-sepBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepBy1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>endBy p sep</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated and ended by <tt>sep</tt>. Returns a list of
@@ -2059,12 +2059,12 @@ sepBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u 
 --   <pre>
 --   cStatements  = cStatement `endBy` semi
 --   </pre>
-endBy :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+endBy :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>endBy1 p sep</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated and ended by <tt>sep</tt>. Returns a list of
 --   values returned by <tt>p</tt>.
-endBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+endBy1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>sepEndBy p sep</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated and optionally ended by <tt>sep</tt>, ie.
@@ -2074,19 +2074,19 @@ endBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u 
 --   <pre>
 --   haskellStatements  = haskellStatement `sepEndBy` semi
 --   </pre>
-sepEndBy :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepEndBy :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>sepEndBy1 p sep</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated and optionally ended by <tt>sep</tt>. Returns a
 --   list of values returned by <tt>p</tt>.
-sepEndBy1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepEndBy1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
 
 -- | <tt>chainl p op x</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>op</tt>. Returns a value obtained by a
 --   <i>left</i> associative application of all functions returned by
 --   <tt>op</tt> to the values returned by <tt>p</tt>. If there are zero
 --   occurrences of <tt>p</tt>, the value <tt>x</tt> is returned.
-chainl :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
+chainl :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
 
 -- | <tt>chainl1 p op</tt> parses <i>one</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>op</tt> Returns a value obtained by a
@@ -2106,20 +2106,20 @@ chainl :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a 
 --   addop   =   do{ symbol "+"; return (+) }
 --           &lt;|&gt; do{ symbol "-"; return (-) }
 --   </pre>
-chainl1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
+chainl1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
 
 -- | <tt>chainr p op x</tt> parses <i>zero</i> or more occurrences of
 --   <tt>p</tt>, separated by <tt>op</tt> Returns a value obtained by a
 --   <i>right</i> associative application of all functions returned by
 --   <tt>op</tt> to the values returned by <tt>p</tt>. If there are no
 --   occurrences of <tt>p</tt>, the value <tt>x</tt> is returned.
-chainr :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
+chainr :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> a -> ParsecT s u m a
 
 -- | <tt>chainr1 p op x</tt> parses <i>one</i> or more occurrences of |p|,
 --   separated by <tt>op</tt> Returns a value obtained by a <i>right</i>
 --   associative application of all functions returned by <tt>op</tt> to
 --   the values returned by <tt>p</tt>.
-chainr1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
+chainr1 :: Stream s m t => ParsecT s u m a -> ParsecT s u m (a -> a -> a) -> ParsecT s u m a
 
 -- | This parser only succeeds at the end of the input. This is not a
 --   primitive parser but it is defined using <a>notFollowedBy</a>.
@@ -2168,13 +2168,13 @@ notFollowedBy :: (Stream s m t, Show a) => ParsecT s u m a -> ParsecT s u m ()
 --   
 --   Note the overlapping parsers <tt>anyChar</tt> and <tt>string
 --   "--&gt;"</tt>, and therefore the use of the <a>try</a> combinator.
-manyTill :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
+manyTill :: Stream s m t => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
 
 -- | <tt>lookAhead p</tt> parses <tt>p</tt> without consuming any input.
 --   
 --   If <tt>p</tt> fails and consumes some input, so does
 --   <tt>lookAhead</tt>. Combine with <a>try</a> if this is undesirable.
-lookAhead :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m a
+lookAhead :: Stream s m t => ParsecT s u m a -> ParsecT s u m a
 
 -- | The parser <tt>anyToken</tt> accepts any kind of token. It is for
 --   example used to implement <a>eof</a>. Returns the accepted token.
@@ -2341,14 +2341,14 @@ type PermParser tok st a = StreamPermParser String st a
 --         where
 --           tuple a b c  = (a,b,c)
 --   </pre>
-permute :: (Stream s Identity tok) => StreamPermParser s st a -> Parsec s st a
+permute :: Stream s Identity tok => StreamPermParser s st a -> Parsec s st a
 
 -- | The expression <tt>perm &lt;||&gt; p</tt> adds parser <tt>p</tt> to
 --   the permutation parser <tt>perm</tt>. The parser <tt>p</tt> is not
 --   allowed to accept empty input - use the optional combinator
 --   (<a>&lt;|?&gt;</a>) instead. Returns a new permutation parser that
 --   includes <tt>p</tt>.
-(<||>) :: (Stream s Identity tok) => StreamPermParser s st (a -> b) -> Parsec s st a -> StreamPermParser s st b
+(<||>) :: Stream s Identity tok => StreamPermParser s st (a -> b) -> Parsec s st a -> StreamPermParser s st b
 infixl 1 <||>
 
 -- | The expression <tt>f &lt;$$&gt; p</tt> creates a fresh permutation
@@ -2365,7 +2365,7 @@ infixl 1 <||>
 --   followed by the parsers. The function <tt>f</tt> gets its parameters
 --   in the order in which the parsers are specified, but actual input can
 --   be in any order.
-(<$$>) :: (Stream s Identity tok) => (a -> b) -> Parsec s st a -> StreamPermParser s st b
+(<$$>) :: Stream s Identity tok => (a -> b) -> Parsec s st a -> StreamPermParser s st b
 infixl 2 <$$>
 
 -- | The expression <tt>perm &lt;||&gt; (x,p)</tt> adds parser <tt>p</tt>
@@ -2373,7 +2373,7 @@ infixl 2 <$$>
 --   optional - if it can not be applied, the default value <tt>x</tt> will
 --   be used instead. Returns a new permutation parser that includes the
 --   optional parser <tt>p</tt>.
-(<|?>) :: (Stream s Identity tok) => StreamPermParser s st (a -> b) -> (a, Parsec s st a) -> StreamPermParser s st b
+(<|?>) :: Stream s Identity tok => StreamPermParser s st (a -> b) -> (a, Parsec s st a) -> StreamPermParser s st b
 infixl 1 <|?>
 
 -- | The expression <tt>f &lt;$?&gt; (x,p)</tt> creates a fresh permutation
@@ -2381,7 +2381,7 @@ infixl 1 <|?>
 --   permutation parser is the function <tt>f</tt> applied to the return
 --   value of <tt>p</tt>. The parser <tt>p</tt> is optional - if it can not
 --   be applied, the default value <tt>x</tt> will be used instead.
-(<$?>) :: (Stream s Identity tok) => (a -> b) -> (a, Parsec s st a) -> StreamPermParser s st b
+(<$?>) :: Stream s Identity tok => (a -> b) -> (a, Parsec s st a) -> StreamPermParser s st b
 infixl 2 <$?>
 
 
@@ -2458,7 +2458,7 @@ module Text.ParserCombinators.Parsec.Prim
 --   message is: '...: expecting expression'. Without the
 --   <tt>(&lt;?&gt;)</tt> combinator, the message would be like '...:
 --   expecting "let" or letter', which is less friendly.
-(<?>) :: (ParsecT s u m a) -> String -> (ParsecT s u m a)
+(<?>) :: ParsecT s u m a -> String -> ParsecT s u m a
 infix 0 <?>
 
 -- | This combinator implements choice. The parser <tt>p &lt;|&gt; q</tt>
@@ -2473,7 +2473,7 @@ infix 0 <?>
 --   is 1). This non-backtracking behaviour allows for both an efficient
 --   implementation of the parser combinators and the generation of good
 --   error messages.
-(<|>) :: (ParsecT s u m a) -> (ParsecT s u m a) -> (ParsecT s u m a)
+(<|>) :: ParsecT s u m a -> ParsecT s u m a -> ParsecT s u m a
 infixr 1 <|>
 type Parser = Parsec String ()
 type GenParser tok st = Parsec [tok] st
@@ -2492,7 +2492,7 @@ runParser :: GenParser tok st a -> st -> SourceName -> [tok] -> Either ParseErro
 --   
 --   numbers = commaSep integer
 --   </pre>
-parse :: (Stream s Identity t) => Parsec s () a -> SourceName -> s -> Either ParseError a
+parse :: Stream s Identity t => Parsec s () a -> SourceName -> s -> Either ParseError a
 
 -- | <tt>parseFromFile p filePath</tt> runs a string parser <tt>p</tt> on
 --   the input read from <tt>filePath</tt> using <a>readFile</a>. Returns
@@ -2532,7 +2532,7 @@ parseTest :: (Stream s Identity t, Show a) => Parsec s () a -> s -> IO ()
 --       posFromTok (pos,t)  = pos
 --       testTok (pos,t)     = if x == t then Just t else Nothing
 --   </pre>
-token :: (Stream s Identity t) => (t -> String) -> (t -> SourcePos) -> (t -> Maybe a) -> Parsec s u a
+token :: Stream s Identity t => (t -> String) -> (t -> SourcePos) -> (t -> Maybe a) -> Parsec s u a
 tokens :: (Stream s m t, Eq t) => ([t] -> String) -> (SourcePos -> [t] -> SourcePos) -> [t] -> ParsecT s u m [t]
 
 -- | The parser <tt>tokenPrim showTok nextPos testTok</tt> accepts a token
@@ -2554,8 +2554,8 @@ tokens :: (Stream s m t, Eq t) => ([t] -> String) -> (SourcePos -> [t] -> Source
 --       testChar x        = if x == c then Just x else Nothing
 --       nextPos pos x xs  = updatePosChar pos x
 --   </pre>
-tokenPrim :: (Stream s m t) => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> (t -> Maybe a) -> ParsecT s u m a
-tokenPrimEx :: (Stream s m t) => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> Maybe (SourcePos -> t -> s -> u -> u) -> (t -> Maybe a) -> ParsecT s u m a
+tokenPrim :: Stream s m t => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> (t -> Maybe a) -> ParsecT s u m a
+tokenPrimEx :: Stream s m t => (t -> String) -> (SourcePos -> t -> s -> SourcePos) -> Maybe (SourcePos -> t -> s -> u -> u) -> (t -> Maybe a) -> ParsecT s u m a
 try :: GenParser tok st a -> GenParser tok st a
 
 -- | A synonym for <tt>&lt;?&gt;</tt>, but as a function instead of an
@@ -2570,7 +2570,7 @@ labels :: ParsecT s u m a -> [String] -> ParsecT s u m a
 --   are the three parsers used to generate error messages. Of these, only
 --   (<a>&lt;?&gt;</a>) is commonly used. For an example of the use of
 --   <tt>unexpected</tt>, see the definition of <a>notFollowedBy</a>.
-unexpected :: (Stream s m t) => String -> ParsecT s u m a
+unexpected :: Stream s m t => String -> ParsecT s u m a
 pzero :: GenParser tok st a
 
 -- | <tt>many p</tt> applies the parser <tt>p</tt> <i>zero</i> or more
@@ -2593,28 +2593,28 @@ many :: ParsecT s u m a -> ParsecT s u m [a]
 skipMany :: ParsecT s u m a -> ParsecT s u m ()
 
 -- | Returns the current user state.
-getState :: (Monad m) => ParsecT s u m u
+getState :: Monad m => ParsecT s u m u
 
 -- | An alias for putState for backwards compatibility.
-setState :: (Monad m) => u -> ParsecT s u m ()
+setState :: Monad m => u -> ParsecT s u m ()
 
 -- | An alias for modifyState for backwards compatibility.
-updateState :: (Monad m) => (u -> u) -> ParsecT s u m ()
+updateState :: Monad m => (u -> u) -> ParsecT s u m ()
 
 -- | Returns the current source position. See also <a>SourcePos</a>.
-getPosition :: (Monad m) => ParsecT s u m SourcePos
+getPosition :: Monad m => ParsecT s u m SourcePos
 
 -- | <tt>setPosition pos</tt> sets the current source position to
 --   <tt>pos</tt>.
-setPosition :: (Monad m) => SourcePos -> ParsecT s u m ()
+setPosition :: Monad m => SourcePos -> ParsecT s u m ()
 
 -- | Returns the current input
-getInput :: (Monad m) => ParsecT s u m s
+getInput :: Monad m => ParsecT s u m s
 
 -- | <tt>setInput input</tt> continues parsing with <tt>input</tt>. The
 --   <a>getInput</a> and <tt>setInput</tt> functions can for example be
 --   used to deal with #include files.
-setInput :: (Monad m) => s -> ParsecT s u m ()
+setInput :: Monad m => s -> ParsecT s u m ()
 data State s u
 State :: s -> !SourcePos -> !u -> State s u
 [stateInput] :: State s u -> s
@@ -2622,10 +2622,10 @@ State :: s -> !SourcePos -> !u -> State s u
 [stateUser] :: State s u -> !u
 
 -- | Returns the full parser state as a <a>State</a> record.
-getParserState :: (Monad m) => ParsecT s u m (State s u)
+getParserState :: Monad m => ParsecT s u m (State s u)
 
 -- | <tt>setParserState st</tt> set the full parser state to <tt>st</tt>.
-setParserState :: (Monad m) => State s u -> ParsecT s u m (State s u)
+setParserState :: Monad m => State s u -> ParsecT s u m (State s u)
 
 
 -- | Parsec compatibility module
@@ -2685,9 +2685,9 @@ AssocNone :: Assoc
 AssocLeft :: Assoc
 AssocRight :: Assoc
 data Operator tok st a
-Infix :: (GenParser tok st (a -> a -> a)) -> Assoc -> Operator tok st a
-Prefix :: (GenParser tok st (a -> a)) -> Operator tok st a
-Postfix :: (GenParser tok st (a -> a)) -> Operator tok st a
+Infix :: GenParser tok st (a -> a -> a) -> Assoc -> Operator tok st a
+Prefix :: GenParser tok st (a -> a) -> Operator tok st a
+Postfix :: GenParser tok st (a -> a) -> Operator tok st a
 type OperatorTable tok st a = [[Operator tok st a]]
 buildExpressionParser :: OperatorTable tok st a -> GenParser tok st a -> GenParser tok st a
 
@@ -2748,7 +2748,7 @@ type TokenParser st = GenTokenParser String st Identity
 -- | The type of the record that holds lexical parsers that work on
 --   <tt>s</tt> streams with state <tt>u</tt> over a monad <tt>m</tt>.
 data GenTokenParser s u m
-TokenParser :: ParsecT s u m String -> String -> ParsecT s u m () -> ParsecT s u m String -> String -> ParsecT s u m () -> ParsecT s u m Char -> ParsecT s u m String -> ParsecT s u m Integer -> ParsecT s u m Integer -> ParsecT s u m Double -> ParsecT s u m (Either Integer Double) -> ParsecT s u m Integer -> ParsecT s u m Integer -> ParsecT s u m Integer -> String -> ParsecT s u m String -> forall a. ParsecT s u m a -> ParsecT s u m a -> ParsecT s u m () -> forall a. ParsecT s u m a -> ParsecT s u m a -> forall a. ParsecT s u m a -> ParsecT s u m a -> forall a. ParsecT s u m a -> ParsecT s u m a -> forall a. ParsecT s u m a -> ParsecT s u m a -> forall a. ParsecT s u m a -> ParsecT s u m a -> ParsecT s u m String -> ParsecT s u m String -> ParsecT s u m String -> ParsecT s u m String -> forall a. ParsecT s u m a -> ParsecT s u m [a] -> forall a. ParsecT s u m a -> ParsecT s u m [a] -> forall a. ParsecT s u m a -> ParsecT s u m [a] -> forall a. ParsecT s u m a -> ParsecT s u m [a] -> GenTokenParser s u m
+TokenParser :: ParsecT s u m String -> (String -> ParsecT s u m ()) -> ParsecT s u m String -> (String -> ParsecT s u m ()) -> ParsecT s u m Char -> ParsecT s u m String -> ParsecT s u m Integer -> ParsecT s u m Integer -> ParsecT s u m Double -> ParsecT s u m (Either Integer Double) -> ParsecT s u m Integer -> ParsecT s u m Integer -> ParsecT s u m Integer -> (String -> ParsecT s u m String) -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> ParsecT s u m () -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> (forall a. ParsecT s u m a -> ParsecT s u m a) -> ParsecT s u m String -> ParsecT s u m String -> ParsecT s u m String -> ParsecT s u m String -> (forall a. ParsecT s u m a -> ParsecT s u m [a]) -> (forall a. ParsecT s u m a -> ParsecT s u m [a]) -> (forall a. ParsecT s u m a -> ParsecT s u m [a]) -> (forall a. ParsecT s u m a -> ParsecT s u m [a]) -> GenTokenParser s u m
 
 -- | This lexeme parser parses a legal identifier. Returns the identifier
 --   string. This parser will fail on identifiers that are reserved words.
@@ -2944,4 +2944,4 @@ TokenParser :: ParsecT s u m String -> String -> ParsecT s u m () -> ParsecT s u
 --   reserved    = P.reserved lexer
 --   ...
 --   </pre>
-makeTokenParser :: (Stream s m Char) => GenLanguageDef s u m -> GenTokenParser s u m
+makeTokenParser :: Stream s m Char => GenLanguageDef s u m -> GenTokenParser s u m

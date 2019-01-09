@@ -119,7 +119,7 @@ mixCreate :: String -> String -> Mix -> IO ()
 
 -- | Read a mix file.
 readMix :: [String] -> Either String TixModule -> IO Mix
-createMixEntryDom :: (Show a) => [(HpcPos, a)] -> [MixEntryDom [a]]
+createMixEntryDom :: Show a => [(HpcPos, a)] -> [MixEntryDom [a]]
 type MixEntryDom a = Tree (HpcPos, a)
 instance GHC.Classes.Eq Trace.Hpc.Mix.Mix
 instance GHC.Read.Read Trace.Hpc.Mix.Mix

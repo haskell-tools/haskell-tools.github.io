@@ -23,14 +23,14 @@
 <a name="line-14"></a><span class='hs-comment'>--</span>
 <a name="line-15"></a><span class='hs-comment'>-----------------------------------------------------------------------------</span>
 <a name="line-16"></a>
-<a name="line-17"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Lazy</span>
+<a name="line-17"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Text.Parsec.Text.Lazy</span>
 <a name="line-18"></a>    <span class='hs-layout'>(</span> <span class='hs-conid'>Parser</span><span class='hs-layout'>,</span> <span class='hs-conid'>GenParser</span>
 <a name="line-19"></a>    <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-20"></a>
-<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Lazy</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>Text</span>
-<a name="line-22"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Parsec</span><span class='hs-varop'>.</span><span class='hs-conid'>Prim</span>
+<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Data.Text.Lazy</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>Text</span>
+<a name="line-22"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text.Parsec.Prim</span>
 <a name="line-23"></a>
-<a name="line-24"></a><a name="Parser"></a><span class='hs-keyword'>type</span> <span class='hs-conid'>Parser</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Parsec</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Text</span> <span class='hs-conid'>()</span>
-<a name="line-25"></a><a name="GenParser"></a><span class='hs-keyword'>type</span> <span class='hs-conid'>GenParser</span> <span class='hs-varid'>st</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Parsec</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>Text</span> <span class='hs-varid'>st</span>
+<a name="line-24"></a><a name="Parser"></a><span class='hs-keyword'>type</span> <span class='hs-conid'>Parser</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Parsec</span> <span class='hs-conid'>Text.Text</span> <span class='hs-conid'>()</span>
+<a name="line-25"></a><a name="GenParser"></a><span class='hs-keyword'>type</span> <span class='hs-conid'>GenParser</span> <span class='hs-varid'>st</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Parsec</span> <span class='hs-conid'>Text.Text</span> <span class='hs-varid'>st</span>
 </pre></body>
 </html>

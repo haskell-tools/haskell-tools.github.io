@@ -24,7 +24,7 @@ unSetExtensionFlag' :: Extension -> DynFlags -> DynFlags
 -- | Creating a dependency graph of the modules loaded into a session. Code
 --   copied from GHC because it is not public in GhcMake module
 module Language.Haskell.Tools.Daemon.ModuleGraph
-moduleGraphNodes :: Bool -> [ModSummary] -> (Graph Node Int ModSummary, HscSource -> ModuleName -> Maybe SummaryNode)
+moduleGraphNodes :: Bool -> [ModSummary] -> (Graph (Node Int ModSummary), HscSource -> ModuleName -> Maybe SummaryNode)
 getModFromNode :: SummaryNode -> ModSummary
 dependentModules :: (ModSummary -> Ghc Bool) -> Ghc [ModSummary]
 supportingModules :: (ModSummary -> Ghc Bool) -> Ghc [ModSummary]
@@ -276,7 +276,7 @@ module Language.Haskell.Tools.Daemon.Mode
 
 -- | An abstraction over the connection to the client.
 data WorkingMode a
-WorkingMode :: Int -> IO a -> a -> IO () -> a -> ResponseMsg -> IO () -> a -> IO [Either String ClientMessage] -> WorkingMode a
+WorkingMode :: (Int -> IO a) -> (a -> IO ()) -> (a -> ResponseMsg -> IO ()) -> (a -> IO [Either String ClientMessage]) -> WorkingMode a
 [daemonConnect] :: WorkingMode a -> Int -> IO a
 [daemonDisconnect] :: WorkingMode a -> a -> IO ()
 [daemonSend] :: WorkingMode a -> a -> ResponseMsg -> IO ()
@@ -296,20 +296,20 @@ module Language.Haskell.Tools.Daemon.Representation
 -- | The modules of a library, executable, test or benchmark. A package
 --   contains one or more module collection.
 data ModuleCollection k
-ModuleCollection :: ModuleCollectionId -> Bool -> FilePath -> [FilePath] -> [(ModuleNameStr, FilePath)] -> (Map k ModuleRecord) -> (DynFlags -> IO DynFlags) -> (DynFlags -> IO DynFlags) -> [ModuleCollectionId] -> ModuleCollection k
+ModuleCollection :: ModuleCollectionId -> Bool -> FilePath -> [FilePath] -> [(ModuleNameStr, FilePath)] -> Map k ModuleRecord -> (DynFlags -> IO DynFlags) -> (DynFlags -> IO DynFlags) -> [ModuleCollectionId] -> ModuleCollection k
 [_mcId] :: ModuleCollection k -> ModuleCollectionId
 [_mcLoadDone] :: ModuleCollection k -> Bool
 [_mcRoot] :: ModuleCollection k -> FilePath
 [_mcSourceDirs] :: ModuleCollection k -> [FilePath]
 [_mcModuleFiles] :: ModuleCollection k -> [(ModuleNameStr, FilePath)]
-[_mcModules] :: ModuleCollection k -> (Map k ModuleRecord)
+[_mcModules] :: ModuleCollection k -> Map k ModuleRecord
 
 -- | Sets up the ghc environment for compiling the modules of this
 --   collection
-[_mcFlagSetup] :: ModuleCollection k -> (DynFlags -> IO DynFlags)
+[_mcFlagSetup] :: ModuleCollection k -> DynFlags -> IO DynFlags
 
 -- | Sets up the ghc environment for dependency analysis
-[_mcLoadFlagSetup] :: ModuleCollection k -> (DynFlags -> IO DynFlags)
+[_mcLoadFlagSetup] :: ModuleCollection k -> DynFlags -> IO DynFlags
 [_mcDependencies] :: ModuleCollection k -> [ModuleCollectionId]
 modCollToSfk :: ModuleCollection ModuleNameStr -> ModuleCollection SourceFileKey
 
@@ -344,15 +344,15 @@ LibraryMC :: String -> ModuleCollectionId
 ExecutableMC :: String -> String -> ModuleCollectionId
 TestSuiteMC :: String -> String -> ModuleCollectionId
 BenchmarkMC :: String -> String -> ModuleCollectionId
-mcSourceDirs :: forall k_a12hG. Lens (ModuleCollection k_a12hG) (ModuleCollection k_a12hG) [FilePath] [FilePath]
-mcRoot :: forall k_a12hG. Lens (ModuleCollection k_a12hG) (ModuleCollection k_a12hG) FilePath FilePath
-mcModules :: forall k_a12hG k'_a12LZ. Lens (ModuleCollection k_a12hG) (ModuleCollection k'_a12LZ) (Map k_a12hG ModuleRecord) (Map k'_a12LZ ModuleRecord)
-mcModuleFiles :: forall k_a12hG. Lens (ModuleCollection k_a12hG) (ModuleCollection k_a12hG) [(ModuleNameStr, FilePath)] [(ModuleNameStr, FilePath)]
-mcLoadFlagSetup :: forall k_a12hG. Lens (ModuleCollection k_a12hG) (ModuleCollection k_a12hG) (DynFlags -> IO DynFlags) (DynFlags -> IO DynFlags)
-mcLoadDone :: forall k_a12hG. Lens (ModuleCollection k_a12hG) (ModuleCollection k_a12hG) Bool Bool
-mcId :: forall k_a12hG. Lens (ModuleCollection k_a12hG) (ModuleCollection k_a12hG) ModuleCollectionId ModuleCollectionId
-mcFlagSetup :: forall k_a12hG. Lens (ModuleCollection k_a12hG) (ModuleCollection k_a12hG) (DynFlags -> IO DynFlags) (DynFlags -> IO DynFlags)
-mcDependencies :: forall k_a12hG. Lens (ModuleCollection k_a12hG) (ModuleCollection k_a12hG) [ModuleCollectionId] [ModuleCollectionId]
+mcSourceDirs :: forall k_a1aLO. Lens (ModuleCollection k_a1aLO) (ModuleCollection k_a1aLO) [FilePath] [FilePath]
+mcRoot :: forall k_a1aLO. Lens (ModuleCollection k_a1aLO) (ModuleCollection k_a1aLO) FilePath FilePath
+mcModules :: forall k_a1aLO k'_a1bgH. Lens (ModuleCollection k_a1aLO) (ModuleCollection k'_a1bgH) (Map k_a1aLO ModuleRecord) (Map k'_a1bgH ModuleRecord)
+mcModuleFiles :: forall k_a1aLO. Lens (ModuleCollection k_a1aLO) (ModuleCollection k_a1aLO) [(ModuleNameStr, FilePath)] [(ModuleNameStr, FilePath)]
+mcLoadFlagSetup :: forall k_a1aLO. Lens (ModuleCollection k_a1aLO) (ModuleCollection k_a1aLO) (DynFlags -> IO DynFlags) (DynFlags -> IO DynFlags)
+mcLoadDone :: forall k_a1aLO. Lens (ModuleCollection k_a1aLO) (ModuleCollection k_a1aLO) Bool Bool
+mcId :: forall k_a1aLO. Lens (ModuleCollection k_a1aLO) (ModuleCollection k_a1aLO) ModuleCollectionId ModuleCollectionId
+mcFlagSetup :: forall k_a1aLO. Lens (ModuleCollection k_a1aLO) (ModuleCollection k_a1aLO) (DynFlags -> IO DynFlags) (DynFlags -> IO DynFlags)
+mcDependencies :: forall k_a1aLO. Lens (ModuleCollection k_a1aLO) (ModuleCollection k_a1aLO) [ModuleCollectionId] [ModuleCollectionId]
 typedRecModule :: Partial ModuleRecord ModuleRecord UnnamedModule UnnamedModule
 renamedRecModule :: Partial ModuleRecord ModuleRecord UnnamedModule UnnamedModule
 recModuleExposed :: Partial ModuleRecord ModuleRecord Bool Bool
@@ -449,7 +449,7 @@ onlyUseEnabled :: DynFlags -> DynFlags
 
 -- | Transform dependencies of a module collection into the package flags
 --   of the GHC API
-dependencyToPkgFlag :: [ModuleCollectionId] -> ModuleCollectionId -> Maybe (PackageFlag)
+dependencyToPkgFlag :: [ModuleCollectionId] -> ModuleCollectionId -> Maybe PackageFlag
 
 -- | Sets the configuration for loading all the modules from the whole
 --   project. Combines the configuration of all package fragments. This
@@ -472,7 +472,7 @@ instance Language.Haskell.Tools.Daemon.GetModules.ToModuleCollection Distributio
 instance Language.Haskell.Tools.Daemon.GetModules.ToModuleCollection Distribution.Types.Executable.Executable
 instance Language.Haskell.Tools.Daemon.GetModules.ToModuleCollection Distribution.Types.TestSuite.TestSuite
 instance Language.Haskell.Tools.Daemon.GetModules.ToModuleCollection Distribution.Types.Benchmark.Benchmark
-instance GHC.Exception.Exception Language.Haskell.Tools.Daemon.GetModules.UnsupportedPackage
+instance GHC.Exception.Type.Exception Language.Haskell.Tools.Daemon.GetModules.UnsupportedPackage
 
 
 -- | Handlers for common errors in Haskell-tools daemon.
@@ -497,7 +497,7 @@ module Language.Haskell.Tools.Daemon.State
 -- | The actual state of the daemon process. Contains loaded modules and
 --   user settings. The GHC state is handled separately.
 data DaemonSessionState
-DaemonSessionState :: [ModuleCollection SourceFileKey] -> Maybe (PackageDB, Bool) -> DynFlags -> DynFlags -> DynFlags -> DynFlags -> [FilePath] -> Bool -> [[UndoRefactor]] -> Maybe WatchProcess -> [ThreadId] -> Set FilePath -> DaemonSessionState
+DaemonSessionState :: [ModuleCollection SourceFileKey] -> Maybe (PackageDB, Bool) -> (DynFlags -> DynFlags) -> (DynFlags -> DynFlags) -> [FilePath] -> Bool -> [[UndoRefactor]] -> Maybe WatchProcess -> [ThreadId] -> Set FilePath -> DaemonSessionState
 
 -- | The package components loaded into the session.
 [_refSessMCs] :: DaemonSessionState -> [ModuleCollection SourceFileKey]

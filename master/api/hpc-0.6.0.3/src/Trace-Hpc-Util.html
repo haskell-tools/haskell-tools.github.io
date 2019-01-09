@@ -17,7 +17,7 @@
 <a name="line-8"></a>
 <a name="line-9"></a><span class='hs-comment'>-- | Minor utilities for the HPC tools.</span>
 <a name="line-10"></a>
-<a name="line-11"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Trace</span><span class='hs-varop'>.</span><span class='hs-conid'>Hpc</span><span class='hs-varop'>.</span><span class='hs-conid'>Util</span>
+<a name="line-11"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Trace.Hpc.Util</span>
 <a name="line-12"></a>       <span class='hs-layout'>(</span> <span class='hs-conid'>HpcPos</span>
 <a name="line-13"></a>       <span class='hs-layout'>,</span> <span class='hs-varid'>fromHpcPos</span>
 <a name="line-14"></a>       <span class='hs-layout'>,</span> <span class='hs-varid'>toHpcPos</span>
@@ -27,11 +27,11 @@
 <a name="line-18"></a>       <span class='hs-layout'>,</span> <span class='hs-varid'>catchIO</span>
 <a name="line-19"></a>       <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-20"></a>
-<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Exception</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>Exception</span>
-<a name="line-22"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>List</span><span class='hs-layout'>(</span><span class='hs-varid'>foldl'</span><span class='hs-layout'>)</span>
-<a name="line-23"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Char</span> <span class='hs-layout'>(</span><span class='hs-varid'>ord</span><span class='hs-layout'>)</span>
-<a name="line-24"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Bits</span> <span class='hs-layout'>(</span><span class='hs-varid'>xor</span><span class='hs-layout'>)</span>
-<a name="line-25"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Word</span>
+<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Control.Exception</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>Exception</span>
+<a name="line-22"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.List</span><span class='hs-layout'>(</span><span class='hs-varid'>foldl'</span><span class='hs-layout'>)</span>
+<a name="line-23"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Char</span> <span class='hs-layout'>(</span><span class='hs-varid'>ord</span><span class='hs-layout'>)</span>
+<a name="line-24"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Bits</span> <span class='hs-layout'>(</span><span class='hs-varid'>xor</span><span class='hs-layout'>)</span>
+<a name="line-25"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data.Word</span>
 <a name="line-26"></a>
 <a name="line-27"></a><a name="HpcPos"></a><span class='hs-comment'>-- | 'HpcPos' is an Hpc local rendition of a Span.</span>
 <a name="line-28"></a><a name="HpcPos"></a><span class='hs-keyword'>data</span> <span class='hs-conid'>HpcPos</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>P</span> <span class='hs-varop'>!</span><span class='hs-conid'>Int</span> <span class='hs-varop'>!</span><span class='hs-conid'>Int</span> <span class='hs-varop'>!</span><span class='hs-conid'>Int</span> <span class='hs-varop'>!</span><span class='hs-conid'>Int</span> <span class='hs-keyword'>deriving</span> <span class='hs-layout'>(</span><span class='hs-conid'>Eq</span><span class='hs-layout'>,</span> <span class='hs-conid'>Ord</span><span class='hs-layout'>)</span>
@@ -119,7 +119,7 @@
 <a name="line-110"></a><a name="hxor"></a><span class='hs-definition'>hxor</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Hash</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Hash</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Hash</span>
 <a name="line-111"></a><span class='hs-definition'>hxor</span> <span class='hs-layout'>(</span><span class='hs-conid'>Hash</span> <span class='hs-varid'>x</span><span class='hs-layout'>)</span> <span class='hs-layout'>(</span><span class='hs-conid'>Hash</span> <span class='hs-varid'>y</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Hash</span> <span class='hs-varop'>$</span> <span class='hs-varid'>x</span> <span class='hs-varop'>`xor`</span> <span class='hs-varid'>y</span>
 <a name="line-112"></a>
-<a name="line-113"></a><a name="catchIO"></a><span class='hs-definition'>catchIO</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>IO</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-layout'>(</span><span class='hs-conid'>Exception</span><span class='hs-varop'>.</span><span class='hs-conid'>IOException</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>IO</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>IO</span> <span class='hs-varid'>a</span>
-<a name="line-114"></a><span class='hs-definition'>catchIO</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Exception</span><span class='hs-varop'>.</span><span class='hs-varid'>catch</span>
+<a name="line-113"></a><a name="catchIO"></a><span class='hs-definition'>catchIO</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>IO</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-layout'>(</span><span class='hs-conid'>Exception.IOException</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>IO</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>IO</span> <span class='hs-varid'>a</span>
+<a name="line-114"></a><span class='hs-definition'>catchIO</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Exception.catch</span>
 </pre></body>
 </html>
