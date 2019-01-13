@@ -1,0 +1,102 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.MagicHashChecker where
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>import Language.Haskell.Tools.Refactor
+<span class="lineno">    4 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+<span class="lineno">    5 </span>
+<span class="lineno">    6 </span>{-# ANN module &quot;HLint: ignore Redundant bracket&quot; #-}
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>chkMagicHashLiteral :: CheckNode Literal
+<span class="lineno">    9 </span><span class="decl"><span class="istickedoff">chkMagicHashLiteral = conditional chkMagicHashLiteral' MagicHash</span></span>
+<span class="lineno">   10 </span>
+<span class="lineno">   11 </span>chkMagicHashNamePart :: CheckNode NamePart
+<span class="lineno">   12 </span><span class="decl"><span class="istickedoff">chkMagicHashNamePart = conditional chkMagicHashNamePart' MagicHash</span></span>
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>chkMagicHashKind :: CheckNode Kind
+<span class="lineno">   15 </span><span class="decl"><span class="istickedoff">chkMagicHashKind = conditional chkMagicHashKind' MagicHash</span></span>
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>chkMagicHashLiteral' :: CheckNode Literal
+<span class="lineno">   21 </span><span class="decl"><span class="istickedoff">chkMagicHashLiteral' l@(PrimIntLit _)    = addEvidence MagicHash l</span>
+<span class="lineno">   22 </span><span class="spaces"></span><span class="istickedoff">chkMagicHashLiteral' l@(PrimWordLit _)   = addEvidence MagicHash l</span>
+<span class="lineno">   23 </span><span class="spaces"></span><span class="istickedoff">chkMagicHashLiteral' l@(PrimFloatLit _)  = addEvidence MagicHash l</span>
+<span class="lineno">   24 </span><span class="spaces"></span><span class="istickedoff">chkMagicHashLiteral' l@(PrimDoubleLit _) = addEvidence MagicHash l</span>
+<span class="lineno">   25 </span><span class="spaces"></span><span class="istickedoff">chkMagicHashLiteral' l@(PrimCharLit _)   = addEvidence MagicHash l</span>
+<span class="lineno">   26 </span><span class="spaces"></span><span class="istickedoff">chkMagicHashLiteral' l@(PrimStringLit _) = addEvidence MagicHash l</span>
+<span class="lineno">   27 </span><span class="spaces"></span><span class="istickedoff">chkMagicHashLiteral' l = return l</span></span>
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>chkMagicHashNamePart' :: CheckNode NamePart
+<span class="lineno">   31 </span><span class="decl"><span class="istickedoff">chkMagicHashNamePart' n@(NamePart name) =</span>
+<span class="lineno">   32 </span><span class="spaces">  </span><span class="istickedoff">if (last name == '#') then addEvidence MagicHash n</span>
+<span class="lineno">   33 </span><span class="spaces">                        </span><span class="istickedoff">else return n</span></span>
+<span class="lineno">   34 </span>
+<span class="lineno">   35 </span>-- NOTE: is this really needed?
+<span class="lineno">   36 </span>chkMagicHashKind' :: CheckNode Kind
+<span class="lineno">   37 </span><span class="decl"><span class="istickedoff">chkMagicHashKind' k@UnboxKind = <span class="nottickedoff">addEvidence MagicHash k</span></span>
+<span class="lineno">   38 </span><span class="spaces"></span><span class="istickedoff">chkMagicHashKind' k = return k</span></span>
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>{- Name can be reached from:
+<span class="lineno">   41 </span>  UIESpec
+<span class="lineno">   42 </span>  USubSpec
+<span class="lineno">   43 </span>  UInjectivityAnn
+<span class="lineno">   44 </span>  URuleVar
+<span class="lineno">   45 </span>  UTopLevelPragma
+<span class="lineno">   46 </span>  UAnnotationSubject
+<span class="lineno">   47 </span>  UMinimalFormula
+<span class="lineno">   48 </span>
+<span class="lineno">   49 </span>  UDecl  DONE
+<span class="lineno">   50 </span>  UClassElement DONE
+<span class="lineno">   51 </span>  UDeclHead DONE
+<span class="lineno">   52 </span>  UGadtConDecl DONE
+<span class="lineno">   53 </span>  UPatSynLhs  DONE
+<span class="lineno">   54 </span>  UPatternTypeSignature DONE
+<span class="lineno">   55 </span>  UFunDep DONE
+<span class="lineno">   56 </span>  UConDecl DONE
+<span class="lineno">   57 </span>  UFieldDecl DONE
+<span class="lineno">   58 </span>  UInstanceHead DONE
+<span class="lineno">   59 </span>  UTypeSignature DONE
+<span class="lineno">   60 </span>  UMatchLhs DONE
+<span class="lineno">   61 </span>  UTyVar DONE
+<span class="lineno">   62 </span>  UType DONE
+<span class="lineno">   63 </span>  UKind DONE
+<span class="lineno">   64 </span>  UAssertion DONE
+<span class="lineno">   65 </span>  UExpr DONE
+<span class="lineno">   66 </span>  UFieldUpdate DONE
+<span class="lineno">   67 </span>  UPattern DONE
+<span class="lineno">   68 </span>  UPatternField DONE
+<span class="lineno">   69 </span>  USplice
+<span class="lineno">   70 </span>  UQuasiQuote
+<span class="lineno">   71 </span>
+<span class="lineno">   72 </span>  UPromoted t
+<span class="lineno">   73 </span>-}
+<span class="lineno">   74 </span>
+<span class="lineno">   75 </span>{- QualifiedName can be reached from:
+<span class="lineno">   76 </span>  UDecl DONE
+<span class="lineno">   77 </span>  UOperator DONE
+<span class="lineno">   78 </span>  UName (obviously) DONE
+<span class="lineno">   79 </span>-}
+
+</pre>
+</body>
+</html>

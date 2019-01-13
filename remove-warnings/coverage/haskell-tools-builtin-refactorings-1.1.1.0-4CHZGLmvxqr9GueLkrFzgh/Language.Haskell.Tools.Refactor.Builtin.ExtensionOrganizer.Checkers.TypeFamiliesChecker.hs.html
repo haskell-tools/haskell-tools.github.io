@@ -1,0 +1,148 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeFamiliesChecker where
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>import TyCon          as GHC (TyCon())
+<span class="lineno">    4 </span>import PrelNames      as GHC
+<span class="lineno">    5 </span>import Unique         as GHC (hasKey)
+<span class="lineno">    6 </span>import Var            as GHC (isId)
+<span class="lineno">    7 </span>import qualified Type as GHC (expandTypeSynonyms)
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>import Control.Reference ((^.))
+<span class="lineno">   10 </span>
+<span class="lineno">   11 </span>import Data.List ((\\))
+<span class="lineno">   12 </span>import Data.Generics.Uniplate.Data()
+<span class="lineno">   13 </span>import Data.Generics.Uniplate.Operations
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>import Language.Haskell.Tools.Refactor
+<span class="lineno">   16 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>-- | Checks whether any name's corresponding type in the module contains a type equality.
+<span class="lineno">   20 </span>gblChkQNamesForTypeEq :: CheckNode Module
+<span class="lineno">   21 </span><span class="decl"><span class="istickedoff">gblChkQNamesForTypeEq = conditionalAny gblChkQNamesForTypeEq' [TypeFamilies, GADTs]</span></span>
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>-- | Checks an operator for syntactic evidence of a ~ b type equality if TypeFamilies or GADTs is turned on.
+<span class="lineno">   24 </span>chkOperatorForTypeEq :: CheckNode Operator
+<span class="lineno">   25 </span><span class="decl"><span class="istickedoff">chkOperatorForTypeEq = conditionalAny chkOperatorForTypeEq' [TypeFamilies, GADTs]</span></span>
+<span class="lineno">   26 </span>
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>-- | Checks a declaration if TypeFamilies is turned on.
+<span class="lineno">   29 </span>chkTypeFamiliesDecl :: CheckNode Decl
+<span class="lineno">   30 </span><span class="decl"><span class="istickedoff">chkTypeFamiliesDecl = conditional chkTypeFamiliesDecl' TypeFamilies</span></span>
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>-- | Checks a class element if TypeFamilies is turned on.
+<span class="lineno">   33 </span>chkTypeFamiliesClassElement :: CheckNode ClassElement
+<span class="lineno">   34 </span><span class="decl"><span class="istickedoff">chkTypeFamiliesClassElement = conditional chkTypeFamiliesClassElement' TypeFamilies</span></span>
+<span class="lineno">   35 </span>
+<span class="lineno">   36 </span>-- | Checks an instance body if TypeFamilies is turned on.
+<span class="lineno">   37 </span>chkTypeFamiliesInstBodyDecl :: CheckNode InstBodyDecl
+<span class="lineno">   38 </span><span class="decl"><span class="istickedoff">chkTypeFamiliesInstBodyDecl = conditional chkTypeFamiliesInstBodyDecl' TypeFamilies</span></span>
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>
+<span class="lineno">   42 </span>chkTypeFamiliesDecl' :: CheckNode Decl
+<span class="lineno">   43 </span><span class="decl"><span class="istickedoff">chkTypeFamiliesDecl' d@TypeFamily{}       = addEvidence TypeFamilies d</span>
+<span class="lineno">   44 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesDecl' d@DataFamily{}       = addEvidence TypeFamilies d</span>
+<span class="lineno">   45 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesDecl' d@ClosedTypeFamily{} = addEvidence TypeFamilies d</span>
+<span class="lineno">   46 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesDecl' d@TypeInstance{}     = addEvidence TypeFamilies d</span>
+<span class="lineno">   47 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesDecl' d@DataInstance{}     = addEvidence TypeFamilies d</span>
+<span class="lineno">   48 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesDecl' d@GadtDataInstance{} = addEvidence TypeFamilies d</span>
+<span class="lineno">   49 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesDecl' d                    = return d</span></span>
+<span class="lineno">   50 </span>
+<span class="lineno">   51 </span>chkTypeFamiliesClassElement' :: CheckNode ClassElement
+<span class="lineno">   52 </span><span class="decl"><span class="istickedoff">chkTypeFamiliesClassElement' ce@ClassElemTypeFam{} = addEvidence TypeFamilies ce</span>
+<span class="lineno">   53 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesClassElement' ce@ClassElemDataFam{} = addEvidence TypeFamilies ce</span>
+<span class="lineno">   54 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesClassElement' ce@ClsDefaultType{}   = addEvidence TypeFamilies ce</span>
+<span class="lineno">   55 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesClassElement' ce                    = <span class="nottickedoff">return ce</span></span></span>
+<span class="lineno">   56 </span>
+<span class="lineno">   57 </span>chkTypeFamiliesInstBodyDecl' :: CheckNode InstBodyDecl
+<span class="lineno">   58 </span><span class="decl"><span class="istickedoff">chkTypeFamiliesInstBodyDecl' b@InstanceTypeFamilyDef{}     = addEvidence TypeFamilies b</span>
+<span class="lineno">   59 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesInstBodyDecl' b@InstanceDataFamilyDef{}     = addEvidence TypeFamilies b</span>
+<span class="lineno">   60 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesInstBodyDecl' b@InstanceDataFamilyGADTDef{} = addEvidence TypeFamilies b</span>
+<span class="lineno">   61 </span><span class="spaces"></span><span class="istickedoff">chkTypeFamiliesInstBodyDecl' b                             = <span class="nottickedoff">return b</span></span></span>
+<span class="lineno">   62 </span>
+<span class="lineno">   63 </span>
+<span class="lineno">   64 </span>chkOperatorForTypeEq' :: CheckNode Operator
+<span class="lineno">   65 </span><span class="decl"><span class="istickedoff">chkOperatorForTypeEq' op</span>
+<span class="lineno">   66 </span><span class="spaces">  </span><span class="istickedoff">| Just name &lt;- semanticsName (op ^. operatorName)</span>
+<span class="lineno">   67 </span><span class="spaces">  </span><span class="istickedoff">, name == eqTyConName</span>
+<span class="lineno">   68 </span><span class="spaces">  </span><span class="istickedoff">= addRelation (TypeFamilies `lOr` GADTs) op</span>
+<span class="lineno">   69 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = return op</span></span>
+<span class="lineno">   70 </span>
+<span class="lineno">   71 </span>-- | Checks whether a given name's has a type equality operator in it.
+<span class="lineno">   72 </span>-- If the type lookup fails, it returns Nothing. If given a type variable,
+<span class="lineno">   73 </span>-- it returns False.
+<span class="lineno">   74 </span>chkQNameForTyEqn :: QualifiedName -&gt; MaybeT ExtMonad Bool
+<span class="lineno">   75 </span><span class="decl"><span class="istickedoff">chkQNameForTyEqn name =</span>
+<span class="lineno">   76 </span><span class="spaces">  </span><span class="istickedoff">if <span class="tickonlyfalse">not . isId . semanticsId $ name</span></span>
+<span class="lineno">   77 </span><span class="spaces">    </span><span class="istickedoff">then <span class="nottickedoff">return False</span></span>
+<span class="lineno">   78 </span><span class="spaces">    </span><span class="istickedoff">else do</span>
+<span class="lineno">   79 </span><span class="spaces">      </span><span class="istickedoff">ty &lt;- lookupTypeFromId name</span>
+<span class="lineno">   80 </span><span class="spaces">      </span><span class="istickedoff">let ty'    = GHC.expandTypeSynonyms ty</span>
+<span class="lineno">   81 </span><span class="spaces">          </span><span class="istickedoff">tycons = universeBi ty' :: [GHC.TyCon]</span>
+<span class="lineno">   82 </span><span class="spaces">      </span><span class="istickedoff">if any isEqTyCon tycons then return True</span>
+<span class="lineno">   83 </span><span class="spaces">                              </span><span class="istickedoff">else return False</span>
+<span class="lineno">   84 </span><span class="spaces">      </span><span class="istickedoff">where isEqTyCon tc = tc `hasKey` eqTyConKey</span>
+<span class="lineno">   85 </span><span class="spaces">                        </span><span class="istickedoff">|| tc `hasKey` heqTyConKey</span>
+<span class="lineno">   86 </span><span class="spaces">                        </span><span class="istickedoff">|| tc `hasKey` eqPrimTyConKey</span>
+<span class="lineno">   87 </span><span class="spaces">                        </span><span class="istickedoff">|| tc `hasKey` eqReprPrimTyConKey</span>
+<span class="lineno">   88 </span><span class="spaces">                        </span><span class="istickedoff">|| tc `hasKey` eqPhantPrimTyConKey</span></span>
+<span class="lineno">   89 </span>
+<span class="lineno">   90 </span>gblChkQNamesForTypeEq' :: CheckNode Module
+<span class="lineno">   91 </span><span class="decl"><span class="istickedoff">gblChkQNamesForTypeEq' m = do</span>
+<span class="lineno">   92 </span><span class="spaces">  </span><span class="istickedoff">-- Names appearing on the rhs of bindings are just hints,</span>
+<span class="lineno">   93 </span><span class="spaces">  </span><span class="istickedoff">-- they don't necessarily require TypeFamilies.</span>
+<span class="lineno">   94 </span><span class="spaces">  </span><span class="istickedoff">let allNames   = universeBi (m ^. modDecl) :: [QualifiedName]</span>
+<span class="lineno">   95 </span><span class="spaces">      </span><span class="istickedoff">rhs        = universeBi (m ^. modDecl) :: [Rhs]</span>
+<span class="lineno">   96 </span><span class="spaces">      </span><span class="istickedoff">hints      = universeBi rhs            :: [QualifiedName]</span>
+<span class="lineno">   97 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   98 </span><span class="spaces">      </span><span class="istickedoff">-- Separating hints from evidence,</span>
+<span class="lineno">   99 </span><span class="spaces">      </span><span class="istickedoff">-- and grouping them together based on their GHC.Name</span>
+<span class="lineno">  100 </span><span class="spaces">      </span><span class="istickedoff">evidence  = filter (isJust . semanticsName) (allNames \\ hints)</span>
+<span class="lineno">  101 </span><span class="spaces">      </span><span class="istickedoff">hints'    = filter (isJust . semanticsName) hints</span>
+<span class="lineno">  102 </span><span class="spaces">      </span><span class="istickedoff">groupedEs = equivalenceGroupsBy semanticsName evidence</span>
+<span class="lineno">  103 </span><span class="spaces">      </span><span class="istickedoff">groupedHs = equivalenceGroupsBy semanticsName hints'</span>
+<span class="lineno">  104 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  105 </span><span class="spaces">      </span><span class="istickedoff">-- names failed at the semanticsName lookup</span>
+<span class="lineno">  106 </span><span class="spaces">      </span><span class="istickedoff">nmFailedNames = filter (isNothing . semanticsName) allNames</span>
+<span class="lineno">  107 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  108 </span><span class="spaces">  </span><span class="istickedoff">-- Checking the representative elements, whether they need FC,</span>
+<span class="lineno">  109 </span><span class="spaces">  </span><span class="istickedoff">-- if they do, add occurences for every node in their group.</span>
+<span class="lineno">  110 </span><span class="spaces">  </span><span class="istickedoff">-- If chkQNameForTyEqn fails, we add MissingInformation.</span>
+<span class="lineno">  111 </span><span class="spaces">  </span><span class="istickedoff">let hasTypeEq    = fromMaybeT False . chkQNameForTyEqn</span>
+<span class="lineno">  112 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  113 </span><span class="spaces">  </span><span class="istickedoff">es &lt;- filterM (hasTypeEq . fst) groupedEs</span>
+<span class="lineno">  114 </span><span class="spaces">  </span><span class="istickedoff">hs &lt;- filterM (hasTypeEq . fst) groupedHs</span>
+<span class="lineno">  115 </span><span class="spaces">  </span><span class="istickedoff">mapM_ (addRelation     (TypeFamilies `lOr` GADTs)) (concatMap snd es)</span>
+<span class="lineno">  116 </span><span class="spaces">  </span><span class="istickedoff">mapM_ (addRelationHint (TypeFamilies `lOr` GADTs)) (concatMap snd hs)</span>
+<span class="lineno">  117 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  118 </span><span class="spaces">  </span><span class="istickedoff">mapM_ <span class="nottickedoff">(addRelationMI (TypeFamilies `lOr` GADTs))</span> nmFailedNames</span>
+<span class="lineno">  119 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  120 </span><span class="spaces">  </span><span class="istickedoff">-- NOTE: this would result in many false positive results</span>
+<span class="lineno">  121 </span><span class="spaces">  </span><span class="istickedoff">-- names failed at the chkQNameForTyEqn (lookupTypeFromId) stage</span>
+<span class="lineno">  122 </span><span class="spaces">  </span><span class="istickedoff">-- idFailedNames &lt;- filterM failedLookup allNames</span>
+<span class="lineno">  123 </span><span class="spaces">  </span><span class="istickedoff">-- mapM_ (addRelationMI (TypeFamilies `lOr` GADTs)) idFailedNames</span>
+<span class="lineno">  124 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  125 </span><span class="spaces">  </span><span class="istickedoff">return m</span></span>
+
+</pre>
+</body>
+</html>

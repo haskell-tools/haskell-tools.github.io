@@ -1,0 +1,72 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE FlexibleContexts #-}
+<span class="lineno">    2 </span>{-# LANGUAGE MonoLocalBinds #-}
+<span class="lineno">    3 </span>
+<span class="lineno">    4 </span>module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeSynonymInstancesChecker
+<span class="lineno">    5 </span>  ( chkTypeSynonymInstancesDecl, chkInstancesDeclWith, chkInstanceRuleWith, collectTyArgs) where
+<span class="lineno">    6 </span>
+<span class="lineno">    7 </span>import Language.Haskell.Tools.Refactor
+<span class="lineno">    8 </span>import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad hiding (StandaloneDeriving)
+<span class="lineno">    9 </span>
+<span class="lineno">   10 </span>
+<span class="lineno">   11 </span>{-# ANN module &quot;HLint: ignore Redundant bracket&quot; #-}
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>-- TODO: write &quot;deriving instance ...&quot; tests (should work)
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>-- | We need to check declarations because we want to avoid checking type family instances
+<span class="lineno">   16 </span>chkTypeSynonymInstancesDecl :: CheckNode Decl
+<span class="lineno">   17 </span><span class="decl"><span class="istickedoff">chkTypeSynonymInstancesDecl = conditional (chkInstancesDeclWith $ chkInstanceRuleWith chkInstanceHead) TypeSynonymInstances</span></span>
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>-- | Checks an instance rule in declaration
+<span class="lineno">   20 </span>-- We need to check declarations because we want to avoid checking type family instances
+<span class="lineno">   21 </span>chkInstancesDeclWith :: CheckNode InstanceRule -&gt; CheckNode Decl
+<span class="lineno">   22 </span><span class="decl"><span class="istickedoff">chkInstancesDeclWith chkRule d@(StandaloneDeriving _ _ rule) = chkRule rule &gt;&gt; return d</span>
+<span class="lineno">   23 </span><span class="spaces"></span><span class="istickedoff">chkInstancesDeclWith chkRule d@(InstanceDecl rule _)         = chkRule rule &gt;&gt; return d</span>
+<span class="lineno">   24 </span><span class="spaces"></span><span class="istickedoff">chkInstancesDeclWith _ d = return d</span></span>
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>-- | Checks and instance head in an instance rule
+<span class="lineno">   27 </span>chkInstanceRuleWith :: CheckNode InstanceHead -&gt; CheckNode InstanceRule
+<span class="lineno">   28 </span><span class="decl"><span class="istickedoff">chkInstanceRuleWith chkHead r@(InstanceRule _ _ ihead) = chkHead ihead &gt;&gt; return <span class="nottickedoff">r</span></span>
+<span class="lineno">   29 </span><span class="spaces"></span><span class="istickedoff">chkInstanceRuleWith _ r = <span class="nottickedoff">return r</span></span></span>
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>-- | Checks every single type argument in an instance declaration whether it is a synonym
+<span class="lineno">   33 </span>chkInstanceHead :: CheckNode InstanceHead
+<span class="lineno">   34 </span><span class="decl"><span class="istickedoff">chkInstanceHead ih = do</span>
+<span class="lineno">   35 </span><span class="spaces">  </span><span class="istickedoff">let types = collectTyArgs ih</span>
+<span class="lineno">   36 </span><span class="spaces">  </span><span class="istickedoff">mapM_ chkTypeArg types &gt;&gt; return <span class="nottickedoff">ih</span></span></span>
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>-- | Checks a type argument of class whether it is a synonym
+<span class="lineno">   39 </span>chkTypeArg :: Type -&gt; ExtMonad Type
+<span class="lineno">   40 </span><span class="decl"><span class="istickedoff">chkTypeArg ty =</span>
+<span class="lineno">   41 </span><span class="spaces">  </span><span class="istickedoff">maybeTM (return <span class="nottickedoff">ty</span>) (const . addEvidence TypeSynonymInstances $ ty) (semanticsTypeSynRhs ty)</span></span>
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>-- | Collects the type arguments in an instance declaration
+<span class="lineno">   44 </span>-- Type arguments are the the types that the class is being instantiated with
+<span class="lineno">   45 </span>collectTyArgs :: InstanceHead -&gt; [Type]
+<span class="lineno">   46 </span><span class="decl"><span class="istickedoff">collectTyArgs (InstanceHead _)        = []</span>
+<span class="lineno">   47 </span><span class="spaces"></span><span class="istickedoff">collectTyArgs (InfixInstanceHead t _) = [t]</span>
+<span class="lineno">   48 </span><span class="spaces"></span><span class="istickedoff">collectTyArgs (ParenInstanceHead ih)  = collectTyArgs ih</span>
+<span class="lineno">   49 </span><span class="spaces"></span><span class="istickedoff">collectTyArgs (AppInstanceHead ih t)  = t : collectTyArgs ih</span></span>
+
+</pre>
+</body>
+</html>
