@@ -1,47 +1,75 @@
 
 
-Still running (1 of 20): stack bench haskell-tools-cli
+Still running (1 of 20): stack bench haskell-tools-cliStill running (2 of 20): stack bench haskell-tools-cli
 [32;1mThe command stack bench haskell-tools-cli exited with 0.[0m
 
 [32;1mLog:[0m
 
+haskell-tools-cli-1.1.1.0: unregistering (missing dependencies: haskell-tools-daemon)
+haskell-tools-daemon-1.1.1.0: unregistering (local file changes: examples/Project/source-error/A.hs)
+haskell-tools-daemon-1.1.1.0: configure (lib + exe)
+haskell-tools-daemon-1.1.1.0: build (lib + exe)
+haskell-tools-daemon-1.1.1.0: copy/register
+haskell-tools-cli-1.1.1.0: configure (lib + exe + bench)
+Configuring haskell-tools-cli-1.1.1.0...
+haskell-tools-cli-1.1.1.0: build (lib + exe + bench)
+Preprocessing library for haskell-tools-cli-1.1.1.0..
+Building library for haskell-tools-cli-1.1.1.0..
+[1 of 2] Compiling Paths_haskell_tools_cli ( .stack-work/dist/x86_64-linux/Cabal-2.4.0.1/build/autogen/Paths_haskell_tools_cli.hs, .stack-work/dist/x86_64-linux/Cabal-2.4.0.1/build/Paths_haskell_tools_cli.o )
+[2 of 2] Compiling Language.Haskell.Tools.Refactor.CLI ( Language/Haskell/Tools/Refactor/CLI.hs, .stack-work/dist/x86_64-linux/Cabal-2.4.0.1/build/Language/Haskell/Tools/Refactor/CLI.o )
+Preprocessing executable 'ht-refact' for haskell-tools-cli-1.1.1.0..
+Building executable 'ht-refact' for haskell-tools-cli-1.1.1.0..
+[1 of 1] Compiling Main             ( exe/Main.hs, .stack-work/dist/x86_64-linux/Cabal-2.4.0.1/build/ht-refact/ht-refact-tmp/Main.o ) [Language.Haskell.Tools.Refactor.CLI changed]
+Linking .stack-work/dist/x86_64-linux/Cabal-2.4.0.1/build/ht-refact/ht-refact ...
+Preprocessing executable 'ht-test-stackage' for haskell-tools-cli-1.1.1.0..
+Building executable 'ht-test-stackage' for haskell-tools-cli-1.1.1.0..
+Preprocessing benchmark 'cli-benchmark' for haskell-tools-cli-1.1.1.0..
+Building benchmark 'cli-benchmark' for haskell-tools-cli-1.1.1.0..
+[1 of 1] Compiling Main             ( benchmark/Main.hs, .stack-work/dist/x86_64-linux/Cabal-2.4.0.1/build/cli-benchmark/cli-benchmark-tmp/Main.o ) [Language.Haskell.Tools.Refactor.CLI changed]
+Linking .stack-work/dist/x86_64-linux/Cabal-2.4.0.1/build/cli-benchmark/cli-benchmark ...
+haskell-tools-cli-1.1.1.0: copy/register
+Installing library in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/nightly-2018-11-13/8.6.2/lib/x86_64-linux-ghc-8.6.2/haskell-tools-cli-1.1.1.0-IBFeA8e5lcABn5kXKBnBsT
+Installing executable ht-refact in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/nightly-2018-11-13/8.6.2/bin
+Installing executable ht-test-stackage in /home/travis/build/haskell-tools/haskell-tools/.stack-work/install/x86_64-linux/nightly-2018-11-13/8.6.2/bin
+Registering library for haskell-tools-cli-1.1.1.0..
 haskell-tools-cli-1.1.1.0: benchmarks
 Running 1 benchmarks...
 Benchmark cli-benchmark: RUNNING...
 benchmarking full-1
-time                 613.2 ms   (555.0 ms .. 643.1 ms)
-                     0.999 R²   (0.998 R² .. 1.000 R²)
-mean                 640.3 ms   (622.7 ms .. 670.7 ms)
-std dev              30.63 ms   (2.345 ms .. 37.78 ms)
+time                 635.3 ms   (595.4 ms .. 671.1 ms)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 662.5 ms   (647.2 ms .. 690.3 ms)
+std dev              27.20 ms   (1.827 ms .. 33.20 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking full-2
-time                 607.5 ms   (580.5 ms .. 656.1 ms)
-                     0.999 R²   (0.999 R² .. 1.000 R²)
-mean                 643.2 ms   (623.8 ms .. 675.2 ms)
-std dev              30.93 ms   (3.143 ms .. 39.55 ms)
+time                 615.0 ms   (555.7 ms .. 672.6 ms)
+                     0.999 R²   (0.995 R² .. 1.000 R²)
+mean                 669.8 ms   (641.4 ms .. 700.5 ms)
+std dev              36.95 ms   (17.86 ms .. 47.15 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking full-3
-time                 591.0 ms   (568.3 ms .. 606.3 ms)
-                     1.000 R²   (0.999 R² .. 1.000 R²)
-mean                 645.5 ms   (622.2 ms .. 677.3 ms)
-std dev              33.53 ms   (9.017 ms .. 44.78 ms)
+time                 647.4 ms   (531.0 ms .. 699.4 ms)
+                     0.996 R²   (0.991 R² .. 1.000 R²)
+mean                 658.6 ms   (629.7 ms .. 693.6 ms)
+std dev              37.38 ms   (16.23 ms .. 51.46 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking 3xGenerateTypeSignature
-time                 626.4 ms   (565.4 ms .. 751.5 ms)
-                     0.995 R²   (0.990 R² .. 1.000 R²)
-mean                 656.7 ms   (627.4 ms .. 695.1 ms)
-std dev              37.95 ms   (14.77 ms .. 52.11 ms)
+time                 649.7 ms   (536.7 ms .. 734.8 ms)
+                     0.997 R²   (NaN R² .. 1.000 R²)
+mean                 664.8 ms   (633.6 ms .. 700.0 ms)
+std dev              36.57 ms   (17.29 ms .. 51.12 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking empty
-time                 616.7 ms   (525.7 ms .. 728.2 ms)
-                     0.996 R²   (0.987 R² .. 1.000 R²)
-mean                 646.1 ms   (619.1 ms .. 684.7 ms)
-std dev              37.05 ms   (9.414 ms .. 49.23 ms)
+time                 646.5 ms   (529.9 ms .. 708.9 ms)
+                     0.996 R²   (0.992 R² .. 1.000 R²)
+mean                 658.4 ms   (630.2 ms .. 694.0 ms)
+std dev              38.53 ms   (11.11 ms .. 52.28 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 Benchmark cli-benchmark: FINISH
-/home/travis/.travis/job_stages: line 523:  2549 Terminated              travis_jigger "${!}" "${timeout}" "${cmd[@]}"
+Completed 3 action(s).
+/home/travis/.travis/job_stages: line 523:  3864 Terminated              travis_jigger "${!}" "${timeout}" "${cmd[@]}"
