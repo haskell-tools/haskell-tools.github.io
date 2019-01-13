@@ -25,44 +25,41 @@ span.spaces    { background: white }
 <span class="lineno">    6 </span>import Language.Haskell.Tools.Refactor
 <span class="lineno">    7 </span>
 <span class="lineno">    8 </span>import BasicTypes (Fixity(..))
-<span class="lineno">    9 </span>import Id (idName)
-<span class="lineno">   10 </span>import qualified Name as GHC (Name)
-<span class="lineno">   11 </span>import PrelNames (dollarName)
-<span class="lineno">   12 </span>import SrcLoc (RealSrcSpan, SrcSpan)
-<span class="lineno">   13 </span>import Unique (getUnique)
+<span class="lineno">    9 </span>import PrelNames (dollarName)
+<span class="lineno">   10 </span>import SrcLoc (RealSrcSpan, SrcSpan)
+<span class="lineno">   11 </span>
+<span class="lineno">   12 </span>import Control.Monad.State
+<span class="lineno">   13 </span>import Control.Reference ((^.), (!~), biplateRef)
 <span class="lineno">   14 </span>
-<span class="lineno">   15 </span>import Control.Monad.State
-<span class="lineno">   16 </span>import Control.Reference ((^.), (!~), biplateRef)
+<span class="lineno">   15 </span>tryItOut :: String -&gt; String -&gt; IO ()
+<span class="lineno">   16 </span><span class="decl"><span class="nottickedoff">tryItOut = tryRefactor (localRefactoring . dollarApp)</span></span>
 <span class="lineno">   17 </span>
-<span class="lineno">   18 </span>tryItOut :: String -&gt; String -&gt; IO ()
-<span class="lineno">   19 </span><span class="decl"><span class="nottickedoff">tryItOut = tryRefactor (localRefactoring . dollarApp)</span></span>
-<span class="lineno">   20 </span>
-<span class="lineno">   21 </span>type DollarMonad = StateT [SrcSpan] LocalRefactor
-<span class="lineno">   22 </span>
-<span class="lineno">   23 </span>dollarApp :: RealSrcSpan -&gt; LocalRefactoring
-<span class="lineno">   24 </span><span class="decl"><span class="istickedoff">dollarApp sp = flip evalStateT [] . ((nodesContained sp !~ (\e -&gt; get &gt;&gt;= replaceExpr e))</span>
-<span class="lineno">   25 </span><span class="spaces">                                        </span><span class="istickedoff">&gt;=&gt; (biplateRef !~ parenExpr))</span></span>
-<span class="lineno">   26 </span>
-<span class="lineno">   27 </span>replaceExpr :: Expr -&gt; [SrcSpan] -&gt; DollarMonad Expr
-<span class="lineno">   28 </span><span class="decl"><span class="istickedoff">replaceExpr expr@(App _ (Paren (InfixApp _ op arg))) replacedRanges</span>
-<span class="lineno">   29 </span><span class="spaces">  </span><span class="istickedoff">| not (getRange arg `elem` replacedRanges)</span>
-<span class="lineno">   30 </span><span class="spaces">  </span><span class="istickedoff">, <span class="tickonlytrue">semanticsName (op ^. operatorName) /= Just dollarName</span></span>
-<span class="lineno">   31 </span><span class="spaces">  </span><span class="istickedoff">, <span class="tickonlytrue">case semanticsFixity (op ^. operatorName) of Just (Fixity _ p _) | <span class="nottickedoff">p &gt; 0</span> -&gt; <span class="nottickedoff">False</span>; _ -&gt; True</span></span>
-<span class="lineno">   32 </span><span class="spaces">  </span><span class="istickedoff">= return expr</span>
-<span class="lineno">   33 </span><span class="spaces"></span><span class="istickedoff">replaceExpr (App fun (Paren arg)) _ = do modify $ (getRange arg :)</span>
-<span class="lineno">   34 </span><span class="spaces">                                         </span><span class="istickedoff">mkInfixApp fun &lt;$&gt; lift (referenceOperator dollarName) &lt;*&gt; pure arg</span>
-<span class="lineno">   35 </span><span class="spaces"></span><span class="istickedoff">replaceExpr e _ = return e</span></span>
+<span class="lineno">   18 </span>type DollarMonad = StateT [SrcSpan] LocalRefactor
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>dollarApp :: RealSrcSpan -&gt; LocalRefactoring
+<span class="lineno">   21 </span><span class="decl"><span class="istickedoff">dollarApp sp = flip evalStateT [] . ((nodesContained sp !~ (\e -&gt; get &gt;&gt;= replaceExpr e))</span>
+<span class="lineno">   22 </span><span class="spaces">                                        </span><span class="istickedoff">&gt;=&gt; (biplateRef !~ parenExpr))</span></span>
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>replaceExpr :: Expr -&gt; [SrcSpan] -&gt; DollarMonad Expr
+<span class="lineno">   25 </span><span class="decl"><span class="istickedoff">replaceExpr expr@(App _ (Paren (InfixApp _ op arg))) replacedRanges</span>
+<span class="lineno">   26 </span><span class="spaces">  </span><span class="istickedoff">| not (getRange arg `elem` replacedRanges)</span>
+<span class="lineno">   27 </span><span class="spaces">  </span><span class="istickedoff">, <span class="tickonlytrue">semanticsName (op ^. operatorName) /= Just dollarName</span></span>
+<span class="lineno">   28 </span><span class="spaces">  </span><span class="istickedoff">, <span class="tickonlytrue">case semanticsFixity (op ^. operatorName) of Just (Fixity _ p _) | <span class="nottickedoff">p &gt; 0</span> -&gt; <span class="nottickedoff">False</span>; _ -&gt; True</span></span>
+<span class="lineno">   29 </span><span class="spaces">  </span><span class="istickedoff">= return expr</span>
+<span class="lineno">   30 </span><span class="spaces"></span><span class="istickedoff">replaceExpr (App fun (Paren arg)) _ = do modify $ (getRange arg :)</span>
+<span class="lineno">   31 </span><span class="spaces">                                         </span><span class="istickedoff">mkInfixApp fun &lt;$&gt; lift (referenceOperator dollarName) &lt;*&gt; pure arg</span>
+<span class="lineno">   32 </span><span class="spaces"></span><span class="istickedoff">replaceExpr e _ = return e</span></span>
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>parenExpr :: Expr -&gt; DollarMonad Expr
+<span class="lineno">   35 </span><span class="decl"><span class="istickedoff">parenExpr e = (exprLhs !~ parenDollar True) =&lt;&lt; (exprRhs !~ parenDollar False $ e)</span></span>
 <span class="lineno">   36 </span>
-<span class="lineno">   37 </span>parenExpr :: Expr -&gt; DollarMonad Expr
-<span class="lineno">   38 </span><span class="decl"><span class="istickedoff">parenExpr e = (exprLhs !~ parenDollar True) =&lt;&lt; (exprRhs !~ parenDollar False $ e)</span></span>
-<span class="lineno">   39 </span>
-<span class="lineno">   40 </span>parenDollar :: Bool -&gt; Expr -&gt; DollarMonad Expr
-<span class="lineno">   41 </span><span class="decl"><span class="istickedoff">parenDollar lhs expr@(InfixApp _ _ arg)</span>
-<span class="lineno">   42 </span><span class="spaces">  </span><span class="istickedoff">= do replacedRanges &lt;- get</span>
-<span class="lineno">   43 </span><span class="spaces">       </span><span class="istickedoff">if getRange arg `elem` replacedRanges &amp;&amp; (lhs || getRange expr `notElem` replacedRanges)</span>
-<span class="lineno">   44 </span><span class="spaces">         </span><span class="istickedoff">then return $ mkParen expr</span>
-<span class="lineno">   45 </span><span class="spaces">         </span><span class="istickedoff">else return expr</span>
-<span class="lineno">   46 </span><span class="spaces"></span><span class="istickedoff">parenDollar _ e = return e</span></span>
+<span class="lineno">   37 </span>parenDollar :: Bool -&gt; Expr -&gt; DollarMonad Expr
+<span class="lineno">   38 </span><span class="decl"><span class="istickedoff">parenDollar lhs expr@(InfixApp _ _ arg)</span>
+<span class="lineno">   39 </span><span class="spaces">  </span><span class="istickedoff">= do replacedRanges &lt;- get</span>
+<span class="lineno">   40 </span><span class="spaces">       </span><span class="istickedoff">if getRange arg `elem` replacedRanges &amp;&amp; (lhs || getRange expr `notElem` replacedRanges)</span>
+<span class="lineno">   41 </span><span class="spaces">         </span><span class="istickedoff">then return $ mkParen expr</span>
+<span class="lineno">   42 </span><span class="spaces">         </span><span class="istickedoff">else return expr</span>
+<span class="lineno">   43 </span><span class="spaces"></span><span class="istickedoff">parenDollar _ e = return e</span></span>
 
 </pre>
 </body>

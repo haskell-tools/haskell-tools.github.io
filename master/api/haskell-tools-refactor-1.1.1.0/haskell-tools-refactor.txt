@@ -4802,24 +4802,12 @@ class SourceInfoTraversal (a :: Type -> Type -> Type)
 sourceInfoTraverseUp :: (SourceInfoTraversal a, Monad f) => SourceInfoTrf f st1 st2 -> f () -> f () -> a dom st1 -> f (a dom st2)
 sourceInfoTraverseDown :: (SourceInfoTraversal a, Monad f) => SourceInfoTrf f st1 st2 -> f () -> f () -> a dom st1 -> f (a dom st2)
 sourceInfoTraverse :: (SourceInfoTraversal a, Monad f) => SourceInfoTrf f st1 st2 -> a dom st1 -> f (a dom st2)
-sourceTemplateNodeRange :: Simple Lens (SpanInfo SrcTemplateStage) SrcSpan
-sourceTemplateNodeElems :: Simple Lens (SpanInfo SrcTemplateStage) [SourceTemplateElem]
-sourceTemplateListRange :: Simple Lens (ListInfo SrcTemplateStage) SrcSpan
-srcTmpListBefore :: Simple Lens (ListInfo SrcTemplateStage) String
-srcTmpListAfter :: Simple Lens (ListInfo SrcTemplateStage) String
-srcTmpDefaultSeparator :: Simple Lens (ListInfo SrcTemplateStage) String
-srcTmpIndented :: Simple Lens (ListInfo SrcTemplateStage) (Maybe [Bool])
-srcTmpSeparators :: Simple Lens (ListInfo SrcTemplateStage) [([SourceTemplateTextElem], SrcSpan)]
-sourceTemplateOptRange :: Simple Lens (OptionalInfo SrcTemplateStage) SrcSpan
-srcTmpOptBefore :: Simple Lens (OptionalInfo SrcTemplateStage) String
-srcTmpOptAfter :: Simple Lens (OptionalInfo SrcTemplateStage) String
 data SourceTemplateTextElem
 NormalText :: String -> SourceTemplateTextElem
 [_sourceTemplateText] :: SourceTemplateTextElem -> String
 StayingText :: String -> String -> SourceTemplateTextElem
 [_sourceTemplateText] :: SourceTemplateTextElem -> String
 [_lineEndings] :: SourceTemplateTextElem -> String
-sourceTemplateText :: Lens SourceTemplateTextElem SourceTemplateTextElem String String
 data UnsupportedExtension
 UnsupportedExtension :: String -> UnsupportedExtension
 data SpliceInsertionProblem

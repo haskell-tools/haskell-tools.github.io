@@ -69,26 +69,25 @@ span.spaces    { background: white }
 <span class="lineno">   50 </span><span class="spaces">    </span><span class="istickedoff">= <span class="nottickedoff">pure AST.UUnboxKind</span></span>
 <span class="lineno">   51 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsStarTy _ _) = pure AST.UStarKind</span>
 <span class="lineno">   52 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsParTy _ kind) = <span class="nottickedoff">AST.UParenKind &lt;$&gt; trfKind kind</span></span>
-<span class="lineno">   53 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsParTy _ kind) = <span class="nottickedoff">AST.UParenKind &lt;$&gt; trfKind kind</span></span>
-<span class="lineno">   54 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsFunTy _ k1 k2) = AST.UFunKind &lt;$&gt; trfKind k1 &lt;*&gt; trfKind k2</span>
-<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsAppTy _ k1 k2) = <span class="nottickedoff">AST.UAppKind &lt;$&gt; trfKind k1 &lt;*&gt; trfKind k2</span></span>
-<span class="lineno">   56 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsOpTy _ k1 op k2) = <span class="nottickedoff">AST.UInfixAppKind &lt;$&gt; trfKind k1 &lt;*&gt; trfOperator @n op &lt;*&gt; trfKind k2</span></span>
-<span class="lineno">   57 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsTyVar _ _ kv) = transformingPossibleVar kv (AST.UVarKind &lt;$&gt; trfName @n kv)</span>
-<span class="lineno">   58 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsListTy _ kind) = <span class="nottickedoff">AST.UListKind &lt;$&gt; trfKind kind</span></span>
-<span class="lineno">   59 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsTupleTy _ _ kinds) = <span class="nottickedoff">AST.UTupleKind &lt;$&gt; makeList &quot;, &quot; atTheStart (mapM trfKind kinds)</span></span>
-<span class="lineno">   60 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' pt@(HsExplicitListTy {}) = <span class="nottickedoff">AST.UPromotedKind &lt;$&gt; annContNoSema (trfPromoted' trfKind' pt)</span></span>
-<span class="lineno">   61 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' pt@(HsExplicitTupleTy {}) = <span class="nottickedoff">AST.UPromotedKind &lt;$&gt; annContNoSema (trfPromoted' trfKind' pt)</span></span>
-<span class="lineno">   62 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' pt@(HsTyLit {}) = <span class="nottickedoff">AST.UPromotedKind &lt;$&gt; annContNoSema (trfPromoted' trfKind' pt)</span></span>
-<span class="lineno">   63 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' t = <span class="nottickedoff">AST.UTypeKind &lt;$&gt; annContNoSema (trfType' t)</span></span></span>
-<span class="lineno">   64 </span>
-<span class="lineno">   65 </span>trfPromoted' :: forall n r a . (TransformName n r, HasNoSemanticInfo (Dom r) a, Outputable (HsType n), Data (HsType n))
-<span class="lineno">   66 </span>                  =&gt; (HsType n -&gt; Trf (a (Dom r) RangeStage)) -&gt; HsType n -&gt; Trf (AST.UPromoted a (Dom r) RangeStage)
-<span class="lineno">   67 </span><span class="decl"><span class="istickedoff">trfPromoted' _ (HsTyLit _ (HsNumTy _ int)) = <span class="nottickedoff">pure $ AST.UPromotedInt int</span></span>
-<span class="lineno">   68 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ (HsTyLit _ (HsStrTy _ str)) = <span class="nottickedoff">pure $ AST.UPromotedString (unpackFS str)</span></span>
-<span class="lineno">   69 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ (HsTyVar _ _ name) = <span class="nottickedoff">AST.UPromotedCon &lt;$&gt; trfName @n name</span></span>
-<span class="lineno">   70 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' f (HsExplicitListTy _ _ elems) = AST.UPromotedList &lt;$&gt; between AnnOpenS AnnCloseS (trfAnnList <span class="nottickedoff">&quot;, &quot;</span> <span class="nottickedoff">f</span> elems)</span>
-<span class="lineno">   71 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' f (HsExplicitTupleTy _ elems) = <span class="nottickedoff">AST.UPromotedTuple &lt;$&gt; between AnnOpenP AnnCloseP (trfAnnList &quot;, &quot; f elems)</span></span>
-<span class="lineno">   72 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ t = <span class="nottickedoff">unhandledElement &quot;promoted type/kind&quot; t</span></span></span>
+<span class="lineno">   53 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsFunTy _ k1 k2) = AST.UFunKind &lt;$&gt; trfKind k1 &lt;*&gt; trfKind k2</span>
+<span class="lineno">   54 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsAppTy _ k1 k2) = <span class="nottickedoff">AST.UAppKind &lt;$&gt; trfKind k1 &lt;*&gt; trfKind k2</span></span>
+<span class="lineno">   55 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsOpTy _ k1 op k2) = <span class="nottickedoff">AST.UInfixAppKind &lt;$&gt; trfKind k1 &lt;*&gt; trfOperator @n op &lt;*&gt; trfKind k2</span></span>
+<span class="lineno">   56 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsTyVar _ _ kv) = transformingPossibleVar kv (AST.UVarKind &lt;$&gt; trfName @n kv)</span>
+<span class="lineno">   57 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsListTy _ kind) = <span class="nottickedoff">AST.UListKind &lt;$&gt; trfKind kind</span></span>
+<span class="lineno">   58 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' (HsTupleTy _ _ kinds) = <span class="nottickedoff">AST.UTupleKind &lt;$&gt; makeList &quot;, &quot; atTheStart (mapM trfKind kinds)</span></span>
+<span class="lineno">   59 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' pt@(HsExplicitListTy {}) = <span class="nottickedoff">AST.UPromotedKind &lt;$&gt; annContNoSema (trfPromoted' trfKind' pt)</span></span>
+<span class="lineno">   60 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' pt@(HsExplicitTupleTy {}) = <span class="nottickedoff">AST.UPromotedKind &lt;$&gt; annContNoSema (trfPromoted' trfKind' pt)</span></span>
+<span class="lineno">   61 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' pt@(HsTyLit {}) = <span class="nottickedoff">AST.UPromotedKind &lt;$&gt; annContNoSema (trfPromoted' trfKind' pt)</span></span>
+<span class="lineno">   62 </span><span class="spaces">  </span><span class="istickedoff">trfKind'' t = <span class="nottickedoff">AST.UTypeKind &lt;$&gt; annContNoSema (trfType' t)</span></span></span>
+<span class="lineno">   63 </span>
+<span class="lineno">   64 </span>trfPromoted' :: forall n r a . (TransformName n r, HasNoSemanticInfo (Dom r) a, Outputable (HsType n), Data (HsType n))
+<span class="lineno">   65 </span>                  =&gt; (HsType n -&gt; Trf (a (Dom r) RangeStage)) -&gt; HsType n -&gt; Trf (AST.UPromoted a (Dom r) RangeStage)
+<span class="lineno">   66 </span><span class="decl"><span class="istickedoff">trfPromoted' _ (HsTyLit _ (HsNumTy _ int)) = <span class="nottickedoff">pure $ AST.UPromotedInt int</span></span>
+<span class="lineno">   67 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ (HsTyLit _ (HsStrTy _ str)) = <span class="nottickedoff">pure $ AST.UPromotedString (unpackFS str)</span></span>
+<span class="lineno">   68 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ (HsTyVar _ _ name) = <span class="nottickedoff">AST.UPromotedCon &lt;$&gt; trfName @n name</span></span>
+<span class="lineno">   69 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' f (HsExplicitListTy _ _ elems) = AST.UPromotedList &lt;$&gt; between AnnOpenS AnnCloseS (trfAnnList <span class="nottickedoff">&quot;, &quot;</span> <span class="nottickedoff">f</span> elems)</span>
+<span class="lineno">   70 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' f (HsExplicitTupleTy _ elems) = <span class="nottickedoff">AST.UPromotedTuple &lt;$&gt; between AnnOpenP AnnCloseP (trfAnnList &quot;, &quot; f elems)</span></span>
+<span class="lineno">   71 </span><span class="spaces"></span><span class="istickedoff">trfPromoted' _ t = <span class="nottickedoff">unhandledElement &quot;promoted type/kind&quot; t</span></span></span>
 
 </pre>
 </body>
