@@ -1,6 +1,6 @@
 
 
-Still running (1 of 20): stack bench haskell-tools-cli
+Still running (1 of 20): stack bench haskell-tools-cliStill running (2 of 20): stack bench haskell-tools-cli
 [32;1mThe command stack bench haskell-tools-cli exited with 0.[0m
 
 [32;1mLog:[0m
@@ -9,39 +9,39 @@ haskell-tools-cli> benchmarks
 Running 1 benchmarks...
 Benchmark cli-benchmark: RUNNING...
 benchmarking full-1
-time                 617.7 ms   (562.6 ms .. 672.1 ms)
-                     0.998 R²   (0.998 R² .. 1.000 R²)
-mean                 643.8 ms   (624.9 ms .. 676.3 ms)
-std dev              31.11 ms   (1.511 ms .. 38.25 ms)
+time                 685.6 ms   (616.5 ms .. 778.3 ms)
+                     0.997 R²   (0.996 R² .. 1.000 R²)
+mean                 729.5 ms   (701.4 ms .. 776.8 ms)
+std dev              47.56 ms   (6.693 ms .. 60.60 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking full-2
-time                 648.1 ms   (570.0 ms .. 796.3 ms)
-                     0.994 R²   (0.986 R² .. 1.000 R²)
-mean                 660.5 ms   (631.1 ms .. 683.0 ms)
-std dev              31.08 ms   (15.72 ms .. 42.96 ms)
+time                 670.0 ms   (654.8 ms .. 683.9 ms)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 726.3 ms   (702.0 ms .. 766.6 ms)
+std dev              38.54 ms   (5.798 ms .. 49.43 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking full-3
-time                 603.4 ms   (529.3 ms .. 650.8 ms)
-                     0.998 R²   (0.995 R² .. 1.000 R²)
-mean                 656.8 ms   (630.7 ms .. 685.2 ms)
-std dev              30.01 ms   (15.55 ms .. 42.26 ms)
+time                 690.6 ms   (601.8 ms .. 797.7 ms)
+                     0.997 R²   (0.990 R² .. 1.000 R²)
+mean                 729.0 ms   (703.0 ms .. 772.4 ms)
+std dev              41.22 ms   (11.51 ms .. 53.46 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking 3xGenerateTypeSignature
-time                 629.3 ms   (581.2 ms .. 727.1 ms)
-                     0.997 R²   (0.994 R² .. 1.000 R²)
-mean                 666.7 ms   (644.2 ms .. 704.7 ms)
-std dev              37.59 ms   (12.19 ms .. 50.75 ms)
+time                 708.3 ms   (665.5 ms .. 806.8 ms)
+                     0.998 R²   (0.995 R² .. 1.000 R²)
+mean                 740.0 ms   (718.3 ms .. 776.3 ms)
+std dev              35.63 ms   (10.58 ms .. 48.00 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking empty
-time                 640.6 ms   (576.8 ms .. 734.8 ms)
-                     0.998 R²   (0.993 R² .. 1.000 R²)
-mean                 664.4 ms   (642.6 ms .. 682.0 ms)
-std dev              25.59 ms   (12.44 ms .. 35.95 ms)
-variance introduced by outliers: 19% (moderately inflated)
+time                 665.2 ms   (596.1 ms .. 737.4 ms)
+                     0.998 R²   (0.994 R² .. 1.000 R²)
+mean                 727.5 ms   (698.4 ms .. 780.9 ms)
+std dev              51.43 ms   (3.056 ms .. 63.47 ms)
+variance introduced by outliers: 20% (moderately inflated)
 
 Benchmark cli-benchmark: FINISH
-/home/travis/.travis/functions: line 553:  2931 Terminated              travis_jigger "${!}" "${timeout}" "${cmd[@]}"
+/home/travis/.travis/functions: line 553:  2936 Terminated              travis_jigger "${!}" "${timeout}" "${cmd[@]}"
