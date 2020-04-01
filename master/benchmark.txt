@@ -9,38 +9,38 @@ haskell-tools-cli> benchmarks
 Running 1 benchmarks...
 Benchmark cli-benchmark: RUNNING...
 benchmarking full-1
-time                 529.6 ms   (458.7 ms .. 603.0 ms)
-                     0.998 R²   (0.991 R² .. 1.000 R²)
-mean                 560.7 ms   (542.9 ms .. 580.1 ms)
-std dev              23.23 ms   (9.344 ms .. 30.20 ms)
+time                 508.3 ms   (463.4 ms .. 557.7 ms)
+                     0.998 R²   (0.998 R² .. 1.000 R²)
+mean                 518.0 ms   (504.4 ms .. 538.4 ms)
+std dev              19.24 ms   (96.76 μs .. 23.61 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking full-2
-time                 555.8 ms   (488.7 ms .. 680.8 ms)
-                     0.994 R²   (0.987 R² .. 1.000 R²)
-mean                 572.5 ms   (548.5 ms .. 599.0 ms)
-std dev              29.19 ms   (12.75 ms .. 40.70 ms)
+time                 497.7 ms   (458.2 ms .. 560.4 ms)
+                     0.998 R²   (NaN R² .. 1.000 R²)
+mean                 525.7 ms   (509.3 ms .. 551.1 ms)
+std dev              24.76 ms   (7.298 ms .. 33.61 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking full-3
-time                 556.2 ms   (505.4 ms .. 592.0 ms)
-                     0.999 R²   (0.998 R² .. 1.000 R²)
-mean                 539.2 ms   (507.8 ms .. 551.2 ms)
-std dev              21.53 ms   (3.366 ms .. 27.69 ms)
+time                 504.5 ms   (458.5 ms .. 585.4 ms)
+                     0.997 R²   (0.993 R² .. 1.000 R²)
+mean                 523.6 ms   (504.7 ms .. 545.8 ms)
+std dev              22.83 ms   (10.41 ms .. 31.83 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking 3xGenerateTypeSignature
-time                 528.3 ms   (472.8 ms .. 588.5 ms)
-                     0.998 R²   (0.994 R² .. 1.000 R²)
-mean                 568.5 ms   (549.1 ms .. 597.8 ms)
-std dev              28.12 ms   (6.297 ms .. 37.46 ms)
+time                 494.7 ms   (477.6 ms .. 522.4 ms)
+                     1.000 R²   (0.999 R² .. 1.000 R²)
+mean                 525.0 ms   (509.9 ms .. 548.4 ms)
+std dev              22.19 ms   (2.071 ms .. 28.12 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking empty
-time                 564.7 ms   (459.5 ms .. 720.8 ms)
-                     0.992 R²   (0.976 R² .. 1.000 R²)
-mean                 581.5 ms   (551.7 ms .. 600.2 ms)
-std dev              30.66 ms   (14.88 ms .. 43.07 ms)
+time                 502.2 ms   (449.9 ms .. 595.5 ms)
+                     0.996 R²   (0.990 R² .. 1.000 R²)
+mean                 524.7 ms   (502.7 ms .. 550.8 ms)
+std dev              26.82 ms   (11.91 ms .. 37.31 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 Benchmark cli-benchmark: FINISH
